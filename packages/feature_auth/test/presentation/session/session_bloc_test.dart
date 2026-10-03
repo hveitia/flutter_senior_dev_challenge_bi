@@ -98,6 +98,45 @@ void main() {
     );
   });
 
+  group('a restored account without profile that requires unlock', () {
+    const pending = SessionProfilePending(email: email);
+
+    setUp(
+      () => repository.restored = const IncompleteSession(
+        account,
+        unlockRequired: true,
+      ),
+    );
+
+    blocTest<SessionBloc, SessionState>(
+      'is locked before the form that shows its email',
+      build: build,
+      act: (bloc) => bloc.add(const SessionStarted()),
+      expect: () => [const SessionLocked(pending)],
+      verify: (bloc) => expect((bloc.state as SessionLocked).firstName, isNull),
+    );
+
+    blocTest<SessionBloc, SessionState>(
+      'reaches the form once the biometric check passes',
+      build: build,
+      act: (bloc) async {
+        bloc.add(const SessionStarted());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const SessionUnlockRequested());
+      },
+      expect: () => [const SessionLocked(pending), pending],
+    );
+
+    blocTest<SessionBloc, SessionState>(
+      'falls back to password sign-in when the device has no biometrics '
+      'any more',
+      setUp: () => biometrics.available = false,
+      build: build,
+      act: (bloc) => bloc.add(const SessionStarted()),
+      expect: () => [const SessionSignedOut()],
+    );
+  });
+
   blocTest<SessionBloc, SessionState>(
     'follows every session the repository announces after the start',
     build: build,

@@ -69,6 +69,20 @@ void main() {
       );
     });
 
+    testWidgets('shows neither a name nor the email while it locks an '
+        'account whose profile is still pending', (tester) async {
+      repository.restored = const IncompleteSession(
+        account,
+        unlockRequired: true,
+      );
+      biometrics.passes = false;
+
+      await pump(tester, const UnlockScreen());
+
+      expect(find.text('Hola de nuevo'), findsOneWidget);
+      expect(find.textContaining(email), findsNothing);
+    });
+
     testWidgets('tries again on request', (tester) async {
       biometrics.passes = false;
       final bloc = await pump(tester, const UnlockScreen());

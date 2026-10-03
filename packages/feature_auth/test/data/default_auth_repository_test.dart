@@ -119,6 +119,37 @@ void main() {
       expect(sessions, [const IncompleteSession(account)]);
     });
 
+    test('requires unlock for a restored account without profile when the '
+        'customer enabled it on this device', () async {
+      const account = AuthAccount(uid: 'uid-9', email: email);
+      build(restored: account);
+      unlockPreferences.enabled.add(account.uid);
+
+      await repository.restore();
+      await settle();
+
+      expect(sessions, [
+        const IncompleteSession(account, unlockRequired: true),
+      ]);
+    });
+
+    test('requires unlock after a retry finds the profile, when the customer '
+        'enabled it on this device', () async {
+      const account = AuthAccount(uid: 'uid-9', email: email);
+      build(restored: account);
+      final profile = UserProfile.fromDraft(account, draft);
+      profiles.profiles[account.uid] = profile;
+      unlockPreferences.enabled.add(account.uid);
+      profiles.failRead = const OfflineFailure();
+      await repository.restore();
+
+      profiles.failRead = null;
+      await repository.retry();
+      await settle();
+
+      expect(sessions.last, ActiveSession(profile, unlockRequired: true));
+    });
+
     test('announces unavailable when the profile cannot be read', () async {
       const account = AuthAccount(uid: 'uid-9', email: email);
       build(restored: account);

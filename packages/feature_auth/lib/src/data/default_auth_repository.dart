@@ -194,7 +194,12 @@ final class DefaultAuthRepository implements AuthRepository {
         _announce(UnavailableSession(account));
         _reportRestore(RestoreOutcome.unavailable);
       case Success(value: null):
-        _announce(IncompleteSession(account));
+        _announce(
+          IncompleteSession(
+            account,
+            unlockRequired: await _isUnlockRequired(account.uid),
+          ),
+        );
         _reportRestore(RestoreOutcome.profileIncomplete);
       case Success(value: final profile?):
         _announce(

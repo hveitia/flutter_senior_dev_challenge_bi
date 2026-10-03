@@ -30,7 +30,11 @@ final class ActiveSession extends Session {
 /// The account exists but its profile was never stored: sign-up stopped
 /// halfway. The customer has to complete it before using the app.
 final class IncompleteSession extends Session {
-  const IncompleteSession(this.account, {this.unsavedDraft});
+  const IncompleteSession(
+    this.account, {
+    this.unsavedDraft,
+    this.unlockRequired = false,
+  });
 
   final AuthAccount account;
 
@@ -38,8 +42,13 @@ final class IncompleteSession extends Session {
   /// memory only so they do not have to type it again.
   final ProfileDraft? unsavedDraft;
 
+  /// Same meaning as in [ActiveSession]: the form to complete the profile
+  /// shows the account's email, so a restored session asks for the check
+  /// before it.
+  final bool unlockRequired;
+
   @override
-  List<Object?> get props => [account, unsavedDraft];
+  List<Object?> get props => [account, unsavedDraft, unlockRequired];
 }
 
 /// Signed in, but the profile could not be read (no connection and nothing

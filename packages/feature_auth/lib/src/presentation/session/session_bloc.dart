@@ -164,13 +164,20 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         emit(const SessionSignedOut());
       case UnavailableSession():
         emit(const SessionUnavailable());
-      case IncompleteSession(:final account, :final unsavedDraft):
-        emit(
-          SessionProfilePending(
-            email: account.email,
-            unsavedDraft: unsavedDraft,
-          ),
+      case IncompleteSession(
+        :final account,
+        :final unsavedDraft,
+        :final unlockRequired,
+      ):
+        final pending = SessionProfilePending(
+          email: account.email,
+          unsavedDraft: unsavedDraft,
         );
+        if (unlockRequired) {
+          await _lock(pending, emit);
+        } else {
+          emit(pending);
+        }
       case ActiveSession(:final profile, unlockRequired: false):
         emit(SessionSignedIn(profile));
       case ActiveSession(:final profile, unlockRequired: true):

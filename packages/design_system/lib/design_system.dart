@@ -1,15 +1,20 @@
 /// Design tokens, theme and base components shared by every domain package.
 library;
 
+export 'src/components/account_card.dart';
 export 'src/components/amount_text.dart';
+export 'src/components/app_bottom_navigation.dart';
 export 'src/components/app_button.dart';
 export 'src/components/app_chip.dart';
 export 'src/components/app_text_field.dart';
 export 'src/components/checkbox_row.dart';
+export 'src/components/detail_row.dart';
 export 'src/components/empty_state.dart';
+export 'src/components/group_header.dart';
 export 'src/components/inline_alert.dart';
 export 'src/components/inline_error.dart';
 export 'src/components/module_container.dart';
+export 'src/components/movement_row.dart';
 export 'src/components/radio_card.dart';
 export 'src/components/requirement_item.dart';
 export 'src/components/skeleton_block.dart';

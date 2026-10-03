@@ -136,6 +136,57 @@ Map<String, Widget> componentCatalog() {
       icon: Icons.mark_email_read_outlined,
     ),
     'Wordmark': const Wordmark(name: 'Banca Digital'),
+    'GroupHeader': const GroupHeader(label: 'Saldo total'),
+    'DetailRow': Column(
+      children: [
+        const DetailRow(label: 'Canal', value: 'Tarjeta de débito'),
+        DetailRow(
+          label: 'Referencia',
+          value: 'MOV-202610-0002',
+          trailing: IconButton(
+            tooltip: 'Copiar referencia',
+            icon: const Icon(Icons.copy_outlined),
+            onPressed: noop,
+          ),
+        ),
+      ],
+    ),
+    'AccountCard': AccountCard(
+      name: 'Cuenta de ahorros',
+      maskedNumber: '****4821',
+      balanceCents: 357035,
+      onTap: noop,
+    ),
+    'MovementRow': Column(
+      children: [
+        MovementRow(
+          icon: Icons.south_east,
+          description: 'Nómina de septiembre',
+          detail: 'Hoy · 09:12',
+          amountCents: 185000,
+          onTap: noop,
+        ),
+        const MovementRow(
+          icon: Icons.storefront_outlined,
+          description: 'Supermercado',
+          detail: 'Hoy · 08:45',
+          amountCents: -6480,
+        ),
+      ],
+    ),
+    'AppBottomNavigation': AppBottomNavigation(
+      currentIndex: 1,
+      onSelected: (_) {},
+      items: const [
+        AppBottomNavigationItem(label: 'Inicio', icon: Icons.home_outlined),
+        AppBottomNavigationItem(
+          label: 'Cuentas',
+          icon: Icons.account_balance_wallet_outlined,
+        ),
+        AppBottomNavigationItem(label: 'Servicios', icon: Icons.grid_view),
+        AppBottomNavigationItem(label: 'Perfil', icon: Icons.person_outline),
+      ],
+    ),
     'ToggleRow': Column(
       children: [
         ToggleRow(

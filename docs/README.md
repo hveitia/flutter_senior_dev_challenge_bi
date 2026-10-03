@@ -18,6 +18,7 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0008](adr/0008-contrato-de-configuracion.md) | Contrato de configuración publicado, con lectura tolerante a versiones | Aceptada |
 | [0009](adr/0009-politica-de-resiliencia.md) | Una única política de resiliencia, con inyección de fallos para demostración | Aceptada |
 | [0010](adr/0010-observabilidad.md) | Observabilidad detrás de una interfaz, sin datos del cliente en los registros | Aceptada |
+| [0011](adr/0011-autenticacion-y-perfil.md) | Autenticación con Firebase Auth y perfil escrito por el cliente bajo reglas | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
 

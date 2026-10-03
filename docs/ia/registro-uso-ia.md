@@ -53,6 +53,12 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
   - **La prueba de arquitectura se podía esquivar.** Solo miraba líneas que empezaban por `import`. Ahora lee directivas completas contra una lista de permitidos, y sus propios casos están probados.
   - **El esquema no lo validaba nada.** Una prueba valida ahora el ejemplo contra el esquema y fija cada diferencia entre el esquema y el analizador.
 
+- **Etapa 4.** Generó el paquete `feature_auth` (validadores, repositorio de acceso, Blocs de sesión, inicio de sesión y registro, pantallas, adaptadores de Firebase Auth, Firestore y biometría), siete componentes nuevos del sistema de diseño, la navegación de la aplicación según la sesión, las reglas de Firestore del perfil con 41 pruebas contra el emulador, su trabajo de integración continua y la decisión de arquitectura correspondiente ([ADR 0011](../adr/0011-autenticacion-y-perfil.md)).
+  - **Recuperación de cuentas a medio crear.** Propuso tratar como un estado de la sesión el caso de una cuenta creada cuyo perfil no llegó a guardarse, en lugar de guardar el borrador en el dispositivo, que habría dejado la cédula en un almacenamiento sin cifrar. Incluye el caso en que la escritura que pareció fallar sí llegó al servidor.
+  - **Qué se vio fallar antes de implementarse.** Los validadores de contacto y de contraseña, el repositorio (32 pruebas en rojo contra una implementación vacía), el Bloc de sesión, los dos Cubits y las reglas de Firestore (12 casos en rojo contra las reglas anteriores).
+  - **Ejecución real.** El flujo se recorrió en un emulador de Android contra el proyecto real de Firebase, conducido por comandos y leyendo el árbol de accesibilidad: registro, documento del perfil creado, cierre de sesión, contraseña incorrecta, inicio de sesión, restauración de la sesión y aviso sin conexión.
+  - **Un defecto que solo apareció en ejecución.** Al leer el árbol de accesibilidad en el emulador, el campo de contraseña figuraba como un botón: la semántica fusionada del campo absorbía el control que muestra la contraseña, que además dejaba de ser alcanzable por separado. El defecto estaba en el componente de la etapa 2 y sus 242 pruebas pasaban. Se corrigió con una prueba que primero falló, y la corrección se confirmó en el emulador.
+
 ## Límites observados
 
 - El paquete de diseño incluía validaciones declaradas por el propio modelo, sin un procedimiento que las respaldara. No se tomaron como evidencia.
@@ -68,6 +74,13 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
 - Varias pruebas nuevas de la corrección se escribieron a la vez que el código y no se vieron fallar contra la versión anterior, porque esta no compilaba con la interfaz nueva. Se validaron después por mutación: se alteró el repositorio, la política y el observador, las pruebas fallaron y se restauró el código.
 - En la misma etapa, nada se ejecutó contra el Firestore real ni en un dispositivo. Los adaptadores de Firebase se probaron con dobles, que demuestran que el adaptador llama a la API como se espera, no que la API se comporte así.
 
+- En la etapa 4, los componentes nuevos del sistema de diseño y las pantallas se escribieron junto con sus pruebas, no después de verlas fallar. Se validaron por mutación: quince alteraciones del código, una por comportamiento, y en todas falló alguna prueba. El validador de la cédula también se escribió junto con su prueba y se validó del mismo modo.
+- En la misma etapa, el teléfono volvió a estar bloqueado y la verificación se hizo en un emulador. El emulador no tiene biometría registrada, así que **el desbloqueo con huella o rostro no se ha visto funcionar en un dispositivo**: está probado con un doble del sensor. Tampoco se comprobó el correo de restablecimiento de contraseña ni que los eventos lleguen a la consola de Firebase.
+- La verificación en el emulador creó un usuario de prueba en el proyecto real de Firebase, con una dirección `@example.com`. Queda pendiente borrarlo.
+- Las pruebas de las reglas no arrancaron con el Java instalado por defecto en el equipo: el emulador de Firestore exige la versión 21. Se usó otro JDK ya presente en el equipo y el requisito quedó escrito en el README.
+- Las dependencias de Node de esas pruebas traen archivos Dart propios, que el análisis estático del repositorio tomó como código del proyecto e hicieron fallar la verificación. Se excluyeron del análisis y del formateo.
+- Las reglas nuevas se desplegaron en el mismo comando que un commit que resultó rechazado por la verificación. Las reglas desplegadas eran las que habían pasado sus 41 pruebas, pero el orden previsto era confirmar primero y desplegar después.
+
 ## Impacto por etapa
 
 Valoración cualitativa. No se registran métricas cuantitativas porque no se midieron.
@@ -78,7 +91,7 @@ Valoración cualitativa. No se registran métricas cuantitativas porque no se mi
 | 1. Cimientos | Estructura, Firebase, integración continua y hook listos en una sesión | Análisis estático estricto y verificación previa a cada commit desde el inicio | README y seis decisiones de arquitectura redactados por la IA a partir de lo decidido por el autor | Prueba de widget de la aplicación base escrita antes que la implementación |
 | 2. Sistema de diseño | Tokens, tema, diez componentes y galería en una sesión | Las reglas de accesibilidad son pruebas que fallan, no recomendaciones. La revisión visual y las dos revisiones independientes detectaron tres defectos que las pruebas no cubrían | ADR 0007 redactado por la IA, con las desviaciones y los recortes de alcance declarados | Pruebas escritas antes que el código; un catálogo aplica las mismas comprobaciones de accesibilidad a cada componente |
 | 3. Plataforma | Contrato, repositorio de configuración, resiliencia, conectividad y observabilidad con sus adaptadores | Tres defectos de comportamiento detectados por las pruebas antes de integrarse y siete cambios más a raíz de dos revisiones independientes antes de subir. Una prueba de arquitectura impide que el código puro importe Flutter o Firebase | Tres decisiones de arquitectura y la primera versión del documento de monitoreo, separando lo implementado de lo planificado | 192 pruebas en el paquete tras las revisiones, sobre reloj simulado y sin esperas reales. Comprobaciones por mutación en privacidad, límite de arquitectura, repositorio y política |
-| 4. Acceso | | | | |
+| 4. Acceso | Paquete de acceso, siete componentes, navegación por sesión y reglas del perfil | La ejecución en un emulador contra Firebase real encontró un defecto de accesibilidad que las pruebas no veían. Ningún dato personal llega a la telemetría, comprobado por pruebas | Decisión 0011, eventos del acceso en el documento de monitoreo y estado real de lo verificado en el README | Pruebas del paquete de acceso, de navegación de la aplicación y 41 casos de reglas contra el emulador. Parte de las pruebas de interfaz se validó por mutación y no viéndolas fallar primero |
 | 5. Cuentas y movimientos | | | | |
 | 6. Inicio dinámico | | | | |
 | 7. Consola web | | | | |

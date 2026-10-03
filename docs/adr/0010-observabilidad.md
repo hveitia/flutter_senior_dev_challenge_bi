@@ -55,9 +55,17 @@ El envío es de mejor esfuerzo: un fallo del servicio de telemetría nunca alcan
 - **El mensaje de los errores de un Bloc.** Se sustituye por `RedactedError(Tipo)`. La traza de la pila se conserva.
 - **Datos personales o financieros en eventos y contexto.** La interfaz lo exige en su documentación; se usan identificadores que define la aplicación (tipo de módulo, clase de fallo).
 
-Dos pruebas lo sostienen: recorren todo lo que el observador entregó a la telemetría y fallan si aparece el importe, el número de cuenta o el nombre de un estado o de un error de ejemplo. Se comprobó que fallan alterando temporalmente el observador para que registrara el estado y el error completos.
+Lo sostienen dos tipos de prueba. Unas recorren todo lo que el observador entregó a la telemetría y fallan si aparece el importe, el número de cuenta o el nombre de un estado o de un error de ejemplo. Otras fijan la forma exacta de lo que se informa, tanto en un cambio de estado como en un error: el tipo, el Bloc, la pila y nada más. Las segundas son las que detectarían un dato que no esté entre los tres ejemplos. Se comprobó que todas fallan alterando temporalmente el observador para que registrara el estado y el error completos.
 
-**Errores globales.** `installTelemetry` conecta los errores del framework y los errores asíncronos no capturados con la telemetría, marcados como graves.
+**La traza de la pila se envía tal cual.** Es aceptable porque una pila contiene nombres de funciones, archivos y líneas del código, no los valores que esas funciones manejaban. Sin ella, un error de un Bloc no podría localizarse.
+
+**Errores globales.** `installTelemetry` conecta con la telemetría los errores que nadie capturó:
+
+- **Errores del framework** (al construir o maquetar): graves. Dejan al cliente ante una pantalla rota, que es lo que debe contar el porcentaje de usuarios sin fallos.
+- **Errores asíncronos no capturados:** no graves, porque la aplicación sigue funcionando. Solo se marcan como graves los que no dejan nada en marcha (memoria agotada, desbordamiento de pila).
+- **En una compilación de depuración** los errores asíncronos se devuelven al motor, que los imprime en la consola. En una de publicación se marcan como tratados.
+
+**Arranque.** La recogida de fallos de Crashlytics se activa solo en compilaciones de publicación, para que los errores de un equipo de desarrollo no entren en las cifras de producción. Si Firebase no puede inicializarse, la aplicación arranca igualmente con una telemetría que no envía nada y muestra la causa en la consola, en lugar de quedarse en una pantalla en blanco.
 
 **Dependencias añadidas:** `firebase_crashlytics`, `firebase_analytics`, `firebase_performance` y el plugin de Gradle de Crashlytics, que el SDK necesita para arrancar en Android. El plugin de Gradle de Performance no se añade: solo aporta la medición automática de red, y las trazas propias funcionan sin él.
 

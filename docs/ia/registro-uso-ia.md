@@ -44,6 +44,15 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
   - **Operación ejecutada tras darse por perdida.** Con una latencia inyectada mayor que el tiempo de espera, el intento se informaba como agotado y la operación se ejecutaba igualmente después. Una prueba esperaba cero llamadas y encontró tres.
   - **Privacidad comprobada, no supuesta.** Las pruebas que impiden registrar el contenido de estados y errores se validaron alterando temporalmente el observador para que sí lo registrara: fallaron, y se restauró.
 
+  Antes de subir la etapa se ejecutaron dos revisiones independientes, una de fiabilidad de las pruebas y otra de resiliencia. Cambiaron lo siguiente:
+  - **El analizador «que nunca falla» fallaba con dos entradas.** Una latencia `NaN` o infinita lanzaba una excepción, y unas `props` anidadas miles de niveles desbordaban la pila. La revisión lo demostró con una prueba de sondeo. Al corregirlo apareció un tercer caso: una latencia enorme se convertía en cero en lugar de quedar limitada al tope.
+  - **Los reintentos pasaron a ser opcionales.** La política reintentaba cualquier operación; una transferencia que agotara su tiempo podía enviarse dos veces. Ahora cada llamada declara si es idempotente y, si no lo es, se ejecuta una sola vez.
+  - **La inyección de fallos quedó tras una opción de compilación.** Antes, el bloque publicado desde la consola se aplicaba en cualquier compilación, también en una de producción.
+  - **El repositorio de configuración se recupera solo.** Vuelve a suscribirse cuando la fuente falla, tiene una configuración de último recurso y deja un evento por cada caída a un respaldo. Antes, un único error dejaba a la aplicación sin recibir cambios durante toda la sesión, sin rastro.
+  - **Arranque y cifras de fallos.** La recogida de fallos se limita a compilaciones de publicación, los errores asíncronos dejan de contarse como graves y un fallo al inicializar Firebase ya no deja la pantalla en blanco.
+  - **La prueba de arquitectura se podía esquivar.** Solo miraba líneas que empezaban por `import`. Ahora lee directivas completas contra una lista de permitidos, y sus propios casos están probados.
+  - **El esquema no lo validaba nada.** Una prueba valida ahora el ejemplo contra el esquema y fija cada diferencia entre el esquema y el analizador.
+
 ## Límites observados
 
 - El paquete de diseño incluía validaciones declaradas por el propio modelo, sin un procedimiento que las respaldara. No se tomaron como evidencia.
@@ -55,6 +64,8 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
 - La IA introdujo caracteres invisibles (espacio de no separación) directamente en el código fuente. Se detectaron al analizar el código y se reemplazaron por secuencias de escape explícitas.
 
 - En la etapa 3, el nombre previsto para el paquete (`platform`) ya existía en el registro público de paquetes y lo usan dependencias transitivas. La resolución de dependencias falló y el paquete pasó a llamarse `app_platform`. La arquitectura aprobada no lo había previsto.
+- También en la etapa 3, las 127 pruebas del paquete pasaban con los dos fallos del analizador presentes y con una política que podía repetir una transferencia. Las pruebas cubrían los casos en los que pensó quien escribió el código; los que faltaban los encontró una revisión independiente.
+- Varias pruebas nuevas de la corrección se escribieron a la vez que el código y no se vieron fallar contra la versión anterior, porque esta no compilaba con la interfaz nueva. Se validaron después por mutación: se alteró el repositorio, la política y el observador, las pruebas fallaron y se restauró el código.
 - En la misma etapa, nada se ejecutó contra el Firestore real ni en un dispositivo. Los adaptadores de Firebase se probaron con dobles, que demuestran que el adaptador llama a la API como se espera, no que la API se comporte así.
 
 ## Impacto por etapa
@@ -66,7 +77,7 @@ Valoración cualitativa. No se registran métricas cuantitativas porque no se mi
 | Análisis y diseño | Encargo de diseño y dos revisiones en una sesión | La revisión detectó defectos de accesibilidad y de flujo antes de escribir código | Las decisiones quedaron registradas mientras se tomaban | No aplica |
 | 1. Cimientos | Estructura, Firebase, integración continua y hook listos en una sesión | Análisis estático estricto y verificación previa a cada commit desde el inicio | README y seis decisiones de arquitectura redactados por la IA a partir de lo decidido por el autor | Prueba de widget de la aplicación base escrita antes que la implementación |
 | 2. Sistema de diseño | Tokens, tema, diez componentes y galería en una sesión | Las reglas de accesibilidad son pruebas que fallan, no recomendaciones. La revisión visual y las dos revisiones independientes detectaron tres defectos que las pruebas no cubrían | ADR 0007 redactado por la IA, con las desviaciones y los recortes de alcance declarados | Pruebas escritas antes que el código; un catálogo aplica las mismas comprobaciones de accesibilidad a cada componente |
-| 3. Plataforma | Contrato, repositorio de configuración, resiliencia, conectividad y observabilidad con sus adaptadores | Tres defectos de comportamiento detectados por las pruebas antes de integrarse. Una prueba de arquitectura impide que el código puro importe Flutter o Firebase | Tres decisiones de arquitectura y la primera versión del documento de monitoreo, separando lo implementado de lo planificado | 127 pruebas en el paquete, sobre reloj simulado y sin esperas reales. Dos comprobaciones por mutación (privacidad y límite de arquitectura) |
+| 3. Plataforma | Contrato, repositorio de configuración, resiliencia, conectividad y observabilidad con sus adaptadores | Tres defectos de comportamiento detectados por las pruebas antes de integrarse y siete cambios más a raíz de dos revisiones independientes antes de subir. Una prueba de arquitectura impide que el código puro importe Flutter o Firebase | Tres decisiones de arquitectura y la primera versión del documento de monitoreo, separando lo implementado de lo planificado | 192 pruebas en el paquete tras las revisiones, sobre reloj simulado y sin esperas reales. Comprobaciones por mutación en privacidad, límite de arquitectura, repositorio y política |
 | 4. Acceso | | | | |
 | 5. Cuentas y movimientos | | | | |
 | 6. Inicio dinámico | | | | |

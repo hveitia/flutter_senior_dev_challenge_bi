@@ -61,6 +61,15 @@ cd apps/mobile
 flutter run -t lib/main_gallery.dart
 ```
 
+Para una demostración de degradación (latencia añadida y servicios caídos desde la configuración publicada), la compilación tiene que permitirlo de forma explícita:
+
+```bash
+cd apps/mobile
+flutter run --dart-define=ALLOW_FAULT_INJECTION=true
+```
+
+Sin esa opción, la aplicación ignora el bloque `resilience` de la configuración: una compilación de producción no puede degradarse desde la consola. La opción ya está definida, pero todavía no tiene efecto visible porque ningún repositorio usa la política de resiliencia ([ADR 0009](docs/adr/0009-politica-de-resiliencia.md)).
+
 La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado.
 
 ## Pruebas
@@ -83,8 +92,8 @@ Qué cubren hoy las pruebas:
 | Paquete | Qué se comprueba |
 |---|---|
 | `packages/design_system` | Deriva de los tokens respecto a `tokens/tokens.json`, contraste WCAG de cada combinación de color permitida, formato de importes, estados y semántica de cada componente, guías de accesibilidad de Flutter y ausencia de desbordamiento con texto al 130 % |
-| `packages/app_platform` | Reglas de tolerancia del contrato de configuración, repositorio de configuración (remota, guardada e incluida), política de resiliencia sobre un reloj simulado, estados de conectividad, ausencia de datos del cliente en la telemetría, adaptadores y límite entre código puro y adaptadores |
-| `apps/mobile` | Pantalla de inicio de carga con el tema aplicado, galería del sistema de diseño, manejadores globales de errores y validez de la configuración incluida |
+| `packages/app_platform` | Reglas de tolerancia del contrato de configuración, validación del ejemplo contra el esquema y diferencias entre ambos, repositorio de configuración (remota, guardada, incluida y de último recurso, con reconexión), política de resiliencia sobre un reloj simulado (reintentos solo para operaciones idempotentes, candado de la inyección de fallos), estados de conectividad, ausencia de datos del cliente en la telemetría, adaptadores y límite entre código puro y adaptadores |
+| `apps/mobile` | Pantalla de inicio de carga con el tema aplicado, galería del sistema de diseño, manejadores globales de errores, arranque sin telemetría cuando Firebase falla y validez de la configuración incluida |
 
 ## Cómo colaborar
 

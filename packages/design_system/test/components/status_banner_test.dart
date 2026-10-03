@@ -31,10 +31,13 @@ void main() {
       await pumpApp(tester, StatusBanner(kind: kind));
 
       expect(find.text(message), findsOneWidget);
-      expect(tester.widget<Icon>(find.byIcon(icon)).color, tone.foreground);
+      expect(
+        tester.widget<Icon>(find.byIcon(icon)).color,
+        AppSemanticColors.light.foreground(tone),
+      );
       expect(
         tester.widget<Text>(find.text(message)).style!.color,
-        tone.foreground,
+        AppSemanticColors.light.foreground(tone),
       );
     });
   }

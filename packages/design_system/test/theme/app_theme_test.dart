@@ -157,9 +157,18 @@ void main() {
     test('AppSemanticColors resolves the colors of each tone', () {
       const colors = AppSemanticColors.light;
 
-      for (final tone in AppTone.values) {
-        expect(colors.foreground(tone), tone.foreground);
-        expect(colors.tint(tone), tone.tint);
+      const expected = {
+        AppTone.success: (AppColors.success500, AppColors.successTint),
+        AppTone.danger: (AppColors.danger500, AppColors.dangerTint),
+        AppTone.warning: (AppColors.warning500, AppColors.warningTint),
+        AppTone.info: (AppColors.info500, AppColors.infoTint),
+      };
+
+      expect(expected.keys, AppTone.values);
+      for (final MapEntry(key: tone, value: (foreground, tint))
+          in expected.entries) {
+        expect(colors.foreground(tone), foreground);
+        expect(colors.tint(tone), tint);
       }
     });
 

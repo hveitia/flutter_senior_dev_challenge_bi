@@ -97,9 +97,12 @@ void main() {
           ),
         );
 
-        expect(icon.color, tone.foreground);
-        expect(label.style!.color, tone.foreground);
-        expect((box.decoration as BoxDecoration).color, tone.tint);
+        expect(icon.color, AppSemanticColors.light.foreground(tone));
+        expect(label.style!.color, AppSemanticColors.light.foreground(tone));
+        expect(
+          (box.decoration as BoxDecoration).color,
+          AppSemanticColors.light.tint(tone),
+        );
       });
     }
 

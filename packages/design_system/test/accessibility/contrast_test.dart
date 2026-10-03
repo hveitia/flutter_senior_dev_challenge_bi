@@ -82,17 +82,17 @@ void main() {
       for (final tone in AppTone.values) ...[
         (
           name: '${tone.name} on its tint',
-          foreground: tone.foreground,
-          background: tone.tint,
+          foreground: AppSemanticColors.light.foreground(tone),
+          background: AppSemanticColors.light.tint(tone),
         ),
         (
           name: '${tone.name} on surface/0',
-          foreground: tone.foreground,
+          foreground: AppSemanticColors.light.foreground(tone),
           background: AppColors.surface0,
         ),
         (
           name: '${tone.name} on surface/1',
-          foreground: tone.foreground,
+          foreground: AppSemanticColors.light.foreground(tone),
           background: AppColors.surface1,
         ),
       ],

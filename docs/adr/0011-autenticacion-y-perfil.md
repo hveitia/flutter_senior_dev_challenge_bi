@@ -71,16 +71,24 @@ La primera opción en cada caso.
 - Se validan tipos, longitudes, el formato de la cédula y del celular, y que el segmento y los intereses pertenezcan a listas conocidas.
 - El correo debe ser el de la cuenta autenticada.
 - `createdAt` debe ser la hora del servidor al crear y no puede cambiar después. Tampoco la cédula ni el correo.
+- Los intereses no pueden repetirse.
 
-Las pruebas de `firebase/test/` ejecutan 41 casos contra el emulador, permitidos y denegados, para perfiles, cuentas, movimientos y configuración. Se ejecutan en la integración continua.
+Las pruebas de `firebase/test/` ejecutan 49 casos contra el emulador, permitidos y denegados, para perfiles, cuentas, movimientos y configuración. Se ejecutan en la integración continua.
 
 **Cuenta a medio crear.** Si guardar el perfil falla después de crear la cuenta, el alta se da por hecha (la cuenta no puede deshacerse) y la sesión pasa al estado «perfil pendiente». La aplicación lleva al cliente a un flujo de dos pasos, con lo que había escrito ya cargado y un aviso de que no pudo guardarse. El mismo estado se detecta al iniciar sesión o al restaurar la sesión en cualquier dispositivo, ya sin los datos, que se piden de nuevo. Antes de guardar, el repositorio vuelve a leer el perfil: si la escritura que pareció fallar sí llegó al servidor, se usa ese documento, porque escribir otra vez sería una actualización que las reglas rechazan.
 
 **Mensajes de error.** El inicio de sesión responde «No pudimos validar tus datos. Revisa e intenta de nuevo.» ante cualquier rechazo de credenciales, sin indicar qué campo falló. El restablecimiento de contraseña confirma siempre con el mismo texto, exista o no la cuenta. El alta sí avisa de que el correo ya está registrado.
 
-**Biometría.** El cliente la activa en el tercer paso del alta, si el dispositivo la tiene. La preferencia se guarda por dispositivo y por cuenta. Al restaurar una sesión en ese dispositivo, la aplicación pide la huella o el rostro antes de mostrar nada. Si la comprobación falla o el dispositivo ya no tiene biometría, la salida es la contraseña: se cierra la sesión y se muestra el inicio de sesión. No se acepta el PIN del dispositivo como sustituto.
+**Biometría.** El cliente la activa en el tercer paso del alta, si el dispositivo la tiene. La preferencia se guarda por dispositivo y por cuenta. Al restaurar una sesión en ese dispositivo, la aplicación pide la huella o el rostro antes de mostrar nada de la cuenta, también cuando el perfil está pendiente de completar, porque ese formulario muestra el correo. Si la comprobación falla o el dispositivo ya no tiene biometría, la salida es la contraseña: se cierra la sesión y se muestra el inicio de sesión. No se acepta el PIN del dispositivo como sustituto. Si la preferencia no puede leerse, se pide la comprobación.
 
-**La cédula** es un dato personal. Se valida en el dispositivo con su algoritmo real (provincia, tercer dígito y dígito verificador) y se guarda únicamente en el documento del perfil, que solo su dueño puede leer. No se guarda en el dispositivo y no aparece en eventos, registros ni informes de error: hay pruebas que recorren toda la telemetría del flujo y fallan si contiene el correo, el nombre, la cédula, el celular o la contraseña.
+El bloqueo se aplica **solo al abrir la aplicación en frío**, cuando se restaura la sesión. Al volver desde segundo plano no se vuelve a pedir. Es un límite de alcance asumido: bloquear al reanudar exige decidir un tiempo de inactividad y ocultar el contenido en el selector de aplicaciones, y queda fuera de esta entrega.
+
+**La cédula** es un dato personal. Se valida en el dispositivo con su algoritmo real (provincia, tercer dígito y dígito verificador) y se guarda únicamente en el documento del perfil, que solo su dueño puede leer. No se guarda en el dispositivo y no se envía a la telemetría. Lo que respalda esa afirmación son dos tipos de prueba:
+
+- **Contenido exacto de cada evento.** Las pruebas del repositorio, del registro y del desbloqueo fijan el nombre y los parámetros de cada evento que emiten: restauración de sesión, inicio de sesión y su fallo, alta, perfil no guardado, restablecimiento de contraseña, cierre de sesión, pasos del registro y resultado del desbloqueo. Un parámetro nuevo hace fallar la prueba.
+- **Búsqueda de datos personales.** Una prueba del repositorio recorre un inicio de sesión rechazado con un error que cita el correo, un alta, un cierre de sesión, un inicio de sesión y un restablecimiento de contraseña; otra recorre los tres pasos del registro. Ambas fallan si algún evento, registro o informe de error contiene el correo, el nombre, la cédula, el celular o la contraseña de los datos de prueba.
+
+La búsqueda no cubre completar un perfil pendiente ni la restauración de la sesión; de esos dos casos solo está fijado el contenido exacto de sus eventos.
 
 **La escucha de la configuración espera al inicio de sesión.** Las reglas solo permiten leer `config/*` a usuarios autenticados y nada lee la configuración antes de la etapa 6. Suscribirse antes de tener sesión solo produciría fallos de permiso y reintentos. La política de resiliencia y el estado de conectividad sí se instancian ya en la raíz de composición, porque el acceso los usa.
 
@@ -97,6 +105,8 @@ Las pruebas de `firebase/test/` ejecutan 41 casos contra el emulador, permitidos
 - **Se paga:** la cédula se guarda en claro en Firestore, protegida por las reglas y por el cifrado en reposo del proveedor. No hay cifrado a nivel de campo.
 - **Se paga:** las reglas validan el formato de la cédula, no su dígito verificador. Un cliente modificado podría guardar una cédula con formato válido e inventada.
 - **Se paga:** el correo no se verifica. La cuenta queda activa sin comprobar que el cliente controla esa dirección.
+- **Se paga:** la cédula no se comprueba contra ningún registro ni se exige que sea única. Dos cuentas pueden declarar la misma, porque las reglas no pueden consultar los perfiles de otros clientes; la unicidad necesita el servidor.
+- **Se paga:** el bloqueo biométrico actúa al abrir la aplicación, no al volver desde segundo plano. Quien tome el teléfono con la aplicación ya abierta no encuentra el bloqueo.
 - **Se paga:** la biometría protege el acceso a la aplicación en el dispositivo, no las operaciones. No es un segundo factor ante el servidor.
 - **Se paga:** la preferencia biométrica es local. En un dispositivo nuevo la sesión se abre con contraseña y sin bloqueo hasta que exista una pantalla para activarlo, prevista en el perfil.
 - **Se paga:** la política de contraseñas se comprueba en la aplicación. El proveedor aplica la suya, más laxa, salvo que se configure en la consola.

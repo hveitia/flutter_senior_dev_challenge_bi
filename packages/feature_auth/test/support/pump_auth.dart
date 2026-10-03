@@ -48,6 +48,16 @@ Future<FakeConnectivityMonitor> pumpAuth(
   return monitor;
 }
 
+/// A checkbox found by what a screen reader announces it as, so the test
+/// does not depend on which widget draws it.
+Finder checkboxAnnouncedAs(String label) => find.byWidgetPredicate(
+  (widget) =>
+      widget is Semantics &&
+      widget.properties.label == label &&
+      widget.properties.checked != null,
+  description: 'checkbox announced as "$label"',
+);
+
 /// Runs the screen on screen through the accessibility guidelines.
 Future<void> expectAccessible(WidgetTester tester) async {
   await expectLater(tester, meetsGuideline(androidTapTargetGuideline));

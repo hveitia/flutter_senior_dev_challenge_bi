@@ -63,6 +63,10 @@ void main() {
     matching: find.byType(TextField),
   );
 
+  final termsCheckbox = checkboxAnnouncedAs(
+    'Acepto los términos y condiciones y la política de privacidad',
+  );
+
   Future<void> tap(WidgetTester tester, Finder finder) async {
     await tester.ensureVisible(finder);
     await tester.pump();
@@ -255,7 +259,7 @@ void main() {
       await tester.pump();
       expect(create().onPressed, isNull);
 
-      await tap(tester, find.byType(Checkbox));
+      await tap(tester, termsCheckbox);
       expect(create().onPressed, isNotNull);
     });
 
@@ -265,7 +269,7 @@ void main() {
       await pumpNewAccount(tester);
       await reachAccess(tester);
       await tester.enterText(field('Contraseña'), password);
-      await tap(tester, find.byType(Checkbox));
+      await tap(tester, termsCheckbox);
 
       await tap(tester, find.text('Crear mi cuenta'));
 
@@ -295,7 +299,7 @@ void main() {
       await pumpNewAccount(tester);
       await reachAccess(tester);
       await tester.enterText(field('Contraseña'), password);
-      await tap(tester, find.byType(Checkbox));
+      await tap(tester, termsCheckbox);
 
       await tap(tester, find.text('Crear mi cuenta'));
 
@@ -314,7 +318,7 @@ void main() {
       await pumpNewAccount(tester);
       await reachAccess(tester);
       await tester.enterText(field('Contraseña'), password);
-      await tap(tester, find.byType(Checkbox));
+      await tap(tester, termsCheckbox);
 
       await tap(tester, find.text('Crear mi cuenta'));
 
@@ -331,7 +335,7 @@ void main() {
       await pumpNewAccount(tester);
       await reachAccess(tester);
       await tester.enterText(field('Contraseña'), password);
-      await tap(tester, find.byType(Checkbox));
+      await tap(tester, termsCheckbox);
 
       await tap(tester, find.text('Crear mi cuenta'));
 
@@ -367,20 +371,18 @@ void main() {
     testWidgets('opens the terms from their link', (tester) async {
       await pumpNewAccount(tester);
       await reachAccess(tester);
-      await tester.ensureVisible(find.byType(CheckboxRow));
+      await tester.ensureVisible(termsCheckbox);
       await tester.pump();
-
-      final label = find.descendant(
-        of: find.byType(CheckboxRow),
-        matching: find.byType(RichText),
+      expect(
+        find.textRange.ofSubstring('política de privacidad'),
+        findsOneWidget,
       );
-      final span = tester.widget<RichText>(label).text as TextSpan;
+
       await tester.tapOnText(
         find.textRange.ofSubstring('términos y condiciones'),
       );
       await tester.pumpAndSettle();
 
-      expect(span.toPlainText(), contains('política de privacidad'));
       expect(find.text('Términos y condiciones'), findsOneWidget);
       expect(find.textContaining('Documento de demostración'), findsOneWidget);
     });

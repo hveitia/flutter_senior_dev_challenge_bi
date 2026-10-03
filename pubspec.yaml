@@ -10,6 +10,7 @@ workspace:
   - packages/design_system
   - packages/app_platform
   - packages/feature_auth
+  - packages/feature_accounts
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

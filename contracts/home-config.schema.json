@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hveitia/flutter_senior_dev_challenge_bi/contracts/home-config.schema.json",
+  "title": "Published home configuration",
+  "description": "Document published by the backoffice at config/home and read by the mobile app. Readers must ignore unknown fields so that older app versions keep working.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "configVersion",
+    "destinations",
+    "segments"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Version of this contract. A reader that supports a lower version keeps its last valid configuration."
+    },
+    "configVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic counter increased on every publish."
+    },
+    "locale": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "destinations": {
+      "type": "array",
+      "description": "Allow-list of navigation destinations. An action pointing anywhere else is dropped by the reader.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "resilience": {
+      "$ref": "#/$defs/resilience"
+    },
+    "segments": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/segment"
+      }
+    }
+  },
+  "$defs": {
+    "resilience": {
+      "type": "object",
+      "description": "Fault injection for demonstration environments.",
+      "additionalProperties": true,
+      "properties": {
+        "latencyMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "default": 0
+        },
+        "movementsUnavailable": {
+          "type": "boolean",
+          "default": false
+        },
+        "partnerInsuranceUnavailable": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": [
+        "modules"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/module"
+          }
+        },
+        "features": {
+          "$ref": "#/$defs/features"
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique within its segment."
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Key of the widget registered by a domain package. Unknown types are skipped by the reader."
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        },
+        "props": {
+          "type": "object",
+          "default": {},
+          "description": "Settings interpreted by the module itself. Any object carrying a destination must use a value from the allow-list."
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "transfers": {
+          "type": "boolean",
+          "default": false
+        },
+        "partnerServices": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}

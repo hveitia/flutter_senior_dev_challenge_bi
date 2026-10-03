@@ -88,6 +88,31 @@ void main() {
       expect(FullName.isValid('ÓSCAR NÚÑEZ'), isTrue);
     });
 
+    group('typed with separate accent marks, as some keyboards send them', () {
+      // "María Peña Güiracocha" with each mark as its own character, built
+      // from code points so the marks are visible in this file.
+      final acute = String.fromCharCode(0x0301);
+      final tilde = String.fromCharCode(0x0303);
+      final diaeresis = String.fromCharCode(0x0308);
+      final decomposed = 'Mari${acute}a Pen${tilde}a Gu${diaeresis}iracocha';
+
+      test('is accepted', () {
+        expect(FullName.isValid(decomposed), isTrue);
+      });
+
+      test('is normalized to single accented letters', () {
+        expect(FullName.normalize(decomposed), 'María Peña Güiracocha');
+        expect(
+          FullName.normalize('A${acute}NGEL NU${acute}N${tilde}EZ'),
+          'ÁNGEL NÚÑEZ',
+        );
+      });
+
+      test('keeps a mark it cannot attach to a letter, so it is rejected', () {
+        expect(FullName.isValid('Ana$acute ${acute}Mora'), isFalse);
+      });
+    });
+
     test('rejects a single word', () {
       expect(FullName.isValid('Valentina'), isFalse);
     });

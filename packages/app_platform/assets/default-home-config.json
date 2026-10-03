@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "configVersion": 14,
+  "locale": "es-EC",
+  "currency": "USD",
+  "destinations": [
+    "transfer",
+    "accounts",
+    "services",
+    "inbox",
+    "profile",
+    "partner:travelInsurance",
+    "partner:recharge"
+  ],
+  "resilience": {
+    "latencyMs": 0,
+    "movementsUnavailable": false,
+    "partnerInsuranceUnavailable": false
+  },
+  "segments": {
+    "starting": {
+      "label": "Estoy empezando",
+      "modules": [
+        {
+          "id": "balance",
+          "type": "totalBalance",
+          "visible": true,
+          "props": {}
+        },
+        {
+          "id": "accounts",
+          "type": "accountCarousel",
+          "visible": true,
+          "props": {}
+        },
+        {
+          "id": "actions",
+          "type": "quickActions",
+          "visible": true,
+          "props": {
+            "actions": [
+              {
+                "label": "Transferir",
+                "icon": "transfer",
+                "destination": "transfer"
+              },
+              {
+                "label": "Pagar",
+                "icon": "pay",
+                "destination": "services"
+              },
+              {
+                "label": "Recargar",
+                "icon": "phone",
+                "destination": "partner:recharge"
+              },
+              {
+                "label": "Más",
+                "icon": "more",
+                "destination": "services"
+              }
+            ]
+          }
+        },
+        {
+          "id": "promo",
+          "type": "promoBanner",
+          "visible": true,
+          "props": {
+            "title": "Protege tu próximo viaje",
+            "body": "Cotiza tu seguro en menos de un minuto",
+            "action": {
+              "label": "Cotizar",
+              "destination": "partner:travelInsurance"
+            }
+          }
+        },
+        {
+          "id": "movements",
+          "type": "recentMovements",
+          "visible": true,
+          "props": {
+            "limit": 4
+          }
+        },
+        {
+          "id": "services",
+          "type": "serviceRecommendations",
+          "visible": true,
+          "props": {
+            "services": [
+              "travelInsurance",
+              "recharge"
+            ]
+          }
+        }
+      ],
+      "features": {
+        "transfers": true,
+        "partnerServices": true
+      }
+    },
+    "family": {
+      "label": "Familia",
+      "modules": [
+        {
+          "id": "balance",
+          "type": "totalBalance",
+          "visible": true,
+          "props": {}
+        },
+        {
+          "id": "actions",
+          "type": "quickActions",
+          "visible": true,
+          "props": {
+            "actions": [
+              {
+                "label": "Transferir",
+                "icon": "transfer",
+                "destination": "transfer"
+              },
+              {
+                "label": "Pagar",
+                "icon": "pay",
+                "destination": "services"
+              },
+              {
+                "label": "Recargar",
+                "icon": "phone",
+                "destination": "partner:recharge"
+              },
+              {
+                "label": "Más",
+                "icon": "more",
+                "destination": "services"
+              }
+            ]
+          }
+        },
+        {
+          "id": "accounts",
+          "type": "accountCarousel",
+          "visible": true,
+          "props": {}
+        },
+        {
+          "id": "movements",
+          "type": "recentMovements",
+          "visible": true,
+          "props": {
+            "limit": 4
+          }
+        },
+        {
+          "id": "services",
+          "type": "serviceRecommendations",
+          "visible": true,
+          "props": {
+            "services": [
+              "travelInsurance",
+              "recharge"
+            ]
+          }
+        },
+        {
+          "id": "promo",
+          "type": "promoBanner",
+          "visible": true,
+          "props": {
+            "title": "Protege tu próximo viaje",
+            "body": "Cotiza tu seguro en menos de un minuto",
+            "action": {
+              "label": "Cotizar",
+              "destination": "partner:travelInsurance"
+            }
+          }
+        }
+      ],
+      "features": {
+        "transfers": true,
+        "partnerServices": true
+      }
+    },
+    "wealth": {
+      "label": "Patrimonio",
+      "modules": [
+        {
+          "id": "balance",
+          "type": "totalBalance",
+          "visible": true,
+          "props": {
+            "trendDays": 30,
+            "includesInvestments": true
+          }
+        },
+        {
+          "id": "actions",
+          "type": "quickActions",
+          "visible": true,
+          "props": {
+            "actions": [
+              {
+                "label": "Transferir",
+                "icon": "transfer",
+                "destination": "transfer"
+              },
+              {
+                "label": "Pagar",
+                "icon": "pay",
+                "destination": "services"
+              },
+              {
+                "label": "Invertir",
+                "icon": "chart",
+                "destination": "services",
+                "section": "bank"
+              },
+              {
+                "label": "Más",
+                "icon": "more",
+                "destination": "services"
+              }
+            ]
+          }
+        },
+        {
+          "id": "investments",
+          "type": "investmentSummary",
+          "visible": true,
+          "props": {}
+        },
+        {
+          "id": "promo",
+          "type": "promoBanner",
+          "visible": true,
+          "props": {
+            "title": "Mueve tu dinero sin costo",
+            "body": "Transfiere entre tus cuentas al instante",
+            "action": {
+              "label": "Transferir",
+              "destination": "transfer"
+            }
+          }
+        },
+        {
+          "id": "accounts",
+          "type": "accountCarousel",
+          "visible": true,
+          "props": {}
+        },
+        {
+          "id": "movements",
+          "type": "recentMovements",
+          "visible": true,
+          "props": {
+            "limit": 4
+          }
+        }
+      ],
+      "features": {
+        "transfers": true,
+        "partnerServices": true
+      }
+    }
+  }
+}

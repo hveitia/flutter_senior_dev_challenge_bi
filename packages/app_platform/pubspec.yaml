@@ -10,8 +10,14 @@ resolution: workspace
 
 dependencies:
   bloc: ^9.2.0
+  cloud_firestore: ^6.10.0
+  connectivity_plus: ^7.3.2
+  firebase_analytics: ^12.6.0
+  firebase_crashlytics: ^5.4.0
+  firebase_performance: ^0.11.6
   flutter:
     sdk: flutter
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   bloc_test: ^10.0.0
@@ -19,3 +25,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   mocktail: ^1.0.5
+
+flutter:
+  assets:
+    - assets/default-home-config.json

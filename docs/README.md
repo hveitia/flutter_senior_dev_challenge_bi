@@ -14,6 +14,7 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0004](adr/0004-backoffice-y-api-en-nextjs.md) | Consola web y API de servidor en Next.js | Aceptada |
 | [0005](adr/0005-home-dirigido-por-configuracion.md) | Inicio dirigido por configuración con registro de módulos | Aceptada |
 | [0006](adr/0006-trunk-based-development.md) | Trunk Based Development con commits directos a `main` | Aceptada |
+| [0007](adr/0007-sistema-de-diseno.md) | Sistema de diseño como paquete, con tokens verificados y accesibilidad comprobada por pruebas | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
 

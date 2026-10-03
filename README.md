@@ -11,7 +11,7 @@ El proyecto se construye por etapas, con `main` siempre en verde. Esta sección 
 | Etapa | Alcance | Estado |
 |---|---|---|
 | 1. Cimientos | Monorepo, aplicación base, Firebase, CI, hook local, decisiones iniciales | Completa |
-| 2. Sistema de diseño | Tokens, tema y componentes base | Pendiente |
+| 2. Sistema de diseño | Tokens, tema, componentes base y pruebas de accesibilidad | Completa |
 | 3. Plataforma | Contrato de configuración, resiliencia, conectividad, observabilidad | Pendiente |
 | 4. Acceso | Bienvenida, registro y autenticación | Pendiente |
 | 5. Cuentas y movimientos | Lectura en tiempo real, caché y estados | Pendiente |
@@ -22,7 +22,7 @@ El proyecto se construye por etapas, con `main` siempre en verde. Esta sección 
 | 10. Servicios | Catálogo y micro aplicativos | Pendiente |
 | 11. Cierre | Diagramas, despliegue, operación y guion de demostración | Pendiente |
 
-Lo que existe hoy: la aplicación arranca, inicializa Firebase y muestra la marca del producto. Todavía no hay pantallas funcionales, paquetes de dominio ni consola web.
+Lo que existe hoy: la aplicación arranca, inicializa Firebase y muestra la marca del producto con el tema del sistema de diseño. El paquete `design_system` contiene los tokens, el tema y los componentes base, y una galería permite revisarlos en un dispositivo. Todavía no hay pantallas funcionales, paquetes de dominio ni consola web.
 
 ## Requisitos
 
@@ -50,7 +50,14 @@ cd apps/mobile
 flutter run
 ```
 
-La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado en esta etapa.
+Para revisar el sistema de diseño (tokens y componentes en todos sus estados) sin iniciar Firebase ni ningún servicio:
+
+```bash
+cd apps/mobile
+flutter run -t lib/main_gallery.dart
+```
+
+La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado.
 
 ## Pruebas
 
@@ -60,12 +67,19 @@ tool/verify.sh
 
 Ejecuta, en este orden, la comprobación de formato, el análisis estático y las pruebas de cada paquete del workspace. Es exactamente lo mismo que ejecutan el hook `pre-commit` y la integración continua.
 
-Para ejecutar solo las pruebas de la aplicación:
+Para ejecutar solo las pruebas de un paquete:
 
 ```bash
-cd apps/mobile
+cd apps/mobile            # o packages/design_system
 flutter test
 ```
+
+Qué cubren hoy las pruebas:
+
+| Paquete | Qué se comprueba |
+|---|---|
+| `packages/design_system` | Deriva de los tokens respecto a `tokens/tokens.json`, contraste WCAG de cada combinación de color permitida, formato de importes, estados y semántica de cada componente, guías de accesibilidad de Flutter y ausencia de desbordamiento con texto al 130 % |
+| `apps/mobile` | Pantalla de inicio de carga con el tema aplicado y galería del sistema de diseño |
 
 ## Cómo colaborar
 
@@ -87,6 +101,8 @@ En un equipo, el mismo flujo se mantiene con ramas de vida corta (menos de un d�
 ```
 apps/
   mobile/            Aplicación Flutter. Raíz de composición: rutas, inyección y tema.
+packages/
+  design_system/     Tokens, tema y componentes base. Referencia de diseño en tokens/tokens.json.
 firebase/            Reglas de seguridad e índices de Firestore.
 docs/                Decisiones de arquitectura y registro de uso de IA.
 tool/                Scripts de configuración y verificación.
@@ -94,7 +110,7 @@ tool/                Scripts de configuración y verificación.
 .github/workflows/   Integración continua.
 ```
 
-Las carpetas `apps/backoffice`, `packages/` y `contracts/` se crean en sus etapas correspondientes. La estructura completa prevista está en el [ADR 0001](docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md).
+La carpeta `apps/backoffice`, los demás paquetes de `packages/` y `contracts/` se crean en sus etapas correspondientes. La estructura completa prevista está en el [ADR 0001](docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md).
 
 ## Seguridad
 

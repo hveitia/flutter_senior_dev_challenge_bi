@@ -3,7 +3,8 @@ import 'package:flutter/painting.dart';
 /// Type scale. Sizes and line heights mirror `tokens/tokens.json`.
 ///
 /// Styles carry no color on purpose: color comes from the theme so the same
-/// scale works on every allowed surface.
+/// scale works on every allowed surface. Letter spacing is always explicit,
+/// otherwise Material's default tracking would leak into the scale.
 abstract final class AppTypography {
   static const String _package = 'design_system';
   static const String headingFamily = 'Poppins';
@@ -15,6 +16,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     fontSize: 28,
     height: 34 / 28,
+    letterSpacing: 0,
   );
 
   static const TextStyle title = TextStyle(
@@ -23,6 +25,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     fontSize: 22,
     height: 28 / 22,
+    letterSpacing: 0,
   );
 
   static const TextStyle subtitle = TextStyle(
@@ -31,6 +34,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     fontSize: 17,
     height: 24 / 17,
+    letterSpacing: 0,
   );
 
   static const TextStyle body = TextStyle(
@@ -39,6 +43,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w400,
     fontSize: 15,
     height: 22 / 15,
+    letterSpacing: 0,
   );
 
   static const TextStyle bodyStrong = TextStyle(
@@ -47,6 +52,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     fontSize: 15,
     height: 22 / 15,
+    letterSpacing: 0,
   );
 
   static const TextStyle caption = TextStyle(
@@ -55,6 +61,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w400,
     fontSize: 13,
     height: 18 / 13,
+    letterSpacing: 0,
   );
 
   static const TextStyle captionStrong = TextStyle(
@@ -63,6 +70,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     fontSize: 13,
     height: 18 / 13,
+    letterSpacing: 0,
   );
 
   /// Rendered in uppercase by the components that use it.

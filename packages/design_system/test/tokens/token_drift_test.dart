@@ -161,7 +161,9 @@ void main() {
           closeTo(spec['height'] as num, 0.001),
         );
         expect(weights, contains(style.fontWeight!.value));
-        expect(style.letterSpacing, spec['tracking']);
+        // No tracking in the reference means none: an unset value would
+        // inherit Material's default letter spacing instead.
+        expect(style.letterSpacing, spec['tracking'] ?? 0);
       });
     }
 

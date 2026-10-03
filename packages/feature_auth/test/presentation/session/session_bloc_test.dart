@@ -139,6 +139,22 @@ void main() {
     );
 
     blocTest<SessionBloc, SessionState>(
+      'ignores a check that passes after the session was signed out',
+      setUp: () => biometrics.promptGate = Completer<void>(),
+      build: build,
+      act: (bloc) async {
+        bloc.add(const SessionStarted());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const SessionUnlockRequested());
+        await Future<void>.delayed(Duration.zero);
+        repository.announce(const SignedOutSession());
+        await Future<void>.delayed(Duration.zero);
+        biometrics.promptGate!.complete();
+      },
+      expect: () => [SessionLocked(profile), const SessionSignedOut()],
+    );
+
+    blocTest<SessionBloc, SessionState>(
       'signs in when the biometric check passes',
       build: build,
       act: (bloc) async {

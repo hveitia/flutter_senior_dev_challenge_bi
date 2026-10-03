@@ -179,7 +179,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     final locked = state;
     if (locked is! SessionLocked) return;
 
-    if (await _passesBiometricCheck()) {
+    final passed = await _passesBiometricCheck();
+    // The system prompt can stay open while the session changes underneath,
+    // for instance when it is signed out. Its answer then opens nothing.
+    if (state != locked) return;
+
+    if (passed) {
       _telemetry.event(AuthTelemetry.unlockSucceeded);
       emit(SessionSignedIn(locked.profile));
     } else {

@@ -42,7 +42,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
           ),
           const SizedBox(height: AppSpacing.x8),
           AuthHeading(
-            title: AuthStrings.unlockGreeting(state.profile.firstName),
+            title: AuthStrings.unlockGreeting(state.firstName),
             body: AuthStrings.unlockBody,
           ),
           if (state.lastAttemptFailed) ...[

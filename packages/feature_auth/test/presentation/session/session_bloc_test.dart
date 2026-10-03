@@ -59,7 +59,7 @@ void main() {
           repository.restored = ActiveSession(profile, unlockRequired: true),
       build: build,
       act: (bloc) => bloc.add(const SessionStarted()),
-      expect: () => [SessionLocked(profile)],
+      expect: () => [SessionLocked(SessionSignedIn(profile))],
       verify: (_) => expect(biometrics.prompts, 0),
     );
 
@@ -130,7 +130,10 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       biometrics.availabilityGate!.complete();
     },
-    expect: () => [SessionLocked(profile), const SessionSignedOut()],
+    expect: () => [
+      SessionLocked(SessionSignedIn(profile)),
+      const SessionSignedOut(),
+    ],
   );
 
   group('unlock', () {
@@ -151,7 +154,10 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         biometrics.promptGate!.complete();
       },
-      expect: () => [SessionLocked(profile), const SessionSignedOut()],
+      expect: () => [
+        SessionLocked(SessionSignedIn(profile)),
+        const SessionSignedOut(),
+      ],
     );
 
     blocTest<SessionBloc, SessionState>(
@@ -162,7 +168,10 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         bloc.add(const SessionUnlockRequested());
       },
-      expect: () => [SessionLocked(profile), SessionSignedIn(profile)],
+      expect: () => [
+        SessionLocked(SessionSignedIn(profile)),
+        SessionSignedIn(profile),
+      ],
       verify: (_) => expect(biometrics.prompts, 1),
     );
 
@@ -176,8 +185,8 @@ void main() {
         bloc.add(const SessionUnlockRequested());
       },
       expect: () => [
-        SessionLocked(profile),
-        SessionLocked(profile, lastAttemptFailed: true),
+        SessionLocked(SessionSignedIn(profile)),
+        SessionLocked(SessionSignedIn(profile), lastAttemptFailed: true),
       ],
     );
 
@@ -191,8 +200,8 @@ void main() {
         bloc.add(const SessionUnlockRequested());
       },
       expect: () => [
-        SessionLocked(profile),
-        SessionLocked(profile, lastAttemptFailed: true),
+        SessionLocked(SessionSignedIn(profile)),
+        SessionLocked(SessionSignedIn(profile), lastAttemptFailed: true),
       ],
     );
 

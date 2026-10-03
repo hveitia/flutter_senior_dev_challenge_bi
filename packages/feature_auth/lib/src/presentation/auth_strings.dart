@@ -95,7 +95,9 @@ abstract final class AuthStrings {
   static const String offline =
       'Sin conexión. Revisa tu red e intenta de nuevo';
 
-  static String unlockGreeting(String firstName) => 'Hola de nuevo, $firstName';
+  /// Greets by name only when the session behind the lock has one.
+  static String unlockGreeting(String? firstName) =>
+      firstName == null ? loginTitle : '$loginTitle, $firstName';
 
   /// The message for [failure]. Rejected credentials get one wording for
   /// every cause, so the screen never hints at which field was wrong.

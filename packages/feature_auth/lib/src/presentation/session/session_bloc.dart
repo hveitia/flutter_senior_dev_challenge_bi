@@ -56,13 +56,21 @@ final class SessionSignedOut extends SessionState {
 
 /// A session was restored and waits for the biometric check.
 final class SessionLocked extends SessionState {
-  const SessionLocked(this.profile, {this.lastAttemptFailed = false});
+  const SessionLocked(this.unlocksTo, {this.lastAttemptFailed = false});
 
-  final UserProfile profile;
+  /// Where the customer goes once the check passes.
+  final SessionState unlocksTo;
   final bool lastAttemptFailed;
 
+  /// The customer's first name, when the session behind the lock has a
+  /// profile to take it from.
+  String? get firstName => switch (unlocksTo) {
+    SessionSignedIn(:final profile) => profile.firstName,
+    _ => null,
+  };
+
   @override
-  List<Object?> get props => [profile, lastAttemptFailed];
+  List<Object?> get props => [unlocksTo, lastAttemptFailed];
 }
 
 final class SessionSignedIn extends SessionState {
@@ -166,13 +174,17 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       case ActiveSession(:final profile, unlockRequired: false):
         emit(SessionSignedIn(profile));
       case ActiveSession(:final profile, unlockRequired: true):
-        if (await _biometrics.isAvailable()) {
-          emit(SessionLocked(profile));
-        } else {
-          // The customer removed their biometrics from the device. The
-          // password still proves who they are.
-          await _repository.signOut();
-        }
+        await _lock(SessionSignedIn(profile), emit);
+    }
+  }
+
+  Future<void> _lock(SessionState unlocksTo, Emitter<SessionState> emit) async {
+    if (await _biometrics.isAvailable()) {
+      emit(SessionLocked(unlocksTo));
+    } else {
+      // The customer removed their biometrics from the device. The password
+      // still proves who they are.
+      await _repository.signOut();
     }
   }
 
@@ -190,10 +202,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
     if (passed) {
       _telemetry.event(AuthTelemetry.unlockSucceeded);
-      emit(SessionSignedIn(locked.profile));
+      emit(locked.unlocksTo);
     } else {
       _telemetry.event(AuthTelemetry.unlockFailed);
-      emit(SessionLocked(locked.profile, lastAttemptFailed: true));
+      emit(SessionLocked(locked.unlocksTo, lastAttemptFailed: true));
     }
   }
 

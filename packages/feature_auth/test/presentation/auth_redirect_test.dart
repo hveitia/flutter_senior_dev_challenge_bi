@@ -53,8 +53,14 @@ void main() {
   });
 
   test('holds a locked session on the unlock screen', () {
-    expect(redirect(SessionLocked(profile), home), AuthPaths.unlock);
-    expect(redirect(SessionLocked(profile), AuthPaths.unlock), isNull);
+    expect(
+      redirect(SessionLocked(SessionSignedIn(profile)), home),
+      AuthPaths.unlock,
+    );
+    expect(
+      redirect(SessionLocked(SessionSignedIn(profile)), AuthPaths.unlock),
+      isNull,
+    );
   });
 
   test('holds an account without profile on the completion flow', () {

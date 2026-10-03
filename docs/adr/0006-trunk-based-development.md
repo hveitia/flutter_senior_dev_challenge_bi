@@ -34,7 +34,7 @@ Reglas de trabajo:
 ## Trade-offs
 
 - **Se gana:** integración continua real, sin conflictos de fusión y con un historial lineal que muestra cómo se construyó la solución.
-- **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con revisiones asistidas por IA sobre los cambios, registradas en el [registro de uso de IA](../ia/registro-uso-ia.md).
+- **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con una revisión independiente asistida por IA de cada etapa antes de subirla al repositorio remoto. Los hallazgos de cada revisión quedan anotados en el [registro de uso de IA](../ia/registro-uso-ia.md).
 - **Se paga:** el hook añade unos segundos a cada commit, y ese tiempo crecerá con el número de pruebas.
 - **Limitación:** la integración continua cancela las ejecuciones en curso cuando llega un push nuevo, por lo que no todos los commits intermedios quedan verificados en el servidor. Todos lo están en local por el hook.
 

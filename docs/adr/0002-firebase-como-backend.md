@@ -11,7 +11,7 @@ La prueba no valora soluciones basadas solo en datos simulados: exige evidencia 
 ## Alternativas evaluadas
 
 1. **Firebase (Auth, Firestore, Cloud Messaging).** Servicios reales y gestionados, escucha en tiempo real y caché local sin conexión incluidas en el SDK. Acopla la capa de datos a un proveedor y a un modelo documental.
-2. **Supabase.** Base relacional, más cercana a un modelo contable. No ofrece caché local sin conexión equivalente en el cliente, y el push requiere un proveedor adicional.
+2. **Supabase.** Base relacional, más cercana a un modelo contable. El cliente oficial para Flutter no incluye persistencia local sin conexión; habría que añadirla con una solución adicional. Tampoco incluye un servicio de notificaciones push.
 3. **Backend propio (API y base relacional).** Control total y modelo de datos fiel a un banco. Su construcción y despliegue consumiría el plazo que debe dedicarse a la aplicación, que es lo evaluado.
 4. **Servidor de datos simulados.** El más barato. Es exactamente lo que la prueba indica que no puntúa.
 
@@ -25,6 +25,8 @@ La opción 1, Firebase:
 - **Crashlytics, Analytics y Performance** para observabilidad.
 
 Las reglas de seguridad niegan todo por defecto. Un cliente autenticado solo puede leer su propio documento de usuario y lo que cuelga de él, y la configuración publicada. Ningún cliente escribe saldos, cuentas ni movimientos: esos cambios los hace el servidor ([ADR 0004](0004-backoffice-y-api-en-nextjs.md)).
+
+La colección `config/*` es legible por cualquier usuario autenticado y el registro con correo y contraseña está abierto, de modo que cualquier persona puede crear una cuenta y leerla. Por eso el documento de configuración no debe contener nunca datos sensibles: solo describe la composición de la experiencia.
 
 ## Trade-offs
 

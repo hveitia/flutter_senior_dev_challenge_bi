@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:app_platform/src/async/delay.dart';
 import 'package:app_platform/src/config/home_config.dart';
 import 'package:app_platform/src/resilience/failure.dart';
-
-/// Waits for a duration. Injected so tests run on a fake clock.
-typedef Delay = Future<void> Function(Duration duration);
 
 /// How every repository calls a backend: a timeout per attempt, a bounded
 /// number of retries with backoff, a signal when the answer is taking long,

@@ -73,10 +73,13 @@ flowchart LR
 
 **Repositorio** (`ConfigRepository`):
 
-- Al arrancar entrega la configuración guardada si sigue siendo válida; si no, la incluida en la aplicación.
+- Al arrancar entrega la configuración guardada si sigue siendo válida; si no, la incluida en la aplicación; y si esta tampoco puede leerse, una de último recurso escrita en el código (un segmento, sin módulos y con todas las funcionalidades apagadas). Siempre hay una configuración, así que el `RemoteConfigCubit` siempre llega a estar listo.
 - Un documento remoto solo sustituye a la actual si el analizador lo acepta. Entonces se guarda para el siguiente arranque.
-- Un documento rechazado, un fallo de la fuente remota o un fallo del almacenamiento nunca dejan a la aplicación sin configuración. Cada caso se informa a la telemetría.
-- Cada configuración aplicada deja su versión y su origen (`remote`, `cached`, `bundled`) como contexto de los informes de errores.
+- **El documento remoto es la autoridad: gana el último recibido, aunque su `configVersion` sea menor que la que está en uso.** Un entorno que se vuelve a sembrar reinicia el contador, y los dispositivos deben seguirlo en lugar de quedarse con la versión más alta que tenían guardada.
+- Un documento rechazado, un fallo de la fuente remota o un fallo del almacenamiento nunca dejan a la aplicación sin configuración.
+- Si la fuente remota falla o se cierra, el repositorio vuelve a suscribirse tras una espera de 2 segundos que se duplica en cada fallo consecutivo, hasta 1 minuto. La espera vuelve a 2 segundos en cuanto llega un documento.
+- Ninguna caída a un respaldo es silenciosa. Cada una deja un evento propio: `config_cache_invalid`, `config_bundled_invalid`, `config_rejected` (los tres con el motivo), `config_source_failed` (con el número de fallo) y `config_cache_failed` como error.
+- Cada configuración aplicada emite `config_applied` y deja su versión y su origen (`remote`, `cached`, `bundled`, `lastResort`) como contexto de los informes de errores.
 
 **Organización del paquete.** El paquete se llama `app_platform` y no `platform`, porque ese nombre ya existe en pub.dev y lo usan dependencias transitivas. Expone tres puntos de entrada:
 
@@ -96,7 +99,9 @@ Una prueba de arquitectura falla si un archivo fuera de `adapters/` importa Flut
 - **Se paga:** la tolerancia puede ocultar errores de publicación. Por eso la consola debe validar contra el esquema antes de publicar, y la aplicación informa cada rechazo.
 - **Se paga:** la aplicación no valida contra el esquema JSON en el dispositivo; las reglas del analizador y el esquema pueden divergir. La mitigación prevista es validar el ejemplo contra el esquema en las pruebas de la consola.
 - **Se paga:** la regla de destinos es estructural: cualquier objeto con un campo `destination` se trata como una acción. Un módulo no puede usar ese nombre para otra cosa.
-- **Limitación:** un documento remoto que contenga tipos propios de Firestore (por ejemplo una marca de tiempo) se aplica, pero no puede guardarse en el dispositivo. Queda informado en la telemetría.
+- **Limitación:** al guardar el documento en el dispositivo, los valores que JSON no puede representar (por ejemplo una marca de tiempo de Firestore) se guardan como nulos. No afecta a la lectura, porque el analizador trata un nulo como un campo ausente.
+- **Limitación:** la configuración de último recurso no tiene módulos, porque la plataforma no conoce los tipos de módulo. El inicio (etapa 6) debe mostrar un estado explícito para ese caso.
+- **Limitación:** la reconexión no tiene variación aleatoria. Dispositivos que fallen a la vez reintentarán a la vez; con un único documento escuchado es aceptable.
 
 ## Impacto a largo plazo
 

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:app_platform/app_platform.dart';
@@ -18,21 +17,21 @@ const int _bundledVersion = 1;
 const int _remoteVersion = 14;
 
 void main() {
-  late StreamController<Object?> remote;
+  late FakeConfigSource remote;
 
-  RemoteConfigCubit cubit({String? segmentId}) {
+  RemoteConfigCubit cubit({String? segmentId, String? bundled}) {
     return RemoteConfigCubit(
       ConfigRepository(
-        source: StreamConfigSource(remote.stream),
+        source: remote,
         store: InMemoryConfigStore(),
         loadBundled: () async =>
-            jsonEncode(_document(configVersion: _bundledVersion)),
+            bundled ?? jsonEncode(_document(configVersion: _bundledVersion)),
       ),
       segmentId: segmentId,
     );
   }
 
-  setUp(() => remote = StreamController<Object?>());
+  setUp(() => remote = FakeConfigSource());
 
   test('has no configuration before it starts', () async {
     final config = cubit();
@@ -62,7 +61,7 @@ void main() {
     final config = cubit()..start();
     await pumpEventQueue();
 
-    remote.add(_document(configVersion: _remoteVersion));
+    remote.publish(_document(configVersion: _remoteVersion));
     await pumpEventQueue();
 
     expect(config.state.version, _remoteVersion);
@@ -102,7 +101,7 @@ void main() {
     await pumpEventQueue();
     config.selectSegment('wealth');
 
-    remote.add(_document(configVersion: _remoteVersion));
+    remote.publish(_document(configVersion: _remoteVersion));
     await pumpEventQueue();
 
     expect(config.state.segment!.id, 'wealth');
@@ -117,8 +116,22 @@ void main() {
     await pumpEventQueue();
 
     expect(config.state.isReady, isTrue);
+    expect(remote.subscriptions, 1);
     await config.close();
   });
+
+  test(
+    'becomes ready even when the bundled configuration is unusable',
+    () async {
+      final config = cubit(bundled: '{corrupt')..start();
+      await pumpEventQueue();
+
+      expect(config.state.isReady, isTrue);
+      expect(config.state.origin, ConfigOrigin.lastResort);
+      expect(config.state.segment!.id, HomeConfig.defaultSegmentId);
+      await config.close();
+    },
+  );
 
   test('stops listening to the remote source when closed', () async {
     final config = cubit()..start();

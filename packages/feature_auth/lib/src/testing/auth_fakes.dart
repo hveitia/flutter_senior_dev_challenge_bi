@@ -139,14 +139,25 @@ final class FakeBiometricAuthenticator implements BiometricAuthenticator {
   /// When set, [authenticate] throws it, as a plugin does when the sensor
   /// is locked out.
   Object? failure;
+
+  /// Holds the answer of [isAvailable] until the test completes it.
+  Completer<void>? availabilityGate;
+
+  /// Holds the answer of [authenticate] until the test completes it, as a
+  /// system prompt that stays on screen does.
+  Completer<void>? promptGate;
   int prompts = 0;
 
   @override
-  Future<bool> isAvailable() async => available;
+  Future<bool> isAvailable() async {
+    await availabilityGate?.future;
+    return available;
+  }
 
   @override
   Future<bool> authenticate({required String reason}) async {
     prompts++;
+    await promptGate?.future;
     _throwIfSet(failure);
     return passes;
   }

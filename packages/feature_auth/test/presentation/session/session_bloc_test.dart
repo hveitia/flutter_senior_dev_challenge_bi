@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_platform/testing.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:feature_auth/src/auth_telemetry.dart';
@@ -111,6 +113,24 @@ void main() {
       SessionSignedIn(profile),
       const SessionSignedOut(),
     ],
+  );
+
+  blocTest<SessionBloc, SessionState>(
+    'ends signed out when the sign-out is announced while the restored '
+    'session is still waiting to know if the device has biometrics',
+    setUp: () {
+      repository.restored = ActiveSession(profile, unlockRequired: true);
+      biometrics.availabilityGate = Completer<void>();
+    },
+    build: build,
+    act: (bloc) async {
+      bloc.add(const SessionStarted());
+      await Future<void>.delayed(Duration.zero);
+      repository.announce(const SignedOutSession());
+      await Future<void>.delayed(Duration.zero);
+      biometrics.availabilityGate!.complete();
+    },
+    expect: () => [SessionLocked(profile), const SessionSignedOut()],
   );
 
   group('unlock', () {

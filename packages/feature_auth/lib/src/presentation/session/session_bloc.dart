@@ -95,6 +95,14 @@ final class SessionUnavailable extends SessionState {
   List<Object?> get props => [isRetrying];
 }
 
+/// Handles each event only after the previous one has finished.
+///
+/// Bloc runs handlers concurrently by default. Deciding what to show for a
+/// session can wait on the device, so a later session could be shown first
+/// and then be overwritten by the older one.
+EventTransformer<E> _oneAtATime<E>() =>
+    (events, mapper) => events.asyncExpand(mapper);
+
 /// Decides which part of the app the customer sees: it follows the session
 /// the repository announces and adds the biometric lock on top of it.
 class SessionBloc extends Bloc<SessionEvent, SessionState> {
@@ -109,7 +117,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
        _telemetry = telemetry,
        super(const SessionStarting()) {
     on<SessionStarted>(_onStarted);
-    on<_SessionAnnounced>(_onAnnounced);
+    on<_SessionAnnounced>(_onAnnounced, transformer: _oneAtATime());
     on<SessionUnlockRequested>(_onUnlockRequested);
     on<SessionRetryRequested>(_onRetryRequested);
     on<SessionSignOutRequested>(_onSignOutRequested);

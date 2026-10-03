@@ -39,14 +39,14 @@ abstract interface class AuthRepository {
   /// Creates the account and then stores the profile.
   ///
   /// Succeeds as soon as the account exists. If storing the profile fails,
-  /// the session becomes [SessionProfileIncomplete] and the customer finishes
+  /// the session becomes [IncompleteSession] and the customer finishes
   /// through [completeProfile].
   Future<AuthResult<void>> signUp(SignUpRequest request);
 
   /// Stores the profile of an account that has none.
   Future<AuthResult<void>> completeProfile(ProfileDraft draft);
 
-  /// Tries again to read the profile after [SessionUnavailable].
+  /// Tries again to read the profile after [UnavailableSession].
   Future<void> retry();
 
   /// Asks for a password reset email. The outcome never reveals whether the

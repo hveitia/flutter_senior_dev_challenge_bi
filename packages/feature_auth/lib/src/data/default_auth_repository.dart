@@ -34,7 +34,7 @@ final class DefaultAuthRepository implements AuthRepository {
 
   final StreamController<Session> _sessions =
       StreamController<Session>.broadcast();
-  Session _current = const SessionSignedOut();
+  Session _current = const SignedOutSession();
 
   @override
   Stream<Session> get sessions => _sessions.stream;
@@ -43,7 +43,7 @@ final class DefaultAuthRepository implements AuthRepository {
   Future<void> restore() async {
     final account = await _restoredAccount();
     if (account == null) {
-      _announce(const SessionSignedOut());
+      _announce(const SignedOutSession());
       _reportRestore(RestoreOutcome.signedOut);
       return;
     }
@@ -53,7 +53,7 @@ final class DefaultAuthRepository implements AuthRepository {
   @override
   Future<void> retry() async {
     final session = _current;
-    if (session is SessionUnavailable) await _announceRestored(session.account);
+    if (session is UnavailableSession) await _announceRestored(session.account);
   }
 
   @override
@@ -82,9 +82,9 @@ final class DefaultAuthRepository implements AuthRepository {
             _telemetry.event(AuthTelemetry.signInSucceeded);
             _announce(
               profile == null
-                  ? SessionProfileIncomplete(account)
+                  ? IncompleteSession(account)
                   // The customer has just proven who they are.
-                  : SessionActive(profile, unlockRequired: false),
+                  : ActiveSession(profile, unlockRequired: false),
             );
             return const AuthOk(null);
         }
@@ -120,11 +120,11 @@ final class DefaultAuthRepository implements AuthRepository {
               },
             );
             _announce(
-              SessionProfileIncomplete(account, unsavedDraft: request.profile),
+              IncompleteSession(account, unsavedDraft: request.profile),
             );
           case Success(value: final profile):
             _telemetry.event(AuthTelemetry.signUpSucceeded);
-            _announce(SessionActive(profile, unlockRequired: false));
+            _announce(ActiveSession(profile, unlockRequired: false));
         }
         return const AuthOk(null);
     }
@@ -133,7 +133,7 @@ final class DefaultAuthRepository implements AuthRepository {
   @override
   Future<AuthResult<void>> completeProfile(ProfileDraft draft) async {
     final session = _current;
-    if (session is! SessionProfileIncomplete) {
+    if (session is! IncompleteSession) {
       return const AuthError(AuthFailure.unexpected);
     }
     final account = session.account;
@@ -147,7 +147,7 @@ final class DefaultAuthRepository implements AuthRepository {
 
     switch (await _storeProfile(account, draft)) {
       case Failed(:final failure):
-        _announce(SessionProfileIncomplete(account, unsavedDraft: draft));
+        _announce(IncompleteSession(account, unsavedDraft: draft));
         return _failed(AuthTelemetry.profileSaveFailed, failure);
       case Success(value: final profile):
         return _completed(profile);
@@ -176,7 +176,7 @@ final class DefaultAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     await _gateway.signOut();
     _telemetry.event(AuthTelemetry.signedOut);
-    _announce(const SessionSignedOut());
+    _announce(const SignedOutSession());
   }
 
   Future<AuthAccount?> _restoredAccount() async {
@@ -193,14 +193,14 @@ final class DefaultAuthRepository implements AuthRepository {
   Future<void> _announceRestored(AuthAccount account) async {
     switch (await _readProfile(account)) {
       case Failed():
-        _announce(SessionUnavailable(account));
+        _announce(UnavailableSession(account));
         _reportRestore(RestoreOutcome.unavailable);
       case Success(value: null):
-        _announce(SessionProfileIncomplete(account));
+        _announce(IncompleteSession(account));
         _reportRestore(RestoreOutcome.profileIncomplete);
       case Success(value: final profile?):
         _announce(
-          SessionActive(
+          ActiveSession(
             profile,
             unlockRequired: await _unlockPreferences.isEnabled(account.uid),
           ),
@@ -235,7 +235,7 @@ final class DefaultAuthRepository implements AuthRepository {
 
   AuthResult<void> _completed(UserProfile profile) {
     _telemetry.event(AuthTelemetry.profileCompleted);
-    _announce(SessionActive(profile, unlockRequired: false));
+    _announce(ActiveSession(profile, unlockRequired: false));
     return const AuthOk(null);
   }
 

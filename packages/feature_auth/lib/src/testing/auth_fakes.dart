@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:feature_auth/src/data/ports.dart';
+import 'package:feature_auth/src/domain/auth_repository.dart';
 import 'package:feature_auth/src/domain/auth_result.dart';
+import 'package:feature_auth/src/domain/biometric_authenticator.dart';
+import 'package:feature_auth/src/domain/session.dart';
 import 'package:feature_auth/src/domain/user_profile.dart';
 
 /// An identity provider the test scripts by hand.
@@ -121,5 +126,112 @@ final class InMemoryUnlockPreferences implements UnlockPreferences {
     } else {
       this.enabled.remove(uid);
     }
+  }
+}
+
+/// A biometric sensor the test answers for.
+final class FakeBiometricAuthenticator implements BiometricAuthenticator {
+  FakeBiometricAuthenticator({this.available = true, this.passes = true});
+
+  bool available;
+  bool passes;
+
+  /// When set, [authenticate] throws it, as a plugin does when the sensor
+  /// is locked out.
+  Object? failure;
+  int prompts = 0;
+
+  @override
+  Future<bool> isAvailable() async => available;
+
+  @override
+  Future<bool> authenticate({required String reason}) async {
+    prompts++;
+    _throwIfSet(failure);
+    return passes;
+  }
+}
+
+/// A repository that announces what the test tells it to and answers every
+/// operation with the result set beforehand.
+final class FakeAuthRepository implements AuthRepository {
+  final StreamController<Session> _sessions =
+      StreamController<Session>.broadcast(sync: true);
+
+  /// What [restore] announces.
+  Session restored = const SignedOutSession();
+
+  /// What [retry] announces.
+  Session? retried;
+  AuthResult<void> signInResult = const AuthOk(null);
+  AuthResult<void> signUpResult = const AuthOk(null);
+  AuthResult<void> completeProfileResult = const AuthOk(null);
+  AuthResult<void> passwordResetResult = const AuthOk(null);
+
+  /// Completes every operation only when the test calls it, to observe the
+  /// state while the operation is in flight.
+  Completer<void>? gate;
+
+  final List<({String email, String password})> signIns = [];
+  final List<SignUpRequest> signUps = [];
+  final List<ProfileDraft> completedProfiles = [];
+  final List<String> passwordResets = [];
+  int restoreCalls = 0;
+  int retryCalls = 0;
+  int signOutCalls = 0;
+
+  void announce(Session session) => _sessions.add(session);
+
+  @override
+  Stream<Session> get sessions => _sessions.stream;
+
+  @override
+  Future<void> restore() async {
+    restoreCalls++;
+    announce(restored);
+  }
+
+  @override
+  Future<void> retry() async {
+    retryCalls++;
+    await gate?.future;
+    if (retried case final Session session) announce(session);
+  }
+
+  @override
+  Future<AuthResult<void>> signIn({
+    required String email,
+    required String password,
+  }) async {
+    signIns.add((email: email, password: password));
+    await gate?.future;
+    return signInResult;
+  }
+
+  @override
+  Future<AuthResult<void>> signUp(SignUpRequest request) async {
+    signUps.add(request);
+    await gate?.future;
+    return signUpResult;
+  }
+
+  @override
+  Future<AuthResult<void>> completeProfile(ProfileDraft draft) async {
+    completedProfiles.add(draft);
+    await gate?.future;
+    return completeProfileResult;
+  }
+
+  @override
+  Future<AuthResult<void>> sendPasswordReset(String email) async {
+    passwordResets.add(email);
+    await gate?.future;
+    return passwordResetResult;
+  }
+
+  @override
+  Future<void> signOut() async {
+    signOutCalls++;
+    announce(const SignedOutSession());
   }
 }

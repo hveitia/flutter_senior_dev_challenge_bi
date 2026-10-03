@@ -6,16 +6,16 @@ sealed class Session extends Equatable {
   const Session();
 }
 
-final class SessionSignedOut extends Session {
-  const SessionSignedOut();
+final class SignedOutSession extends Session {
+  const SignedOutSession();
 
   @override
   List<Object?> get props => const [];
 }
 
 /// Signed in with a stored profile.
-final class SessionActive extends Session {
-  const SessionActive(this.profile, {required this.unlockRequired});
+final class ActiveSession extends Session {
+  const ActiveSession(this.profile, {required this.unlockRequired});
 
   final UserProfile profile;
 
@@ -29,8 +29,8 @@ final class SessionActive extends Session {
 
 /// The account exists but its profile was never stored: sign-up stopped
 /// halfway. The customer has to complete it before using the app.
-final class SessionProfileIncomplete extends Session {
-  const SessionProfileIncomplete(this.account, {this.unsavedDraft});
+final class IncompleteSession extends Session {
+  const IncompleteSession(this.account, {this.unsavedDraft});
 
   final AuthAccount account;
 
@@ -44,8 +44,8 @@ final class SessionProfileIncomplete extends Session {
 
 /// Signed in, but the profile could not be read (no connection and nothing
 /// cached, or the backend did not answer).
-final class SessionUnavailable extends Session {
-  const SessionUnavailable(this.account);
+final class UnavailableSession extends Session {
+  const UnavailableSession(this.account);
 
   final AuthAccount account;
 

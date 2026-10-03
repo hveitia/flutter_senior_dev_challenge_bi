@@ -63,7 +63,7 @@ void main() {
       await repository.restore();
       await settle();
 
-      expect(sessions, [const SessionSignedOut()]);
+      expect(sessions, [const SignedOutSession()]);
     });
 
     test('announces the restored customer with their profile', () async {
@@ -75,7 +75,7 @@ void main() {
       await repository.restore();
       await settle();
 
-      expect(sessions, [SessionActive(profile, unlockRequired: false)]);
+      expect(sessions, [ActiveSession(profile, unlockRequired: false)]);
     });
 
     test(
@@ -90,7 +90,7 @@ void main() {
         await repository.restore();
         await settle();
 
-        expect(sessions, [SessionActive(profile, unlockRequired: true)]);
+        expect(sessions, [ActiveSession(profile, unlockRequired: true)]);
       },
     );
 
@@ -101,7 +101,7 @@ void main() {
       await repository.restore();
       await settle();
 
-      expect(sessions, [const SessionProfileIncomplete(account)]);
+      expect(sessions, [const IncompleteSession(account)]);
     });
 
     test('announces unavailable when the profile cannot be read', () async {
@@ -112,7 +112,7 @@ void main() {
       await repository.restore();
       await settle();
 
-      expect(sessions, [const SessionUnavailable(account)]);
+      expect(sessions, [const UnavailableSession(account)]);
     });
 
     test('retry reads the profile again after it was unavailable', () async {
@@ -128,9 +128,9 @@ void main() {
       await settle();
 
       expect(sessions, [
-        const SessionUnavailable(account),
+        const UnavailableSession(account),
         // Still the restored session, so the unlock preference applies.
-        SessionActive(profile, unlockRequired: false),
+        ActiveSession(profile, unlockRequired: false),
       ]);
     });
 
@@ -153,7 +153,7 @@ void main() {
       await settle();
 
       expect(result, isA<AuthOk<void>>());
-      expect(sessions, [SessionActive(profile, unlockRequired: false)]);
+      expect(sessions, [ActiveSession(profile, unlockRequired: false)]);
     });
 
     test('never asks for unlock right after typing the password', () async {
@@ -163,7 +163,7 @@ void main() {
       await repository.signIn(email: email, password: password);
       await settle();
 
-      expect(sessions, [SessionActive(profile, unlockRequired: false)]);
+      expect(sessions, [ActiveSession(profile, unlockRequired: false)]);
     });
 
     test('fails with invalid credentials and announces nothing', () async {
@@ -253,7 +253,7 @@ void main() {
         await settle();
 
         expect(result, isA<AuthOk<void>>());
-        expect(sessions, [SessionProfileIncomplete(account)]);
+        expect(sessions, [IncompleteSession(account)]);
       },
     );
   });
@@ -268,7 +268,7 @@ void main() {
       final profile = UserProfile.fromDraft(account, draft);
       expect(result, isA<AuthOk<void>>());
       expect(profiles.profiles[account.uid], profile);
-      expect(sessions, [SessionActive(profile, unlockRequired: false)]);
+      expect(sessions, [ActiveSession(profile, unlockRequired: false)]);
     });
 
     test(
@@ -310,7 +310,7 @@ void main() {
         expect(result, isA<AuthOk<void>>());
         expect(profiles.createCalls, 1);
         expect(sessions, [
-          SessionProfileIncomplete(gateway.signedIn!, unsavedDraft: draft),
+          IncompleteSession(gateway.signedIn!, unsavedDraft: draft),
         ]);
       },
     );
@@ -358,7 +358,7 @@ void main() {
       final profile = UserProfile.fromDraft(account, draft);
       expect(result, isA<AuthOk<void>>());
       expect(profiles.profiles[account.uid], profile);
-      expect(sessions, [SessionActive(profile, unlockRequired: false)]);
+      expect(sessions, [ActiveSession(profile, unlockRequired: false)]);
     });
 
     test('uses the stored profile when the earlier write did reach the '
@@ -384,7 +384,7 @@ void main() {
       expect(result, isA<AuthOk<void>>());
       // Writing again would be rejected by the security rules.
       expect(profiles.createCalls, 0);
-      expect(sessions, [SessionActive(stored, unlockRequired: false)]);
+      expect(sessions, [ActiveSession(stored, unlockRequired: false)]);
     });
 
     test(
@@ -398,7 +398,7 @@ void main() {
 
         expect((result as AuthError<void>).failure, AuthFailure.offline);
         expect(sessions, [
-          SessionProfileIncomplete(account, unsavedDraft: draft),
+          IncompleteSession(account, unsavedDraft: draft),
         ]);
       },
     );
@@ -412,7 +412,7 @@ void main() {
       await settle();
 
       expect(sessions, [
-        SessionActive(
+        ActiveSession(
           UserProfile.fromDraft(account, draft),
           unlockRequired: false,
         ),
@@ -454,7 +454,7 @@ void main() {
       await settle();
 
       expect(gateway.signedIn, isNull);
-      expect(sessions, [const SessionSignedOut()]);
+      expect(sessions, [const SignedOutSession()]);
     });
   });
 

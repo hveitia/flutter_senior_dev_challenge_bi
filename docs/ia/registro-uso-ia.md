@@ -39,6 +39,11 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
   - **Código más simple.** Los tamaños sueltos de los componentes pasaron a ser tokens, los colores de cada tono quedaron con un único origen y la utilidad de contraste salió de la API pública.
   - **Verificación más estricta.** `tool/verify.sh` falla si un paquete del workspace no tiene pruebas o no está declarado, en lugar de omitirlo.
 
+- **Etapa 3.** Generó el paquete `app_platform`: el contrato de configuración y su lectura tolerante, el repositorio de configuración, la política de resiliencia, el estado de conectividad, la interfaz de telemetría con su adaptador de Firebase y el observador de Blocs, además de tres decisiones de arquitectura y la primera versión del documento de monitoreo. Cada prueba se escribió y se vio fallar antes de su implementación. Escribir las pruebas primero sacó a la luz tres defectos antes de que existiera código que dependiera de ellos:
+  - **Cancelación que no terminaba.** La primera versión del repositorio usaba un generador asíncrono; al cancelar la suscripción con el servidor en silencio, la cancelación no se completaba nunca. Las pruebas se quedaron colgadas y eso llevó a reescribirlo sobre un controlador de flujo.
+  - **Operación ejecutada tras darse por perdida.** Con una latencia inyectada mayor que el tiempo de espera, el intento se informaba como agotado y la operación se ejecutaba igualmente después. Una prueba esperaba cero llamadas y encontró tres.
+  - **Privacidad comprobada, no supuesta.** Las pruebas que impiden registrar el contenido de estados y errores se validaron alterando temporalmente el observador para que sí lo registrara: fallaron, y se restauró.
+
 ## Límites observados
 
 - El paquete de diseño incluía validaciones declaradas por el propio modelo, sin un procedimiento que las respaldara. No se tomaron como evidencia.
@@ -49,6 +54,9 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
 - En la misma etapa, las 229 pruebas del paquete pasaban con dos defectos de accesibilidad presentes. Una prueba comprobaba que el error formaba parte de la etiqueta del campo, pero no cuándo se anunciaba; otra decía verificar un estado «ocupado» que nada afirmaba. Los encontró una revisión independiente, no quien escribió el código.
 - La IA introdujo caracteres invisibles (espacio de no separación) directamente en el código fuente. Se detectaron al analizar el código y se reemplazaron por secuencias de escape explícitas.
 
+- En la etapa 3, el nombre previsto para el paquete (`platform`) ya existía en el registro público de paquetes y lo usan dependencias transitivas. La resolución de dependencias falló y el paquete pasó a llamarse `app_platform`. La arquitectura aprobada no lo había previsto.
+- En la misma etapa, nada se ejecutó contra el Firestore real ni en un dispositivo. Los adaptadores de Firebase se probaron con dobles, que demuestran que el adaptador llama a la API como se espera, no que la API se comporte así.
+
 ## Impacto por etapa
 
 Valoración cualitativa. No se registran métricas cuantitativas porque no se midieron.
@@ -58,7 +66,7 @@ Valoración cualitativa. No se registran métricas cuantitativas porque no se mi
 | Análisis y diseño | Encargo de diseño y dos revisiones en una sesión | La revisión detectó defectos de accesibilidad y de flujo antes de escribir código | Las decisiones quedaron registradas mientras se tomaban | No aplica |
 | 1. Cimientos | Estructura, Firebase, integración continua y hook listos en una sesión | Análisis estático estricto y verificación previa a cada commit desde el inicio | README y seis decisiones de arquitectura redactados por la IA a partir de lo decidido por el autor | Prueba de widget de la aplicación base escrita antes que la implementación |
 | 2. Sistema de diseño | Tokens, tema, diez componentes y galería en una sesión | Las reglas de accesibilidad son pruebas que fallan, no recomendaciones. La revisión visual y las dos revisiones independientes detectaron tres defectos que las pruebas no cubrían | ADR 0007 redactado por la IA, con las desviaciones y los recortes de alcance declarados | Pruebas escritas antes que el código; un catálogo aplica las mismas comprobaciones de accesibilidad a cada componente |
-| 3. Plataforma | | | | |
+| 3. Plataforma | Contrato, repositorio de configuración, resiliencia, conectividad y observabilidad con sus adaptadores | Tres defectos de comportamiento detectados por las pruebas antes de integrarse. Una prueba de arquitectura impide que el código puro importe Flutter o Firebase | Tres decisiones de arquitectura y la primera versión del documento de monitoreo, separando lo implementado de lo planificado | 127 pruebas en el paquete, sobre reloj simulado y sin esperas reales. Dos comprobaciones por mutación (privacidad y límite de arquitectura) |
 | 4. Acceso | | | | |
 | 5. Cuentas y movimientos | | | | |
 | 6. Inicio dinámico | | | | |

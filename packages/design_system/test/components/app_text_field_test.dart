@@ -1,5 +1,6 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/pump_app.dart';
@@ -119,21 +120,67 @@ void main() {
     expect(decorationOf(tester).fillColor, AppColors.surface2);
   });
 
-  testWidgets('label and error are announced with the field', (tester) async {
-    final handle = tester.ensureSemantics();
-    await pumpApp(
-      tester,
-      const AppTextField(
-        label: 'Cédula',
-        errorText: 'Ingresa una cédula válida de 10 dígitos',
-      ),
-    );
+  group('semantics', () {
+    const message = 'Ingresa una cédula válida de 10 dígitos';
 
-    final node = tester.getSemantics(find.byType(TextField));
+    testWidgets('the label is announced as part of the field', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpApp(tester, const AppTextField(label: 'Cédula'));
 
-    expect(node, containsSemantics(isTextField: true));
-    expect(node.label, contains('Cédula'));
-    expect(node.label, contains('Ingresa una cédula válida de 10 dígitos'));
-    handle.dispose();
+      final field = tester.getSemantics(find.byType(TextField));
+
+      expect(
+        field,
+        containsSemantics(
+          isTextField: true,
+          validationResult: SemanticsValidationResult.none,
+        ),
+      );
+      expect(field.label, contains('Cédula'));
+      handle.dispose();
+    });
+
+    testWidgets('an error is announced once, when it appears', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpApp(tester, const AppTextField(label: 'Cédula'));
+
+      expect(find.text(message), findsNothing);
+
+      await pumpApp(
+        tester,
+        const AppTextField(label: 'Cédula', errorText: message),
+      );
+
+      expect(
+        tester.getSemantics(find.text(message)),
+        containsSemantics(label: message, isLiveRegion: true),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('the field is flagged invalid but is not a live region, so '
+        'typing does not repeat the error', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        const AppTextField(label: 'Cédula', errorText: message),
+      );
+
+      await tester.enterText(find.byType(TextField), '17123');
+      await tester.pump();
+
+      final field = tester.getSemantics(find.byType(TextField));
+
+      expect(
+        field,
+        containsSemantics(
+          isTextField: true,
+          isLiveRegion: false,
+          validationResult: SemanticsValidationResult.invalid,
+        ),
+      );
+      expect(field.label, isNot(contains(message)));
+      handle.dispose();
+    });
   });
 }

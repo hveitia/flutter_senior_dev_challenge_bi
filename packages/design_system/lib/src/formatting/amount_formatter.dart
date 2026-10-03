@@ -40,8 +40,8 @@ const String _noBreakSpace = '\u00A0';
 /// sees comma grouping and a dot before the cents whatever the device
 /// language is. That is why this does not take a locale.
 ///
-/// Amounts are integers in minor units so they never go through floating
-/// point arithmetic.
+/// [cents] is the amount in minor units (`482035` is `$4,820.35`), so money
+/// never goes through floating point arithmetic.
 FormattedAmount formatAmount(
   int cents, {
   AmountSignDisplay signDisplay = AmountSignDisplay.negativeOnly,

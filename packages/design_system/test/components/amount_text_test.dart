@@ -37,6 +37,12 @@ void main() {
         ),
       );
 
+      // Proves the widget really is under that locale, so the expectation
+      // below is not just the default formatting.
+      expect(
+        Localizations.localeOf(tester.element(find.byType(AmountText))),
+        locale,
+      );
       expect(find.text(r'$4,820.35', findRichText: true), findsOneWidget);
     }
   });

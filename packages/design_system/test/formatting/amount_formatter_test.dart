@@ -41,6 +41,27 @@ void main() {
         r'$0.00',
       );
     });
+
+    test('treats negative zero as zero', () {
+      expect(formatAmount(-0).text, r'$0.00');
+    });
+
+    test('keeps the minus on negative amounts when plus signs are on', () {
+      expect(
+        formatAmount(-6480, signDisplay: AmountSignDisplay.always).text,
+        '\u2212\u00A0\$64.80',
+      );
+    });
+
+    test('formats amounts smaller than a dollar on both sides of zero', () {
+      expect(formatAmount(100).text, r'$1.00');
+      expect(formatAmount(-1).text, '\u2212\u00A0\$0.01');
+    });
+
+    test('groups every three digits beyond a million', () {
+      expect(formatAmount(123456789012).text, r'$1,234,567,890.12');
+      expect(formatAmount(-100000000).text, '\u2212\u00A0\$1,000,000.00');
+    });
   });
 
   group('amountSemanticLabel', () {
@@ -54,6 +75,24 @@ void main() {
 
     test('uses singular units', () {
       expect(amountSemanticLabel(101), '1 dólar con 1 centavo');
+      expect(amountSemanticLabel(100), '1 dólar');
+    });
+
+    test('says zero dollars instead of dropping the unit', () {
+      expect(amountSemanticLabel(0), '0 dólares');
+      expect(amountSemanticLabel(5), '0 dólares con 5 centavos');
+      expect(amountSemanticLabel(-1), 'menos 0 dólares con 1 centavo');
+    });
+
+    test('reads large amounts as one plain number', () {
+      expect(amountSemanticLabel(-100000000), 'menos 1000000 dólares');
+    });
+
+    test('keeps saying menos when plus signs are on', () {
+      expect(
+        amountSemanticLabel(-6480, signDisplay: AmountSignDisplay.always),
+        'menos 64 dólares con 80 centavos',
+      );
     });
 
     test('says the sign instead of reading a symbol', () {

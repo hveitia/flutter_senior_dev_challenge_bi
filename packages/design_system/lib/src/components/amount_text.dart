@@ -29,7 +29,10 @@ class AmountText extends StatelessWidget {
     super.key,
   });
 
-  /// Amount in minor units (cents of a dollar).
+  /// Amount in minor units: `482035` is `$4,820.35`.
+  ///
+  /// Never pass dollars here. `4820` would render as `$48.20`, and nothing
+  /// can detect the mistake because both are valid integers.
   final int cents;
   final AmountTextSize size;
   final AmountSignDisplay signDisplay;

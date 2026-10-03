@@ -8,6 +8,7 @@ import 'package:feature_auth/src/domain/auth_repository.dart';
 import 'package:feature_auth/src/domain/biometric_authenticator.dart';
 import 'package:feature_auth/src/domain/session.dart';
 import 'package:feature_auth/src/domain/user_profile.dart';
+import 'package:feature_auth/src/presentation/auth_strings.dart';
 
 sealed class SessionEvent {
   const SessionEvent();
@@ -100,7 +101,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   SessionBloc({
     required AuthRepository repository,
     required BiometricAuthenticator biometrics,
-    required String unlockReason,
+    String unlockReason = AuthStrings.unlockReason,
     Telemetry telemetry = const NoopTelemetry(),
   }) : _repository = repository,
        _biometrics = biometrics,
@@ -117,7 +118,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   final AuthRepository _repository;
   final BiometricAuthenticator _biometrics;
 
-  /// Text of the system prompt, owned by the caller because it is UI copy.
+  /// Text of the system prompt.
   final String _unlockReason;
   final Telemetry _telemetry;
 

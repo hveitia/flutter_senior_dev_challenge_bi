@@ -12,7 +12,6 @@ import '../../support/fixtures.dart';
 void main() {
   const account = AuthAccount(uid: 'uid-1', email: email);
   final profile = UserProfile.fromDraft(account, draft);
-  const reason = 'Confirma tu identidad para ingresar';
 
   late FakeAuthRepository repository;
   late FakeBiometricAuthenticator biometrics;
@@ -21,7 +20,6 @@ void main() {
   SessionBloc build() => SessionBloc(
     repository: repository,
     biometrics: biometrics,
-    unlockReason: reason,
     telemetry: telemetry,
   );
 

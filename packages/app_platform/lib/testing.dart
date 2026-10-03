@@ -3,4 +3,5 @@
 /// Import it from tests only.
 library;
 
+export 'src/config/config_test_doubles.dart';
 export 'src/observability/in_memory_telemetry.dart';

@@ -409,10 +409,31 @@ void main() {
     });
 
     test('caps latency so a bad publish cannot freeze the app', () {
-      expect(
-        withResilience({'latencyMs': 600000}).resilience.latency,
-        ConfigDefaults.maxInjectedLatency,
-      );
+      for (final latencyMs in [600000, 1e300]) {
+        expect(
+          withResilience({'latencyMs': latencyMs}).resilience.latency,
+          ConfigDefaults.maxInjectedLatency,
+          reason: 'latencyMs: $latencyMs',
+        );
+      }
+    });
+
+    test('a latency that is not a finite number injects none', () {
+      final notFinite = <Object?>[
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+        '1500',
+        null,
+      ];
+
+      for (final latencyMs in notFinite) {
+        expect(
+          withResilience({'latencyMs': latencyMs}).resilience.latency,
+          Duration.zero,
+          reason: 'latencyMs: $latencyMs',
+        );
+      }
     });
 
     test('maps each flag to the service it takes down', () {

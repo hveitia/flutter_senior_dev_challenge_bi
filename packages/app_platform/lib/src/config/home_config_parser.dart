@@ -101,13 +101,8 @@ final class HomeConfigParser {
   ResilienceSettings _resilience(Object? raw) {
     if (raw is! Map) return ResilienceSettings.none;
 
-    final latencyMs = raw['latencyMs'];
-    final requested = Duration(
-      milliseconds: latencyMs is num ? latencyMs.round() : 0,
-    );
-
     return ResilienceSettings(
-      latency: _clamp(requested, ConfigDefaults.maxInjectedLatency),
+      latency: _injectedLatency(raw['latencyMs']),
       unavailableServices: Set.unmodifiable({
         if (raw['movementsUnavailable'] == true) ServiceIds.movements,
         if (raw['partnerInsuranceUnavailable'] == true)
@@ -116,9 +111,13 @@ final class HomeConfigParser {
     );
   }
 
-  Duration _clamp(Duration value, Duration max) {
-    if (value.isNegative) return Duration.zero;
-    return value > max ? max : value;
+  /// Clamped while still a number: NaN and infinity cannot be rounded, and a
+  /// huge value would overflow once converted to a [Duration].
+  Duration _injectedLatency(Object? milliseconds) {
+    if (milliseconds is! num || !milliseconds.isFinite) return Duration.zero;
+
+    final max = ConfigDefaults.maxInjectedLatency.inMilliseconds;
+    return Duration(milliseconds: milliseconds.clamp(0, max).round());
   }
 
   Map<String, SegmentConfig> _segments(Object? raw, Set<String> destinations) {

@@ -44,6 +44,18 @@ dart format --output=none --set-exit-if-changed apps packages
 echo "==> Analyze"
 flutter analyze
 
+# A focused test hides every other test of its run, and a test skipped
+# without a reason hides a failure. Neither may reach main. A skip that gives
+# its reason as text is allowed; so is the numeric skip of bloc_test, which
+# skips states, not tests.
+echo "==> Test markers"
+markers=$(grep -rnE --include='*_test.dart' \
+  --exclude-dir=build --exclude-dir=.dart_tool \
+  '\bsolo:[[:space:]]*true\b|\bskip:[[:space:]]*true\b|@Skip\(\)' \
+  apps packages || true)
+[ -z "$markers" ] || fail "focused or unexplained skipped tests:
+$markers"
+
 echo "==> Test"
 for dir in "${members[@]}"; do
   echo "--> $dir"

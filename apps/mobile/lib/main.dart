@@ -1,6 +1,7 @@
 import 'package:app_platform/adapters.dart';
 import 'package:banca_digital/app.dart';
 import 'package:banca_digital/bootstrap.dart';
+import 'package:banca_digital/composition.dart';
 import 'package:banca_digital/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -8,8 +9,11 @@ import 'package:flutter/material.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  installTelemetry(await connectTelemetry(_connectFirebase));
-  runApp(const BancaDigitalApp());
+  final telemetry = await connectTelemetry(_connectFirebase);
+  installTelemetry(telemetry);
+  runApp(
+    BancaDigitalApp(dependencies: await composeDependencies(telemetry)),
+  );
 }
 
 Future<FirebaseTelemetry> _connectFirebase() async {

@@ -1,57 +1,80 @@
-import 'package:design_system/design_system.dart';
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-/// Root widget of the mobile app.
-///
-/// For now it only renders the splash. Routing and dependency wiring are
-/// added here as each domain package lands.
-class BancaDigitalApp extends StatelessWidget {
-  const BancaDigitalApp({super.key});
+import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/app_dependencies.dart';
+import 'package:banca_digital/app_router.dart';
+import 'package:design_system/design_system.dart';
+import 'package:feature_auth/feature_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
+/// Root widget of the mobile app and its composition root for widgets: it
+/// provides what the features read from the tree and mounts their routes.
+class BancaDigitalApp extends StatefulWidget {
+  const BancaDigitalApp({required this.dependencies, super.key});
+
+  final AppDependencies dependencies;
 
   static const String productName = 'Banca Digital';
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: productName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: const _SplashScreen(),
-    );
-  }
+  State<BancaDigitalApp> createState() => _BancaDigitalAppState();
 }
 
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
+class _BancaDigitalAppState extends State<BancaDigitalApp> {
+  late final SessionBloc _session;
+  late final GoRouter _router;
 
-  static const double _lineWidth = 120;
-  static const double _lineHeight = 2;
+  @override
+  void initState() {
+    super.initState();
+    final dependencies = widget.dependencies;
+    _session = SessionBloc(
+      repository: dependencies.authRepository,
+      biometrics: dependencies.biometrics,
+      telemetry: dependencies.telemetry,
+    )..add(const SessionStarted());
+    _router = createAppRouter(
+      session: _session,
+      productName: BancaDigitalApp.productName,
+    );
+  }
+
+  @override
+  void dispose() {
+    _router.dispose();
+    unawaited(_session.close());
+    unawaited(widget.dependencies.connectivity.close());
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final dependencies = widget.dependencies;
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              BancaDigitalApp.productName,
-              style: theme.textTheme.headlineMedium,
-            ),
-            const SizedBox(height: AppSpacing.componentGap),
-            SizedBox(
-              width: _lineWidth,
-              child: LinearProgressIndicator(
-                minHeight: _lineHeight,
-                color: context.colors.brandFill,
-                backgroundColor: context.colors.surfaceInset,
-                semanticsLabel: 'Cargando',
-              ),
-            ),
-          ],
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<Telemetry>.value(value: dependencies.telemetry),
+        RepositoryProvider<AuthRepository>.value(
+          value: dependencies.authRepository,
+        ),
+        RepositoryProvider<BiometricAuthenticator>.value(
+          value: dependencies.biometrics,
+        ),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionBloc>.value(value: _session),
+          BlocProvider<ConnectivityCubit>.value(
+            value: dependencies.connectivity,
+          ),
+        ],
+        child: MaterialApp.router(
+          title: BancaDigitalApp.productName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          routerConfig: _router,
         ),
       ),
     );

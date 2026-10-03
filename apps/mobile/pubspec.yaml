@@ -11,10 +11,18 @@ resolution: workspace
 dependencies:
   app_platform: ^0.1.0
   bloc: ^9.2.0
+  cloud_firestore: ^6.10.0
+  connectivity_plus: ^7.3.2
   design_system: ^0.1.0
+  feature_auth: ^0.1.0
+  firebase_auth: ^6.7.0
   firebase_core: ^4.15.0
   flutter:
     sdk: flutter
+  flutter_bloc: ^9.1.1
+  go_router: ^17.5.0
+  local_auth: ^3.0.2
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

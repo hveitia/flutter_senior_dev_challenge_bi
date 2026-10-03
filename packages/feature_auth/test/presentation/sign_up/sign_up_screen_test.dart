@@ -345,6 +345,25 @@ void main() {
       );
     });
 
+    testWidgets('lines the terms checkbox up with the fields and the button', (
+      tester,
+    ) async {
+      await pumpNewAccount(tester);
+      await reachAccess(tester);
+
+      // Material draws the box centered in a larger widget.
+      final boxLeft =
+          tester.getCenter(find.byType(Checkbox)).dx - Checkbox.width / 2;
+      expect(
+        boxLeft,
+        tester.getRect(find.widgetWithText(AppTextField, 'Contraseña')).left,
+      );
+      expect(
+        boxLeft,
+        tester.getRect(find.widgetWithText(AppButton, 'Crear mi cuenta')).left,
+      );
+    });
+
     testWidgets('opens the terms from their link', (tester) async {
       await pumpNewAccount(tester);
       await reachAccess(tester);

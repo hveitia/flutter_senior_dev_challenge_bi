@@ -52,6 +52,60 @@ void main() {
     handle.dispose();
   });
 
+  group('layout', () {
+    /// Where the box the customer sees is drawn. Material centers it in a
+    /// larger widget, so its edge is not the edge of the `Checkbox`.
+    Rect visibleBox(WidgetTester tester) => Rect.fromCenter(
+      center: tester.getCenter(find.byType(Checkbox)),
+      width: Checkbox.width,
+      height: Checkbox.width,
+    );
+
+    testWidgets('draws the box flush with the start edge of the row', (
+      tester,
+    ) async {
+      await pumpApp(tester, build(value: false, onChanged: (_) {}));
+
+      expect(
+        visibleBox(tester).left,
+        tester.getRect(find.byType(CheckboxRow)).left,
+      );
+    });
+
+    testWidgets('keeps a full-size touch target that starts at that edge', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      var taps = 0;
+      await pumpApp(tester, build(value: false, onChanged: (_) => taps++));
+      final row = tester.getRect(find.byType(CheckboxRow));
+
+      // The corner of the target farthest from the box.
+      await tester.tapAt(
+        row.topLeft +
+            const Offset(AppSizes.touchTarget - 1, AppSizes.touchTarget - 1),
+      );
+
+      expect(taps, 1);
+      expect(
+        tester.getSemantics(find.byType(Checkbox)).rect.size,
+        const Size.square(AppSizes.touchTarget),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('centers the first line of the label on the box', (
+      tester,
+    ) async {
+      await pumpApp(tester, build(value: false, onChanged: (_) {}));
+
+      final label = tester.getRect(
+        find.text('Acepto los términos y condiciones.'),
+      );
+      expect(label.center.dy, closeTo(visibleBox(tester).center.dy, 1));
+    });
+  });
+
   testWidgets('is disabled without a callback', (tester) async {
     await pumpApp(tester, build(value: false));
 

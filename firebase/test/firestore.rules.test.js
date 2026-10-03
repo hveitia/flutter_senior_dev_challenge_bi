@@ -129,6 +129,12 @@ describe('users/{uid}: creating', () => {
 
       await assertFails(setDoc(doc(withoutEmail, `users/${OWNER}`), profile()));
     });
+  test('an interest cannot be repeated', async () => {
+    await assertFails(
+      setDoc(own(), profile({ interests: ['saving', 'saving'] })),
+    );
+  });
+
   test('a field outside the allow-list is rejected', async () => {
     await assertFails(setDoc(own(), profile({ balance: 1000000 })));
     await assertFails(setDoc(own(), profile({ role: 'admin' })));
@@ -245,6 +251,10 @@ describe('users/{uid}: updating', () => {
           'insurance', 'business', 'saving'],
       }),
     );
+  });
+
+  test('an update cannot repeat an interest', async () => {
+    await assertFails(updateDoc(own(), { interests: ['saving', 'saving'] }));
   });
 
   test('a profile cannot be deleted from a client', async () => {

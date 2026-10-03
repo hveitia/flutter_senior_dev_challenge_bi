@@ -40,7 +40,10 @@ service cloud.firestore {
           && profile.interests is list
           && profile.interests.size() <= 7
           && profile.interests.hasOnly(['saving', 'investing', 'travel',
-              'billPayments', 'credit', 'insurance', 'business'])          && profile.createdAt is timestamp;
+              'billPayments', 'credit', 'insurance', 'business'])
+          // Each interest once: the size limit alone lets one be repeated.
+          && profile.interests.toSet().size() == profile.interests.size()
+          && profile.createdAt is timestamp;
     }
 
     // Published experience configuration (home modules, flags, resilience).

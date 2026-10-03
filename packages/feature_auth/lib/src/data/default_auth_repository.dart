@@ -76,7 +76,7 @@ final class DefaultAuthRepository implements AuthRepository {
           case Failed(:final failure):
             // Without the profile there is nothing to show. Leaving the
             // provider signed in would restore a broken session next time.
-            await _gateway.signOut();
+            await _signOutQuietly();
             return _failed(AuthTelemetry.signInFailed, failure);
           case Success(value: final profile):
             _telemetry.event(AuthTelemetry.signInSucceeded);
@@ -106,9 +106,7 @@ final class DefaultAuthRepository implements AuthRepository {
       case Failed(:final failure):
         return _failed(AuthTelemetry.signUpFailed, failure);
       case Success(value: final account):
-        if (request.biometricUnlock) {
-          await _unlockPreferences.setEnabled(account.uid, enabled: true);
-        }
+        if (request.biometricUnlock) await _rememberUnlock(account.uid);
         switch (await _storeProfile(account, request.profile)) {
           case Failed(:final failure):
             // The account cannot be taken back. The customer goes on to
@@ -202,10 +200,44 @@ final class DefaultAuthRepository implements AuthRepository {
         _announce(
           ActiveSession(
             profile,
-            unlockRequired: await _unlockPreferences.isEnabled(account.uid),
+            unlockRequired: await _isUnlockRequired(account.uid),
           ),
         );
         _reportRestore(RestoreOutcome.active);
+    }
+  }
+
+  /// The account already exists when this runs, so a device that cannot
+  /// store the preference must not stop the profile from being stored. The
+  /// customer simply is not asked for the check on this device.
+  Future<void> _rememberUnlock(String uid) async {
+    try {
+      await _unlockPreferences.setEnabled(uid, enabled: true);
+    } on Object catch (error, stackTrace) {
+      _reportUnexpected(error, stackTrace);
+    }
+  }
+
+  /// A preference that cannot be read counts as enabled: asking for a check
+  /// the customer did not choose costs them a moment, skipping one they did
+  /// choose opens their session to whoever holds the device.
+  Future<bool> _isUnlockRequired(String uid) async {
+    try {
+      return await _unlockPreferences.isEnabled(uid);
+    } on Object catch (error, stackTrace) {
+      _reportUnexpected(error, stackTrace);
+      return true;
+    }
+  }
+
+  /// Signs out as cleanup after another failure, which is the one the caller
+  /// reports. If this fails too, the next start finds the account without a
+  /// readable profile and handles it as a restored session.
+  Future<void> _signOutQuietly() async {
+    try {
+      await _gateway.signOut();
+    } on Object catch (error, stackTrace) {
+      _reportUnexpected(error, stackTrace);
     }
   }
 

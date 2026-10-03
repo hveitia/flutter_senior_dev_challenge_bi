@@ -94,6 +94,21 @@ void main() {
       },
     );
 
+    test('requires unlock when the preference cannot be read, and reports '
+        'it', () async {
+      const account = AuthAccount(uid: 'uid-9', email: email);
+      build(restored: account);
+      final profile = UserProfile.fromDraft(account, draft);
+      profiles.profiles[account.uid] = profile;
+      unlockPreferences.failure = StateError('storage unavailable');
+
+      await repository.restore();
+      await settle();
+
+      expect(sessions, [ActiveSession(profile, unlockRequired: true)]);
+      expect(telemetry.errors.single.error, isA<RedactedError>());
+    });
+
     test('announces an incomplete profile when the account has none', () async {
       const account = AuthAccount(uid: 'uid-9', email: email);
       build(restored: account);
@@ -241,6 +256,20 @@ void main() {
       expect(sessions, isEmpty);
     });
 
+    test('still fails with the reason the profile could not be read when '
+        'signing back out fails too', () async {
+      seedCustomer();
+      profiles.failRead = const OfflineFailure();
+      gateway.failSignOut = StateError('provider unreachable');
+
+      final result = await repository.signIn(email: email, password: password);
+      await settle();
+
+      expect((result as AuthError<void>).failure, AuthFailure.offline);
+      expect(sessions, isEmpty);
+      expect(telemetry.errors.single.error, isA<RedactedError>());
+    });
+
     test(
       'announces an incomplete profile for an account without one',
       () async {
@@ -335,6 +364,43 @@ void main() {
       await repository.signUp(signUpRequest);
 
       expect(unlockPreferences.enabled, isEmpty);
+    });
+
+    group('when the unlock preference cannot be saved', () {
+      const withUnlock = SignUpRequest(
+        email: email,
+        password: password,
+        profile: draft,
+        biometricUnlock: true,
+      );
+
+      setUp(
+        () => unlockPreferences.failure = StateError('storage unavailable'),
+      );
+
+      test('still stores the profile and announces the customer', () async {
+        final result = await repository.signUp(withUnlock);
+        await settle();
+
+        final profile = UserProfile.fromDraft(gateway.signedIn!, draft);
+        expect(result, isA<AuthOk<void>>());
+        expect(profiles.profiles[profile.uid], profile);
+        expect(sessions, [ActiveSession(profile, unlockRequired: false)]);
+        expect(telemetry.errors.single.error, isA<RedactedError>());
+      });
+
+      test('still keeps what the customer typed when the profile cannot be '
+          'stored either', () async {
+        profiles.failCreate = const TimeoutFailure();
+
+        final result = await repository.signUp(withUnlock);
+        await settle();
+
+        expect(result, isA<AuthOk<void>>());
+        expect(sessions, [
+          IncompleteSession(gateway.signedIn!, unsavedDraft: draft),
+        ]);
+      });
     });
   });
 

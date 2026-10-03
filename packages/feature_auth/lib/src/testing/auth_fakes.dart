@@ -21,6 +21,7 @@ final class FakeAuthGateway implements AuthGateway {
   Object? failSignIn;
   Object? failCreateAccount;
   Object? failPasswordReset;
+  Object? failSignOut;
 
   int signInCalls = 0;
   int createAccountCalls = 0;
@@ -73,7 +74,10 @@ final class FakeAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<void> signOut() async => _signedIn = null;
+  Future<void> signOut() async {
+    _throwIfSet(failSignOut);
+    _signedIn = null;
+  }
 }
 
 /// Profiles kept in memory. [failRead] and [failCreate] make the next calls
@@ -116,11 +120,19 @@ void _throwIfSet(Object? failure) {
 final class InMemoryUnlockPreferences implements UnlockPreferences {
   final Set<String> enabled = {};
 
+  /// When set, reading and writing the preference throw it, as device
+  /// storage does when it is unavailable.
+  Object? failure;
+
   @override
-  Future<bool> isEnabled(String uid) async => enabled.contains(uid);
+  Future<bool> isEnabled(String uid) async {
+    _throwIfSet(failure);
+    return enabled.contains(uid);
+  }
 
   @override
   Future<void> setEnabled(String uid, {required bool enabled}) async {
+    _throwIfSet(failure);
     if (enabled) {
       this.enabled.add(uid);
     } else {

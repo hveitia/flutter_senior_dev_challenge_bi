@@ -1,0 +1,19 @@
+# Shared static analysis for every Dart package in the workspace.
+# Rationale: docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/firebase_options.dart"
+    - "**/build/**"
+
+linter:
+  rules:
+    # Internal application packages, not a published API surface.
+    public_member_api_docs: false

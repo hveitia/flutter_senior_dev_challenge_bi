@@ -1,0 +1,11 @@
+name: banca_digital_workspace
+description: Workspace root for the Banca Digital monorepo.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+workspace: []
+
+dev_dependencies:
+  very_good_analysis: ^10.0.0

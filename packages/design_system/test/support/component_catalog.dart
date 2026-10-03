@@ -135,5 +135,6 @@ Map<String, Widget> componentCatalog() {
       tone: AppTone.success,
       icon: Icons.mark_email_read_outlined,
     ),
+    'Wordmark': const Wordmark(name: 'Banca Digital'),
   };
 }

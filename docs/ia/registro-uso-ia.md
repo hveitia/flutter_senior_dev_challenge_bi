@@ -33,12 +33,16 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
 - **Revisión de los diseños, primera pasada.** Detectó que elementos evaluados quedaban fuera de las capturas, controles nativos del navegador, flujos sin salida (un segmento no podía llegar a transferir) y huecos en el contrato de configuración. Resultado: 45 correcciones.
 - **Revisión de los diseños, segunda pasada.** Verificó cada corrección contra las pantallas y los archivos, no contra el registro de cambios que entregó el modelo de diseño. De 45 puntos, 41 quedaron corregidos y 4 parciales, aunque el registro de cambios los declaraba todos como hechos.
 - **Etapa 1.** Generó la estructura del repositorio, la configuración de Firebase, la integración continua, el hook de verificación y el borrador de las decisiones de arquitectura. Antes de la primera subida al repositorio público se ejecutó una revisión de seguridad independiente sobre el árbol y el historial completos. No encontró bloqueos y dio lugar a tres cambios de endurecimiento: acciones de integración continua fijadas por SHA de commit, copias de seguridad de Android desactivadas y límites de seguridad conocidos documentados.
+- **Etapa 2.** Generó el paquete del sistema de diseño: tokens, tema, diez componentes y sus pruebas, escribiendo cada prueba antes que su implementación. Propuso que `ColorScheme.primary` fuera el naranja apto para texto y no el relleno de marca, para que los componentes de Material cumplan el contraste sin intervención ([ADR 0007](../adr/0007-sistema-de-diseno.md)). Para comprobar que las pruebas de accesibilidad detectan errores reales, pintó temporalmente una etiqueta con el naranja de marca: la prueba de contraste falló con 2,2:1 y el cambio se revirtió.
 
 ## Límites observados
 
 - El paquete de diseño incluía validaciones declaradas por el propio modelo, sin un procedimiento que las respaldara. No se tomaron como evidencia.
 - El prototipo de diseño contenía decisiones que no deben copiarse en la aplicación, como navegar comparando textos en lugar de destinos. Se identificaron en la revisión.
 - La primera recomendación de tecnología para la consola no era la mejor. La corrigió el criterio del autor.
+- En la etapa 2, las pruebas automáticas pasaban y aun así había un defecto visual: el espaciado entre letras por defecto de Material se filtraba en la tipografía. Solo apareció al renderizar la galería y revisarla. Se corrigió con una prueba que ahora lo impide.
+- La revisión de la galería en el teléfono no pudo hacerse en la etapa 2 porque el dispositivo estaba bloqueado. Se sustituyó por un renderizado fuera del dispositivo con las fuentes reales, que no equivale a verla en el teléfono.
+- La IA introdujo caracteres invisibles (espacio de no separación) directamente en el código fuente. Se detectaron al analizar el código y se reemplazaron por secuencias de escape explícitas.
 
 ## Impacto por etapa
 
@@ -48,7 +52,7 @@ Valoración cualitativa. No se registran métricas cuantitativas porque no se mi
 |---|---|---|---|---|
 | Análisis y diseño | El encargo de diseño y las dos revisiones se resolvieron en una sesión | La revisión detectó defectos de accesibilidad y de flujo antes de escribir código | Las decisiones quedaron registradas mientras se tomaban | No aplica |
 | 1. Cimientos | La estructura, Firebase, la integración continua y el hook se generaron bajo dirección del autor | Análisis estático estricto y verificación previa a cada commit desde el inicio | README y seis decisiones de arquitectura redactados por la IA y pendientes de revisión del autor | Prueba de widget de la aplicación base escrita antes que la implementación |
-| 2. Sistema de diseño | | | | |
+| 2. Sistema de diseño | Tokens, tema, diez componentes y la galería se generaron en una sesión bajo dirección del autor | Las reglas de accesibilidad quedaron como pruebas que fallan, no como recomendaciones; la revisión visual detectó un defecto que las pruebas no cubrían | ADR 0007 redactado por la IA y pendiente de revisión del autor | Pruebas escritas antes que el código; un catálogo aplica las mismas comprobaciones de accesibilidad a cada componente |
 | 3. Plataforma | | | | |
 | 4. Acceso | | | | |
 | 5. Cuentas y movimientos | | | | |

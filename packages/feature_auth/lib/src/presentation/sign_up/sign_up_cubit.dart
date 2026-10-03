@@ -65,21 +65,21 @@ class SignUpCubit extends Cubit<SignUpState> {
     );
   }
 
-  void nationalIdChanged(String value) => emit(
+  void nationalIdChanged(String value) => _edited(
     state.copyWith(
       nationalId: value,
       invalidFields: _without(SignUpField.nationalId),
     ),
   );
 
-  void fullNameChanged(String value) => emit(
+  void fullNameChanged(String value) => _edited(
     state.copyWith(
       fullName: value,
       invalidFields: _without(SignUpField.fullName),
     ),
   );
 
-  void emailChanged(String value) => emit(
+  void emailChanged(String value) => _edited(
     state.copyWith(
       email: value,
       invalidFields: _without(SignUpField.email),
@@ -87,26 +87,32 @@ class SignUpCubit extends Cubit<SignUpState> {
     ),
   );
 
-  void phoneChanged(String value) => emit(
+  void phoneChanged(String value) => _edited(
     state.copyWith(phone: value, invalidFields: _without(SignUpField.phone)),
   );
 
   void interestToggled(Interest interest) {
     final interests = {...state.interests};
     if (!interests.remove(interest)) interests.add(interest);
-    emit(state.copyWith(interests: interests));
+    _edited(state.copyWith(interests: interests));
   }
 
   void segmentSelected(Segment segment) =>
-      emit(state.copyWith(segment: segment));
+      _edited(state.copyWith(segment: segment));
 
-  void passwordChanged(String value) => emit(state.copyWith(password: value));
+  void passwordChanged(String value) =>
+      _edited(state.copyWith(password: value));
 
   void biometricUnlockChanged({required bool enabled}) =>
-      emit(state.copyWith(biometricUnlock: enabled));
+      _edited(state.copyWith(biometricUnlock: enabled));
 
   void termsAcceptedChanged({required bool accepted}) =>
-      emit(state.copyWith(termsAccepted: accepted));
+      _edited(state.copyWith(termsAccepted: accepted));
+
+  /// An alert about the last attempt describes answers that have just
+  /// changed, so it goes away with the edit.
+  void _edited(SignUpState edited) =>
+      emit(edited.copyWith(failure: () => null));
 
   /// Validates the current step and moves forward, or submits on the last.
   Future<void> next() async {

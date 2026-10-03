@@ -352,6 +352,34 @@ void main() {
         },
       );
 
+      group('clears the failure as soon as the customer changes', () {
+        final edits = <String, void Function(SignUpCubit)>{
+          'the cédula': (cubit) => cubit.nationalIdChanged('0926687856'),
+          'the name': (cubit) => cubit.fullNameChanged('Ana Mora'),
+          'the email': (cubit) => cubit.emailChanged('otra@example.com'),
+          'the phone': (cubit) => cubit.phoneChanged('0987654321'),
+          'an interest': (cubit) => cubit.interestToggled(Interest.investing),
+          'the segment': (cubit) => cubit.segmentSelected(Segment.wealth),
+          'the password': (cubit) => cubit.passwordChanged('Otra#2026'),
+          'the unlock choice': (cubit) =>
+              cubit.biometricUnlockChanged(enabled: false),
+          'the terms': (cubit) => cubit.termsAcceptedChanged(accepted: false),
+        };
+
+        for (final MapEntry(key: what, value: edit) in edits.entries) {
+          test(what, () async {
+            repository.signUpResult = const AuthError(AuthFailure.offline);
+            final cubit = await readyToCreate();
+            await cubit.next();
+            expect(cubit.state.failure, AuthFailure.offline);
+
+            edit(cubit);
+
+            expect(cubit.state.failure, isNull);
+          });
+        }
+      });
+
       test('clears the failure when trying again', () async {
         repository
           ..signUpResult = const AuthError(AuthFailure.offline)
@@ -409,6 +437,13 @@ void main() {
       expect(state.segment, draft.segment);
       expect(state.interests, draft.interests);
       expect(state.failure, AuthFailure.unavailable);
+    });
+
+    test('stops saying that storing failed once the customer edits what '
+        'they typed', () {
+      final cubit = completion(unsavedDraft: draft)..phoneChanged('0987654321');
+
+      expect(cubit.state.failure, isNull);
     });
 
     test('stores the profile at the end of the interests step', () async {

@@ -137,6 +137,24 @@ void main() {
       ],
     );
 
+    for (final (field, edit) in <(String, void Function(LoginCubit))>[
+      ('email', (cubit) => cubit.emailChanged('otra@example.com')),
+      ('password', (cubit) => cubit.passwordChanged('Otra#2026')),
+    ]) {
+      test('clears the failure as soon as the $field is edited', () async {
+        repository.signInResult = const AuthError(
+          AuthFailure.invalidCredentials,
+        );
+        final cubit = filled();
+        await cubit.submit();
+        expect(cubit.state.failure, AuthFailure.invalidCredentials);
+
+        edit(cubit);
+
+        expect(cubit.state.failure, isNull);
+      });
+    }
+
     test('ignores a second submit while the first is in flight', () async {
       repository.gate = Completer<void>();
       final cubit = filled();

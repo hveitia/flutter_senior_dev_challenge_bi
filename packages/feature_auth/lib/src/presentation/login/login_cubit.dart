@@ -71,6 +71,7 @@ class LoginCubit extends Cubit<LoginState> {
       state.copyWith(
         email: value,
         invalidFields: _without(LoginField.email),
+        failure: _cleared,
         // A confirmation refers to the address it was sent to.
         reset: PasswordResetStatus.idle,
       ),
@@ -82,9 +83,14 @@ class LoginCubit extends Cubit<LoginState> {
       state.copyWith(
         password: value,
         invalidFields: _without(LoginField.password),
+        failure: _cleared,
       ),
     );
   }
+
+  /// An alert about the last attempt describes what was typed then, so it
+  /// goes away as soon as the customer edits a field.
+  static AuthFailure? _cleared() => null;
 
   Future<void> submit() async {
     if (state.isSubmitting) return;

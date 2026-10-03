@@ -10,9 +10,11 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -121,6 +123,12 @@ describe('users/{uid}: creating', () => {
     await assertFails(setDoc(doc(asVisitor(), `users/${OWNER}`), profile()));
   });
 
+  test('an account whose token carries no email cannot create a profile',
+    async () => {
+      const withoutEmail = environment.authenticatedContext(OWNER).firestore();
+
+      await assertFails(setDoc(doc(withoutEmail, `users/${OWNER}`), profile()));
+    });
   test('a field outside the allow-list is rejected', async () => {
     await assertFails(setDoc(own(), profile({ balance: 1000000 })));
     await assertFails(setDoc(own(), profile({ role: 'admin' })));
@@ -230,8 +238,44 @@ describe('users/{uid}: updating', () => {
     );
   });
 
+  test('an update cannot exceed the number of known interests', async () => {
+    await assertFails(
+      updateDoc(own(), {
+        interests: ['saving', 'investing', 'travel', 'billPayments', 'credit',
+          'insurance', 'business', 'saving'],
+      }),
+    );
+  });
+
   test('a profile cannot be deleted from a client', async () => {
     await assertFails(deleteDoc(own()));
+  });
+});
+
+describe('users: the collection', () => {
+  beforeEach(async () => {
+    await seed(`users/${OWNER}`, { fullName: 'Valentina Andrade' });
+    await seed(`users/${OTHER}`, { fullName: 'Otra Persona' });
+  });
+
+  test('a signed-in customer cannot list the profiles', async () => {
+    await assertFails(getDocs(collection(asOwner(), 'users')));
+  });
+
+  test('a visitor cannot list the profiles', async () => {
+    await assertFails(getDocs(collection(asVisitor(), 'users')));
+  });
+});
+
+describe('users/{uid}/…: anything under the customer', () => {
+  test('a customer cannot write a document in a subcollection of their '
+    + 'own invention', async () => {
+    await assertFails(
+      setDoc(doc(asOwner(), `users/${OWNER}/notes/n-1`), { text: 'x' }),
+    );
+    await assertFails(
+      setDoc(doc(asOwner(), `users/${OWNER}/pushTokens/t-1`), { token: 'x' }),
+    );
   });
 });
 
@@ -290,6 +334,16 @@ describe('config: published configuration', () => {
       setDoc(doc(asOwner(), 'config/home'), { schemaVersion: 2 }),
     );
     await assertFails(deleteDoc(doc(asOwner(), 'config/home')));
+  });
+
+  test('a visitor cannot write it either', async () => {
+    await assertFails(
+      setDoc(doc(asVisitor(), 'config/home'), { schemaVersion: 2 }),
+    );
+    await assertFails(
+      setDoc(doc(asVisitor(), 'config/other'), { schemaVersion: 2 }),
+    );
+    await assertFails(deleteDoc(doc(asVisitor(), 'config/home')));
   });
 });
 

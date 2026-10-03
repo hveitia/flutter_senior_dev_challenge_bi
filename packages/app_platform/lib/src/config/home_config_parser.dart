@@ -103,10 +103,7 @@ final class HomeConfigParser {
     return ConfigAccepted(
       HomeConfig(
         schemaVersion: schemaVersion,
-        configVersion: _intOr(
-          raw['configVersion'],
-          ConfigDefaults.configVersion,
-        ),
+        configVersion: _configVersion(raw['configVersion']),
         destinations: destinations,
         resilience: _resilience(raw['resilience']),
         segments: segments,
@@ -257,7 +254,9 @@ final class HomeConfigParser {
     return !destinations.contains(value[_destinationKey]);
   }
 
-  int _intOr(Object? value, int fallback) => value is int ? value : fallback;
+  /// The counter of publishes: a whole number that is never negative.
+  int _configVersion(Object? value) =>
+      value is int && value >= 0 ? value : ConfigDefaults.configVersion;
 
   bool _boolOr(Object? value, {required bool fallback}) =>
       value is bool ? value : fallback;

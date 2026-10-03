@@ -225,6 +225,30 @@ void main() {
       expect(features.partnerServices, isTrue);
     });
 
+    test('a boolean sent as text or as a number is not taken as true', () {
+      final config = _accepted(
+        _document(
+          segment: {
+            'features': {'transfers': 'true', 'partnerServices': 1},
+          },
+          modules: [
+            _module(extra: {'visible': 0}),
+          ],
+        ),
+      );
+      final segment = config.segments['starting']!;
+
+      expect(segment.features.transfers, isFalse);
+      expect(segment.features.partnerServices, isFalse);
+      expect(segment.modules.single.visible, ConfigDefaults.moduleVisible);
+    });
+
+    test('a negative config version falls back to the default', () {
+      final config = _accepted(_document(root: {'configVersion': -3}));
+
+      expect(config.configVersion, ConfigDefaults.configVersion);
+    });
+
     test('non-string destinations are left out of the allow-list', () {
       final config = _accepted(
         _document(

@@ -9,6 +9,7 @@ environment:
 resolution: workspace
 
 dependencies:
+  firebase_core: ^4.15.0
   flutter:
     sdk: flutter
 

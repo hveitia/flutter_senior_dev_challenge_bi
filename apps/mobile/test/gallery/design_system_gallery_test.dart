@@ -11,6 +11,7 @@ void main() {
     'Botones',
     'Campos de texto',
     'Chips',
+    'Formularios',
     'Estados de conexión',
     'Carga',
     'Errores y vacíos',
@@ -27,6 +28,33 @@ void main() {
     expect(find.byType(AppTextField), findsWidgets);
     expect(find.byType(StatusBanner), findsNWidgets(3));
     expect(find.byType(AmountText), findsWidgets);
+  });
+
+  testWidgets('shows the form components and lets them be operated', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const GalleryApp());
+
+    expect(find.byType(Wordmark), findsOneWidget);
+    expect(find.byType(StepIndicator), findsOneWidget);
+    expect(find.byType(InlineAlert), findsOneWidget);
+    expect(find.byType(RequirementItem), findsNWidgets(2));
+
+    final family = find.widgetWithText(RadioCard, 'Familia');
+    await tester.ensureVisible(family);
+    await tester.tap(family);
+    await tester.pump();
+    expect(tester.widget<RadioCard>(family).selected, isTrue);
+
+    await tester.ensureVisible(find.byType(Switch));
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(tester.widget<ToggleRow>(find.byType(ToggleRow)).value, isFalse);
+
+    await tester.ensureVisible(find.byType(Checkbox));
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    expect(tester.widget<CheckboxRow>(find.byType(CheckboxRow)).value, isTrue);
   });
 
   testWidgets('chips in the gallery can be toggled', (tester) async {

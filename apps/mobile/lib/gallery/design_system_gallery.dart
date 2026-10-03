@@ -33,7 +33,16 @@ class _DesignSystemGalleryState extends State<DesignSystemGallery> {
     'Pagar servicios',
   ];
 
+  static const List<String> _segments = [
+    'Estoy empezando',
+    'Familia',
+    'Patrimonio',
+  ];
+
   final Set<String> _selectedInterests = {'Ahorrar'};
+  String _segment = _segments.first;
+  bool _biometricUnlock = true;
+  bool _termsAccepted = false;
   bool _isBusy = false;
 
   void _toggleInterest(String interest, {required bool selected}) {
@@ -183,6 +192,51 @@ class _DesignSystemGalleryState extends State<DesignSystemGallery> {
                     StatusChip(label: 'Fallido', tone: AppTone.danger),
                     StatusChip(label: 'Aliado', tone: AppTone.info),
                   ],
+                ),
+              ],
+            ),
+            _Section(
+              title: 'Formularios',
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wordmark(name: 'Banca Digital'),
+                ),
+                const StepIndicator(current: 2, total: 3),
+                const InlineAlert(
+                  message:
+                      'No pudimos validar tus datos. Revisa e intenta de '
+                      'nuevo.',
+                ),
+                Column(
+                  spacing: AppSpacing.x2,
+                  children: [
+                    for (final segment in _segments)
+                      RadioCard(
+                        label: segment,
+                        selected: _segment == segment,
+                        onSelected: () => setState(() => _segment = segment),
+                      ),
+                  ],
+                ),
+                const Column(
+                  spacing: AppSpacing.x2,
+                  children: [
+                    RequirementItem(label: 'Al menos 8 caracteres', met: true),
+                    RequirementItem(label: 'Un símbolo', met: false),
+                  ],
+                ),
+                ToggleRow(
+                  label: 'Ingresar con huella o rostro',
+                  value: _biometricUnlock,
+                  onChanged: (value) =>
+                      setState(() => _biometricUnlock = value),
+                ),
+                CheckboxRow(
+                  value: _termsAccepted,
+                  semanticLabel: 'Acepto los términos y condiciones',
+                  onChanged: (value) => setState(() => _termsAccepted = value),
+                  label: const Text('Acepto los términos y condiciones.'),
                 ),
               ],
             ),

@@ -44,8 +44,9 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // While loading the button keeps its enabled look; interaction is
-    // blocked below so a second tap cannot submit twice.
+    // A null callback would paint the button as disabled. While loading it
+    // keeps its enabled look and gets a callback that does nothing, which is
+    // what stops a second submit from touch, keyboard or assistive technology.
     final callback = isLoading ? _ignoreTap : onPressed;
     final content = _Content(label: label, icon: icon, isLoading: isLoading);
 
@@ -67,10 +68,14 @@ class AppButton extends StatelessWidget {
     if (expand) button = SizedBox(width: double.infinity, child: button);
     if (!isLoading) return button;
 
+    // A live region, so the change to loading is announced without the
+    // customer having to explore the button again. `IgnorePointer` only
+    // removes the ripple and hover that would suggest the button reacts.
     return Semantics(
       container: true,
       button: true,
       enabled: false,
+      liveRegion: true,
       label: '$label, cargando',
       child: ExcludeSemantics(child: IgnorePointer(child: button)),
     );

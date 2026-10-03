@@ -1,5 +1,6 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/pump_app.dart';
@@ -81,17 +82,45 @@ void main() {
   });
 
   group('loading', () {
-    testWidgets('shows progress and ignores taps', (tester) async {
+    testWidgets('shows progress and gives no response to touch', (
+      tester,
+    ) async {
       var taps = 0;
       await pumpApp(
         tester,
         AppButton(label: 'Continuar', isLoading: true, onPressed: () => taps++),
       );
 
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Not hit-testable: no ripple or hover that would suggest it reacts.
+      expect(find.byType(FilledButton).hitTestable(), findsNothing);
+
       await tester.tap(find.byType(AppButton), warnIfMissed: false);
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(taps, 0);
+    });
+
+    testWidgets('does not submit again from the keyboard', (tester) async {
+      Future<int> tapsAfterEnter({required bool isLoading}) async {
+        var taps = 0;
+        await pumpApp(
+          tester,
+          AppButton(
+            label: 'Continuar',
+            isLoading: isLoading,
+            onPressed: () => taps++,
+          ),
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        return taps;
+      }
+
+      // The idle case proves the key sequence does reach the button.
+      expect(await tapsAfterEnter(isLoading: false), 1);
+      expect(await tapsAfterEnter(isLoading: true), 0);
     });
 
     testWidgets('keeps the size it has when idle', (tester) async {
@@ -117,7 +146,9 @@ void main() {
       expect(loading, idle);
     });
 
-    testWidgets('is announced as a busy, unavailable button', (tester) async {
+    testWidgets('announces that it started loading and is unavailable', (
+      tester,
+    ) async {
       final handle = tester.ensureSemantics();
       await pumpApp(
         tester,
@@ -131,6 +162,7 @@ void main() {
           isButton: true,
           hasEnabledState: true,
           isEnabled: false,
+          isLiveRegion: true,
         ),
       );
       handle.dispose();

@@ -288,6 +288,22 @@ void main() {
     ],
   );
 
+  blocTest<SessionBloc, SessionState>(
+    'stops showing progress when the retry announces nothing',
+    setUp: () => repository.restored = const UnavailableSession(account),
+    build: build,
+    act: (bloc) async {
+      bloc.add(const SessionStarted());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const SessionRetryRequested());
+    },
+    expect: () => [
+      const SessionUnavailable(),
+      const SessionUnavailable(isRetrying: true),
+      const SessionUnavailable(),
+    ],
+  );
+
   test('stops listening to the repository when closed', () async {
     final bloc = build()..add(const SessionStarted());
     await Future<void>.delayed(Duration.zero);

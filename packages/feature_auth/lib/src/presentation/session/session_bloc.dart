@@ -132,14 +132,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
   StreamSubscription<Session>? _sessions;
 
+  /// How many sessions the repository has announced so far.
+  int _announcements = 0;
+
   Future<void> _onStarted(
     SessionStarted event,
     Emitter<SessionState> emit,
   ) async {
     if (_sessions != null) return;
-    _sessions = _repository.sessions.listen(
-      (session) => add(_SessionAnnounced(session)),
-    );
+    _sessions = _repository.sessions.listen((session) {
+      _announcements++;
+      add(_SessionAnnounced(session));
+    });
     await _repository.restore();
   }
 
@@ -208,8 +212,14 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     Emitter<SessionState> emit,
   ) async {
     if (state is! SessionUnavailable) return;
+    final announcedBefore = _announcements;
     emit(const SessionUnavailable(isRetrying: true));
     await _repository.retry();
+
+    // A retry normally ends with a new session, which replaces this state.
+    // When the repository had nothing to retry it announces none, and the
+    // progress indicator would stay forever.
+    if (_announcements == announcedBefore) emit(const SessionUnavailable());
   }
 
   Future<void> _onSignOutRequested(

@@ -27,7 +27,7 @@ apps/
   backoffice/              Consola web y API de servidor (Next.js)
 packages/
   design_system/           Tokens y componentes
-  platform/                Configuración remota, resiliencia, sesión, observabilidad
+  app_platform/            Configuración remota, resiliencia, sesión, observabilidad
   feature_auth/
   feature_accounts/        Cuentas, movimientos, transferencia
   feature_home/            Motor del inicio dirigido por configuración
@@ -47,7 +47,7 @@ graph TD
   mobile --> home[feature_home]
   mobile --> services[feature_services]
   mobile --> notifications[feature_notifications]
-  auth --> platform
+  auth --> platform[app_platform]
   accounts --> platform
   home --> platform
   services --> platform

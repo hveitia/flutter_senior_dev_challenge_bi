@@ -1,0 +1,21 @@
+name: app_platform
+description: Cross-cutting capabilities shared by every domain package.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+resolution: workspace
+
+dependencies:
+  bloc: ^9.2.0
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  fake_async: ^1.3.3
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.5

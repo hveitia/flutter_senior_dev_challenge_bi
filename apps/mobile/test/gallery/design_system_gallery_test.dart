@@ -16,6 +16,8 @@ void main() {
     'Carga',
     'Errores y vacíos',
     'Módulo',
+    'Cuentas y movimientos',
+    'Navegación',
   ];
 
   testWidgets('shows every section of the design system', (tester) async {
@@ -55,6 +57,31 @@ void main() {
     await tester.tap(find.byType(Checkbox));
     await tester.pump();
     expect(tester.widget<CheckboxRow>(find.byType(CheckboxRow)).value, isTrue);
+  });
+
+  testWidgets('shows the account, movement and navigation components', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const GalleryApp());
+
+    expect(find.byType(AccountCard), findsOneWidget);
+    expect(find.byType(MovementRow), findsNWidgets(2));
+    expect(find.byType(GroupHeader), findsOneWidget);
+    expect(find.byType(DetailRow), findsOneWidget);
+
+    final profile = find.descendant(
+      of: find.byType(AppBottomNavigation),
+      matching: find.text('Perfil'),
+    );
+    await tester.ensureVisible(profile);
+    await tester.tap(profile);
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppBottomNavigation>(find.byType(AppBottomNavigation))
+          .currentIndex,
+      3,
+    );
   });
 
   testWidgets('chips in the gallery can be toggled', (tester) async {

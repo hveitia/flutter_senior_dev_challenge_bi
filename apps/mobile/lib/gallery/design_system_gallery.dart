@@ -39,7 +39,18 @@ class _DesignSystemGalleryState extends State<DesignSystemGallery> {
     'Patrimonio',
   ];
 
+  static const List<AppBottomNavigationItem> _destinations = [
+    AppBottomNavigationItem(label: 'Inicio', icon: Icons.home_outlined),
+    AppBottomNavigationItem(
+      label: 'Cuentas',
+      icon: Icons.account_balance_wallet_outlined,
+    ),
+    AppBottomNavigationItem(label: 'Servicios', icon: Icons.grid_view),
+    AppBottomNavigationItem(label: 'Perfil', icon: Icons.person_outline),
+  ];
+
   final Set<String> _selectedInterests = {'Ahorrar'};
+  int _destination = 1;
   String _segment = _segments.first;
   bool _biometricUnlock = true;
   bool _termsAccepted = false;
@@ -283,6 +294,43 @@ class _DesignSystemGalleryState extends State<DesignSystemGallery> {
                   onAction: () {},
                   footnote: 'Actualizado hace 8 min',
                   child: const SkeletonBlock(height: 72),
+                ),
+              ],
+            ),
+            _Section(
+              title: 'Cuentas y movimientos',
+              children: [
+                AccountCard(
+                  name: 'Cuenta de ahorros',
+                  maskedNumber: '****4821',
+                  balanceCents: 357035,
+                  onTap: () {},
+                ),
+                const GroupHeader(label: 'Hoy'),
+                MovementRow(
+                  icon: Icons.south_east,
+                  description: 'Nómina de septiembre',
+                  detail: 'Hoy · 09:12',
+                  amountCents: 185000,
+                  onTap: () {},
+                ),
+                MovementRow(
+                  icon: Icons.storefront_outlined,
+                  description: 'Supermercado',
+                  detail: 'Hoy · 08:45',
+                  amountCents: -6480,
+                  onTap: () {},
+                ),
+                const DetailRow(label: 'Canal', value: 'Tarjeta de débito'),
+              ],
+            ),
+            _Section(
+              title: 'Navegación',
+              children: [
+                AppBottomNavigation(
+                  items: _destinations,
+                  currentIndex: _destination,
+                  onSelected: (index) => setState(() => _destination = index),
                 ),
               ],
             ),

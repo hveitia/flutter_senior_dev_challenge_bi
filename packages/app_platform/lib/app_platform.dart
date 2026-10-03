@@ -8,3 +8,4 @@ library;
 
 export 'src/config/home_config.dart';
 export 'src/config/home_config_parser.dart';
+export 'src/observability/telemetry.dart';

@@ -48,15 +48,34 @@ La primera opción en los tres casos.
 | Tipo de módulo que nadie registró | Se conserva; lo omite el registro de módulos (etapa 6) |
 | `schemaVersion` superior a la soportada | Documento rechazado; se mantiene la última configuración válida |
 | `schemaVersion` ausente o ilegible, documento que no es un objeto, ningún segmento utilizable | Documento rechazado |
+| `props` de un módulo con más de 32 niveles de anidación | Documento rechazado (`propsTooDeep`), sin desbordar la pila |
+| Cualquier error no previsto al leer el documento | Documento rechazado (`unreadable`) |
 
 Valores por defecto que conviene conocer:
 
 - **Una funcionalidad no declarada queda apagada.** Si falta `features.transfers`, no hay transferencias. Es la opción conservadora para un banco.
 - **Un módulo sin `visible` es visible.**
-- **La latencia inyectada tiene un tope de 10 segundos**, para que un valor erróneo publicado desde la consola ralentice la aplicación pero no la inutilice.
+- **La latencia inyectada tiene un tope de 10 segundos**, para que un valor erróneo publicado desde la consola ralentice la aplicación pero no la inutilice. Un valor que no es un número finito (`NaN`, infinito, texto) equivale a cero.
+- **Un `configVersion` negativo o ilegible vale 0.**
 - **Segmento desconocido:** se usa `starting`; si tampoco existe, el primero por orden alfabético.
 
 El analizador nunca lanza una excepción. Devuelve `ConfigAccepted` o `ConfigRejected` con el motivo, y quien lo llama está obligado a tratar ambos casos.
+
+**El esquema es más estricto que el analizador, a propósito.** El esquema describe lo que la consola debe publicar; el analizador decide qué hace una aplicación ya instalada cuando recibe algo distinto (lector tolerante). Una prueba recorre cada diferencia y comprueba las dos cosas: que el esquema rechaza el documento y que el analizador lo acepta.
+
+| El documento… | Esquema | Analizador |
+|---|---|---|
+| No trae `configVersion`, o es negativo | Rechaza | Usa 0 |
+| No trae `destinations` | Rechaza | Lista vacía: elimina todas las acciones |
+| Trae `latencyMs` fraccionario o superior a 10 000 | Rechaza | Redondea y limita a 10 segundos |
+| Tiene un segmento sin `modules` | Rechaza | Segmento sin módulos |
+| Tiene un segmento sin `label` | Rechaza | Usa el identificador del segmento |
+| Tiene un segmento sin `features`, o con un valor que no es booleano | Rechaza | Funcionalidad apagada |
+| Tiene un módulo sin `type`, o con `props` o `visible` de otro tipo | Rechaza | Omite el módulo, o usa el valor por defecto |
+
+Tres reglas no pueden expresarse en el esquema y quedan a cargo de la consola: no repetir el `id` de un módulo dentro de un segmento (el analizador conserva el primero), no usar destinos fuera de la lista (el analizador elimina la acción) y no publicar un `schemaVersion` que las aplicaciones en uso no entiendan (el analizador rechaza el documento).
+
+Los campos `locale` y `currency` del ejemplo no los lee ninguna versión de la aplicación. Están marcados como obsoletos en el esquema.
 
 ```mermaid
 flowchart LR
@@ -87,9 +106,9 @@ flowchart LR
 - `adapters.dart`: implementaciones sobre Firebase y plugins. Solo lo importa la raíz de composición.
 - `testing.dart`: dobles de prueba.
 
-Una prueba de arquitectura falla si un archivo fuera de `adapters/` importa Flutter, Firebase o un plugin.
+Una prueba de arquitectura falla si un archivo fuera de `adapters/` referencia algo que no esté en una lista de permitidos (`dart:async`, `dart:collection`, `dart:convert`, `dart:core`, `dart:math`, `bloc` y el propio paquete) o llega a los adaptadores por cualquier ruta. Lee directivas completas (`import`, `export`, `part`, importaciones condicionales), y sus propios casos están probados.
 
-**Dependencias añadidas:** `bloc` (el Cubit es Dart puro), `cloud_firestore` (fuente remota), `shared_preferences` (un único documento sin datos personales; no requiere almacenamiento cifrado) y, para pruebas, `bloc_test`, `mocktail` y `fake_async`.
+**Dependencias añadidas:** `bloc` (el Cubit es Dart puro), `cloud_firestore` (fuente remota), `shared_preferences` (un único documento sin datos personales; no requiere almacenamiento cifrado) y, para pruebas, `bloc_test`, `mocktail` y `fake_async` y `json_schema` (valida el ejemplo contra el esquema; solo en pruebas).
 
 ## Trade-offs
 
@@ -97,7 +116,7 @@ Una prueba de arquitectura falla si un archivo fuera de `adapters/` importa Flut
 - **Se gana:** una aplicación antigua sigue funcionando cuando el contrato evoluciona, con la última configuración que entendió.
 - **Se paga:** el modelo existe en dos lenguajes. El esquema y el ejemplo compartidos son la referencia, y una prueba verifica que el recurso incluido coincide con el ejemplo.
 - **Se paga:** la tolerancia puede ocultar errores de publicación. Por eso la consola debe validar contra el esquema antes de publicar, y la aplicación informa cada rechazo.
-- **Se paga:** la aplicación no valida contra el esquema JSON en el dispositivo; las reglas del analizador y el esquema pueden divergir. La mitigación prevista es validar el ejemplo contra el esquema en las pruebas de la consola.
+- **Se paga:** la aplicación no valida contra el esquema JSON en el dispositivo, así que el esquema y el analizador son dos definiciones. Una prueba valida el ejemplo contra el esquema y fija cada diferencia conocida entre ambos, de modo que una divergencia nueva no pasa inadvertida. La validación antes de publicar corresponde a la consola (etapa 7).
 - **Se paga:** la regla de destinos es estructural: cualquier objeto con un campo `destination` se trata como una acción. Un módulo no puede usar ese nombre para otra cosa.
 - **Limitación:** al guardar el documento en el dispositivo, los valores que JSON no puede representar (por ejemplo una marca de tiempo de Firestore) se guardan como nulos. No afecta a la lectura, porque el analizador trata un nulo como un campo ausente.
 - **Limitación:** la configuración de último recurso no tiene módulos, porque la plataforma no conoce los tipos de módulo. El inicio (etapa 6) debe mostrar un estado explícito para ese caso.

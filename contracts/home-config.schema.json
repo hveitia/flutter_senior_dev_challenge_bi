@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/hveitia/flutter_senior_dev_challenge_bi/contracts/home-config.schema.json",
   "title": "Published home configuration",
-  "description": "Document published by the backoffice at config/home and read by the mobile app. Readers must ignore unknown fields so that older app versions keep working.",
+  "description": "What the backoffice must publish at config/home. It is deliberately stricter than the reader: the mobile app tolerates documents that break these rules (see docs/adr/0008), so that a wrong publish degrades the home instead of breaking installed apps. Publishers validate against this schema; readers must ignore unknown fields.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -20,13 +20,17 @@
     "configVersion": {
       "type": "integer",
       "minimum": 0,
-      "description": "Monotonic counter increased on every publish."
+      "description": "Counter increased on every publish. Informative: the reader applies the last document it receives, whatever its number."
     },
     "locale": {
-      "type": "string"
+      "type": "string",
+      "deprecated": true,
+      "description": "Not read by any app version. Present only because the design example carries it; amounts are always shown as $4,820.35."
     },
     "currency": {
-      "type": "string"
+      "type": "string",
+      "deprecated": true,
+      "description": "Not read by any app version. Present only because the design example carries it; amounts are always shown as $4,820.35."
     },
     "destinations": {
       "type": "array",
@@ -51,14 +55,15 @@
   "$defs": {
     "resilience": {
       "type": "object",
-      "description": "Fault injection for demonstration environments.",
+      "description": "Fault injection for demonstration environments. Ignored by any app build that was not made with ALLOW_FAULT_INJECTION.",
       "additionalProperties": true,
       "properties": {
         "latencyMs": {
           "type": "integer",
           "minimum": 0,
           "maximum": 10000,
-          "default": 0
+          "default": 0,
+          "description": "Delay added to every attempt. The reader clamps it to this range."
         },
         "movementsUnavailable": {
           "type": "boolean",
@@ -73,12 +78,16 @@
     "segment": {
       "type": "object",
       "required": [
-        "modules"
+        "label",
+        "modules",
+        "features"
       ],
       "additionalProperties": true,
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "description": "Name shown to people. The reader falls back to the segment id when it is missing."
         },
         "modules": {
           "type": "array",
@@ -102,7 +111,7 @@
         "id": {
           "type": "string",
           "minLength": 1,
-          "description": "Unique within its segment."
+          "description": "Unique within its segment. JSON Schema cannot express that, so the publisher must check it; the reader keeps the first module with a given id."
         },
         "type": {
           "type": "string",
@@ -116,7 +125,7 @@
         "props": {
           "type": "object",
           "default": {},
-          "description": "Settings interpreted by the module itself. Any object carrying a destination must use a value from the allow-list."
+          "description": "Settings interpreted by the module itself, nested at most 32 levels. Any object carrying a destination must use a value from the allow-list; the reader drops the ones that do not."
         }
       }
     },
@@ -132,7 +141,12 @@
           "type": "boolean",
           "default": false
         }
-      }
+      },
+      "required": [
+        "transfers",
+        "partnerServices"
+      ],
+      "description": "Every flag must be stated. The reader treats a missing flag as off."
     }
   }
 }

@@ -4,4 +4,5 @@
 library;
 
 export 'src/config/config_test_doubles.dart';
+export 'src/connectivity/fake_connectivity_monitor.dart';
 export 'src/observability/in_memory_telemetry.dart';

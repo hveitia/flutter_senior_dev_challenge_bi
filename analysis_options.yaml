@@ -12,6 +12,8 @@ analyzer:
     - "**/*.freezed.dart"
     - "**/firebase_options.dart"
     - "**/build/**"
+    # Node tooling for the Firestore rules tests ships Dart templates.
+    - "**/node_modules/**"
 
 linter:
   rules:

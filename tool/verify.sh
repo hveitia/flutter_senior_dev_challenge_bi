@@ -36,8 +36,10 @@ for dir in apps/* packages/*; do
   esac
 done
 
+# Only the Dart code of this repository: Node dependencies under firebase/
+# bring Dart files of their own.
 echo "==> Format"
-dart format --output=none --set-exit-if-changed .
+dart format --output=none --set-exit-if-changed apps packages
 
 echo "==> Analyze"
 flutter analyze

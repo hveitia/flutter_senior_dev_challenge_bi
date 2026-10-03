@@ -3,6 +3,8 @@ rules_version = '2';
 // Deny by default: anything not matched below is rejected.
 // Balances, accounts and movements are never written from a client. They are
 // changed only by the server API through the Admin SDK, which bypasses rules.
+// The only thing a client writes is the customer's own profile.
+// Tests: firebase/test/firestore.rules.test.js
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
@@ -13,18 +15,64 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    // Every field a profile has. Nothing else may be stored in it, so a
+    // client cannot give itself a balance or a role.
+    function profileFields() {
+      return ['fullName', 'nationalId', 'email', 'phone', 'segment',
+              'interests', 'createdAt'];
+    }
+
+    function isValidProfile(profile) {
+      return profile.keys().hasOnly(profileFields())
+          && profile.keys().hasAll(profileFields())
+          && profile.fullName is string
+          && profile.fullName.size() >= 3
+          && profile.fullName.size() <= 120
+          && profile.nationalId is string
+          && profile.nationalId.matches('^[0-9]{10}$')
+          // The profile belongs to the account that is signed in.
+          && profile.email is string
+          && profile.email == request.auth.token.email
+          && profile.phone is string
+          && profile.phone.matches('^09[0-9]{8}$')
+          // Segment ids are the keys of the published home configuration.
+          && profile.segment in ['starting', 'family', 'wealth']
+          && profile.interests is list
+          && profile.interests.size() <= 7
+          && profile.interests.hasOnly(['saving', 'investing', 'travel',
+              'billPayments', 'credit', 'insurance', 'business'])
+          && profile.createdAt is timestamp;
+    }
+
     // Published experience configuration (home modules, flags, resilience).
+    // Any signed-in customer reads it, so it must never hold sensitive data.
     match /config/{document} {
       allow read: if isSignedIn();
       allow write: if false;
     }
 
-    // A customer reads only their own document and everything under it
-    // (accounts, movements, inbox). With rules_version 2 the recursive
-    // wildcard also matches the user document itself.
-    match /users/{uid}/{document=**} {
+    match /users/{uid} {
       allow read: if isOwner(uid);
-      allow write: if false;
+
+      // The creation time is the server's, never the device's.
+      allow create: if isOwner(uid)
+          && isValidProfile(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+
+      // What identifies the customer cannot be edited afterwards.
+      allow update: if isOwner(uid)
+          && isValidProfile(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.nationalId == resource.data.nationalId
+          && request.resource.data.email == resource.data.email;
+
+      allow delete: if false;
+
+      // Accounts, movements and anything else under the customer: read-only.
+      match /{document=**} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
     }
   }
 }

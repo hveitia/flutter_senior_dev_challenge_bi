@@ -1,0 +1,17 @@
+{
+  "name": "banca-digital-firebase-rules",
+  "description": "Tests for the Firestore security rules. Not part of the app.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-banca-digital \"node --test test/firestore.rules.test.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.0.0",
+    "firebase-tools": "^15.0.0"
+  }
+}

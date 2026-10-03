@@ -2,6 +2,10 @@
 library;
 
 export 'src/accessibility/contrast.dart';
+export 'src/theme/app_metrics.dart';
+export 'src/theme/app_semantic_colors.dart';
+export 'src/theme/app_theme.dart';
+export 'src/theme/app_theme_context.dart';
 export 'src/tokens/app_colors.dart';
 export 'src/tokens/app_motion.dart';
 export 'src/tokens/app_radii.dart';

@@ -127,5 +127,13 @@ Map<String, Widget> componentCatalog() {
         RequirementItem(label: 'Un símbolo', met: false),
       ],
     ),
+    'InlineAlert danger': const InlineAlert(
+      message: 'No pudimos validar tus datos. Revisa e intenta de nuevo.',
+    ),
+    'InlineAlert success': const InlineAlert(
+      message: 'Si el correo está registrado, te enviaremos un enlace.',
+      tone: AppTone.success,
+      icon: Icons.mark_email_read_outlined,
+    ),
   };
 }

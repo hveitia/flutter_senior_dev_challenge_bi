@@ -6,6 +6,7 @@ export 'src/components/app_button.dart';
 export 'src/components/app_chip.dart';
 export 'src/components/app_text_field.dart';
 export 'src/components/empty_state.dart';
+export 'src/components/inline_alert.dart';
 export 'src/components/inline_error.dart';
 export 'src/components/module_container.dart';
 export 'src/components/radio_card.dart';

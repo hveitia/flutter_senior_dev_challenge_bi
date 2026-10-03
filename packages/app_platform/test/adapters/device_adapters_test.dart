@@ -177,6 +177,18 @@ void main() {
       verify(trace.stop).called(1);
     });
 
+    test('switches crash collection on or off', () async {
+      when(
+        () => crashlytics.setCrashlyticsCollectionEnabled(any()),
+      ).thenAnswer((_) async {});
+
+      await telemetry.setCrashCollectionEnabled(enabled: false);
+
+      verify(
+        () => crashlytics.setCrashlyticsCollectionEnabled(false),
+      ).called(1);
+    });
+
     test('a failing backend never reaches the caller', () async {
       when(
         () => crashlytics.log(any()),

@@ -31,6 +31,12 @@ final class FirebaseTelemetry implements Telemetry {
 
   static const String _logName = 'app';
 
+  /// Turns automatic crash reporting on or off for this installation.
+  /// Errors recorded while it is off are discarded by Crashlytics.
+  Future<void> setCrashCollectionEnabled({required bool enabled}) {
+    return _crashlytics.setCrashlyticsCollectionEnabled(enabled);
+  }
+
   final FirebaseCrashlytics _crashlytics;
   final FirebaseAnalytics _analytics;
   final FirebasePerformance _performance;

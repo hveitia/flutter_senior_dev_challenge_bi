@@ -9,6 +9,6 @@ library;
 export 'src/domain/account.dart';
 export 'src/domain/accounts_repository.dart';
 export 'src/domain/data_snapshot.dart';
+export 'src/domain/load_state.dart';
 export 'src/domain/movement.dart';
 export 'src/domain/movement_filter.dart';
-export 'src/presentation/load_state.dart';

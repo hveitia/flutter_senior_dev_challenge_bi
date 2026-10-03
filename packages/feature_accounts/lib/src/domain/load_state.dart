@@ -23,7 +23,7 @@ enum LoadFailure {
   bool get attemptsExhausted => this == timeout || this == unavailable;
 }
 
-/// What a screen knows about one data set: the last value it can show, where
+/// What is known about one data set: the last value it can show, where
 /// that value came from, and whether bringing it up to date is in progress
 /// or failed.
 ///

@@ -2,6 +2,8 @@
 library;
 
 export 'src/accessibility/contrast.dart';
+export 'src/components/amount_text.dart';
+export 'src/formatting/amount_formatter.dart';
 export 'src/theme/app_metrics.dart';
 export 'src/theme/app_semantic_colors.dart';
 export 'src/theme/app_theme.dart';

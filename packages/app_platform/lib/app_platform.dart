@@ -9,4 +9,5 @@ library;
 export 'src/config/config_repository.dart';
 export 'src/config/home_config.dart';
 export 'src/config/home_config_parser.dart';
+export 'src/config/remote_config_cubit.dart';
 export 'src/observability/telemetry.dart';

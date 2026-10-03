@@ -17,6 +17,16 @@ void main() {
       expect(EmailAddress.isValid('a@b@example.com'), isFalse);
     });
 
+    test('accepts a domain with several labels', () {
+      expect(EmailAddress.isValid('ana@correo.banco.com.ec'), isTrue);
+    });
+
+    test('rejects a domain with an empty label', () {
+      expect(EmailAddress.isValid('a@b..c'), isFalse);
+      expect(EmailAddress.isValid('ana@.example.com'), isFalse);
+      expect(EmailAddress.isValid('ana@example.com.'), isFalse);
+    });
+
     test('rejects addresses longer than the limit of the standard', () {
       final local = 'a' * 250;
 
@@ -70,6 +80,12 @@ void main() {
     test('accepts a given name and a family name', () {
       expect(FullName.isValid('Valentina Andrade'), isTrue);
       expect(FullName.isValid('María José Ñáñez-O’Brien'), isTrue);
+    });
+
+    test('accepts ñ, accents and diaeresis in any position', () {
+      expect(FullName.isValid('Íñigo Muñoz'), isTrue);
+      expect(FullName.isValid('Ángela Peñafiel Güiracocha'), isTrue);
+      expect(FullName.isValid('ÓSCAR NÚÑEZ'), isTrue);
     });
 
     test('rejects a single word', () {

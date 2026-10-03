@@ -4,7 +4,9 @@ abstract final class EmailAddress {
   /// Longest address the mail standard allows (RFC 5321).
   static const int maxLength = 254;
 
-  static final RegExp _shape = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+  /// Something before the @, and after it at least two labels separated by
+  /// single dots.
+  static final RegExp _shape = RegExp(r'^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$');
 
   static String normalize(String value) => value.trim().toLowerCase();
 

@@ -5,7 +5,8 @@ publish_to: none
 environment:
   sdk: ^3.10.0
 
-workspace: []
+workspace:
+  - apps/mobile
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

@@ -1,0 +1,20 @@
+name: banca_digital
+description: Banca Digital mobile app. Composition root for the domain packages.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

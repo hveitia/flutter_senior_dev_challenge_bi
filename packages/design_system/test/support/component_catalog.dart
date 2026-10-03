@@ -112,5 +112,13 @@ Map<String, Widget> componentCatalog() {
       child: const SkeletonBlock(height: 72),
     ),
     'StepIndicator': const StepIndicator(current: 2, total: 3),
+    'RadioCard': Column(
+      spacing: AppSpacing.x2,
+      children: [
+        RadioCard(label: 'Estoy empezando', selected: true, onSelected: noop),
+        RadioCard(label: 'Familia', selected: false, onSelected: noop),
+        const RadioCard(label: 'Patrimonio', selected: false, onSelected: null),
+      ],
+    ),
   };
 }

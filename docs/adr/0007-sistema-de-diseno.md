@@ -61,9 +61,11 @@ flowchart LR
 - **Se paga:** cada token se mantiene en dos lugares. La prueba de deriva es la mitigación.
 - **Se paga:** sin pruebas golden, una regresión puramente visual (un margen, una alineación) no la detecta la integración continua. La mitigación es la galería (`lib/main_gallery.dart`) para revisión en dispositivo. En esta etapa esa revisión detectó un defecto real: el espaciado entre letras por defecto de Material se filtraba en la escala tipográfica.
 - **Se paga:** `primary` deja de ser el color de marca, lo que sorprende a quien conoce Material. Está documentado en el código del tema.
+- **Se paga:** la lista cerrada de colores de texto se hace cumplir con pruebas, no con el sistema de tipos. `AppColors` es público y nada impide en compilación pasar `brand/500` a un `TextStyle`. Lo detecta la prueba que recorre el texto pintado, y solo en los componentes registrados en el catálogo: una pantalla de un paquete de dominio queda cubierta cuando ese paquete registra la suya.
 
 Desviaciones conocidas respecto a la referencia de diseño:
 
+- **Tokens añadidos.** La copia de `tokens.json` del repositorio incorpora tres tamaños que la entrega de diseño no nombraba (`size/icon-medium`, `size/icon-small` y `size/progress-stroke`), para que ningún componente use un número suelto.
 - **Iconos.** Se usan los iconos delineados de Material, no un juego con trazo de 1,5 px.
 - **Anillo de foco.** Es un borde de 2 px del color indicado, sin la separación de 2 px de la referencia.
 - **Botón deshabilitado.** Usa el texto secundario sobre la superficie hundida para seguir siendo legible, en lugar de `ink/300`.
@@ -72,6 +74,9 @@ Desviaciones conocidas respecto a la referencia de diseño:
 
 Un equipo nuevo obtiene los componentes y las reglas al depender del paquete, y su pantalla hereda las comprobaciones de accesibilidad al registrar sus componentes en un catálogo equivalente.
 
-**Fuera de alcance de forma consciente:** el tema oscuro. La estructura lo permite (bastan otra instancia de `AppSemanticColors` y otro `ColorScheme`), pero la referencia de diseño solo define el tema claro y cada combinación nueva tendría que superar las mismas pruebas de contraste.
+**Fuera de alcance de forma consciente:**
+
+- **El tema oscuro.** La estructura lo permite (bastan otra instancia de `AppSemanticColors` y otro `ColorScheme`), pero la referencia de diseño solo define el tema claro y cada combinación nueva tendría que superar las mismas pruebas de contraste.
+- **La localización.** Los textos que los componentes traen por defecto están solo en español: los mensajes de los banners de conexión, el aviso de carga del botón y la lectura de importes para lectores de pantalla. El producto se dirige a un único mercado y no hay capa de traducción. Añadir otro idioma exigiría recibir esos textos por parámetro o incorporar `flutter_localizations`.
 
 Convendría revisar la decisión si los tokens empiezan a cambiar con frecuencia o los consume más de una plataforma, casos en los que un generador compensa su costo. También si se fija un entorno de renderizado único para la integración continua, lo que haría viables las pruebas golden.

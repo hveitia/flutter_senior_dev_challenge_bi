@@ -71,76 +71,78 @@ class AppTextField extends StatelessWidget {
       AppSizes.focusWidth,
     );
 
-    final field = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: AppTypography.captionStrong.copyWith(
-            color: scheme.onSurface,
-          ),
+    final showsHelper = !hasError && helperText != null;
+
+    // The visible label and helper are announced through the field itself,
+    // as its label and hint. They are not merged with it: merging would also
+    // swallow a trailing action, such as the control that reveals a password,
+    // and announce the whole field as a button.
+    final field = Semantics(
+      label: label,
+      hint: showsHelper ? helperText : null,
+      validationResult: hasError
+          ? SemanticsValidationResult.invalid
+          : SemanticsValidationResult.none,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        enabled: enabled,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        inputFormatters: inputFormatters,
+        autofillHints: autofillHints,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: AppTypography.body.copyWith(
+          color: enabled ? scheme.onSurface : colors.textSecondary,
         ),
-        const SizedBox(height: AppSpacing.x2),
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          enabled: enabled,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          inputFormatters: inputFormatters,
-          autofillHints: autofillHints,
-          onChanged: onChanged,
-          onSubmitted: onSubmitted,
-          style: AppTypography.body.copyWith(
-            color: enabled ? scheme.onSurface : colors.textSecondary,
+        cursorColor: scheme.onSurface,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: AppTypography.body.copyWith(
+            color: colors.textSecondary,
           ),
-          cursorColor: scheme.onSurface,
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: AppTypography.body.copyWith(
-              color: colors.textSecondary,
-            ),
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: enabled ? scheme.surface : colors.surfaceInset,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.x4,
-              vertical: _verticalPadding,
-            ),
-            border: resting,
-            enabledBorder: resting,
-            disabledBorder: outline(colors.line),
-            focusedBorder: focused,
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: enabled ? scheme.surface : colors.surfaceInset,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.x4,
+            vertical: _verticalPadding,
           ),
+          border: resting,
+          enabledBorder: resting,
+          disabledBorder: outline(colors.line),
+          focusedBorder: focused,
         ),
-        if (!hasError && helperText != null) ...[
-          const SizedBox(height: AppSpacing.x2),
-          Text(
-            helperText!,
-            style: AppTypography.caption.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
-        ],
-      ],
+      ),
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Label and helper are merged into the field so assistive technology
-        // announces them with it instead of as loose text around it.
-        MergeSemantics(
-          child: Semantics(
-            validationResult: hasError
-                ? SemanticsValidationResult.invalid
-                : SemanticsValidationResult.none,
-            child: field,
+        ExcludeSemantics(
+          child: Text(
+            label,
+            style: AppTypography.captionStrong.copyWith(
+              color: scheme.onSurface,
+            ),
           ),
         ),
+        const SizedBox(height: AppSpacing.x2),
+        field,
+        if (showsHelper) ...[
+          const SizedBox(height: AppSpacing.x2),
+          ExcludeSemantics(
+            child: Text(
+              helperText!,
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
         if (hasError) ...[
           const SizedBox(height: AppSpacing.x2),
           // A live region of its own: the message is announced when it

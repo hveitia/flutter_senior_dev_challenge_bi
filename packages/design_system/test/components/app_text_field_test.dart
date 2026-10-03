@@ -182,5 +182,60 @@ void main() {
       expect(field.label, isNot(contains(message)));
       handle.dispose();
     });
+    testWidgets('a trailing action stays a button of its own instead of '
+        'turning the field into one', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        AppTextField(
+          label: 'Contraseña',
+          helperText: 'Solo tú la conoces',
+          suffixIcon: IconButton(
+            tooltip: 'Mostrar contraseña',
+            icon: const Icon(Icons.visibility_outlined),
+            onPressed: () {},
+          ),
+        ),
+      );
+
+      final field = tester.getSemantics(find.byType(TextField));
+      final action = tester.getSemantics(find.byType(IconButton));
+
+      expect(field, containsSemantics(isTextField: true, isButton: false));
+      expect(field.label, contains('Contraseña'));
+      expect(field.label, isNot(contains('Mostrar contraseña')));
+      expect(
+        action,
+        containsSemantics(
+          tooltip: 'Mostrar contraseña',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(action.id, isNot(field.id));
+      handle.dispose();
+    });
+
+    testWidgets('the helper is announced as the hint of the field', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        const AppTextField(
+          label: 'Correo electrónico',
+          helperText: 'Lo usamos para enviarte tus comprobantes',
+        ),
+      );
+
+      expect(
+        tester.getSemantics(find.byType(TextField)),
+        containsSemantics(
+          isTextField: true,
+          hint: 'Lo usamos para enviarte tus comprobantes',
+        ),
+      );
+      handle.dispose();
+    });
   });
 }

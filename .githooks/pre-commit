@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Keeps main releasable: a commit is only created when the workspace is green.
+set -euo pipefail
+
+exec "$(git rev-parse --show-toplevel)/tool/verify.sh"

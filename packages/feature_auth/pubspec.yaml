@@ -1,0 +1,31 @@
+name: feature_auth
+description: Onboarding, sign-in and session for Banca Digital.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+resolution: workspace
+
+dependencies:
+  app_platform: ^0.1.0
+  bloc: ^9.2.0
+  cloud_firestore: ^6.10.0
+  design_system: ^0.1.0
+  firebase_auth: ^6.7.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  go_router: ^17.5.0
+  local_auth: ^3.0.2
+  shared_preferences: ^2.5.5
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.5
+
+flutter:
+  uses-material-design: true

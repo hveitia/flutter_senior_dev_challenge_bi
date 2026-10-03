@@ -9,6 +9,7 @@ workspace:
   - apps/mobile
   - packages/design_system
   - packages/app_platform
+  - packages/feature_auth
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

@@ -22,9 +22,9 @@ final class _BalanceCubit extends Cubit<_BalanceState> {
 
   void load() => emit(const _BalanceState(482035));
 
-  void fail() => addError(
+  void fail([StackTrace? stackTrace]) => addError(
     StateError('No balance for account $_accountNumber of $_customerName'),
-    StackTrace.current,
+    stackTrace ?? StackTrace.current,
   );
 }
 
@@ -101,14 +101,21 @@ void main() {
   });
 
   group('an error', () {
-    test('is reported with the bloc, the error type and the stack', () async {
-      final cubit = _BalanceCubit()..fail();
+    test('is reported as its type, the bloc and the stack, and nothing '
+        'else', () async {
+      final stackTrace = StackTrace.current;
+      final cubit = _BalanceCubit()..fail(stackTrace);
 
       final report = telemetry.errors.single;
+      expect(report.error, isA<RedactedError>());
+      expect((report.error as RedactedError).type, StateError);
+      expect('${report.error}', 'RedactedError(StateError)');
+      expect(report.stackTrace, same(stackTrace));
       expect(report.reason, '${BlocTelemetry.errorReason}:_BalanceCubit');
-      expect('${report.error}', contains('StateError'));
-      expect('${report.stackTrace}', contains('app_bloc_observer_test.dart'));
       expect(report.fatal, isFalse);
+      expect(telemetry.logs, isEmpty);
+      expect(telemetry.events, isEmpty);
+      expect(telemetry.context, isEmpty);
       await cubit.close();
     });
 

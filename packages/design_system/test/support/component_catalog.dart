@@ -136,5 +136,19 @@ Map<String, Widget> componentCatalog() {
       icon: Icons.mark_email_read_outlined,
     ),
     'Wordmark': const Wordmark(name: 'Banca Digital'),
+    'ToggleRow': Column(
+      children: [
+        ToggleRow(
+          label: 'Ingresar con huella o rostro',
+          value: true,
+          onChanged: (_) {},
+        ),
+        ToggleRow(
+          label: 'Alertas de seguridad',
+          value: false,
+          onChanged: (_) {},
+        ),
+      ],
+    ),
   };
 }

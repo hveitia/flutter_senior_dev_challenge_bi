@@ -9,6 +9,7 @@ export 'src/components/empty_state.dart';
 export 'src/components/inline_error.dart';
 export 'src/components/module_container.dart';
 export 'src/components/radio_card.dart';
+export 'src/components/requirement_item.dart';
 export 'src/components/skeleton_block.dart';
 export 'src/components/status_banner.dart';
 export 'src/components/status_chip.dart';

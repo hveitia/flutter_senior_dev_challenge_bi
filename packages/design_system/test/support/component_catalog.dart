@@ -120,5 +120,12 @@ Map<String, Widget> componentCatalog() {
         const RadioCard(label: 'Patrimonio', selected: false, onSelected: null),
       ],
     ),
+    'RequirementItem': const Column(
+      spacing: AppSpacing.x2,
+      children: [
+        RequirementItem(label: 'Al menos 8 caracteres', met: true),
+        RequirementItem(label: 'Un símbolo', met: false),
+      ],
+    ),
   };
 }

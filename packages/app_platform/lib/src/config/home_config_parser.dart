@@ -9,6 +9,12 @@ enum ConfigRejectionReason {
   invalidSchemaVersion,
   unsupportedSchemaVersion,
   noUsableSegments,
+
+  /// A module's props nest deeper than [HomeConfigParser.maxPropsDepth].
+  propsTooDeep,
+
+  /// Reading the document failed in a way the parser did not anticipate.
+  unreadable,
 }
 
 /// Outcome of parsing a published document. Parsing never throws: callers
@@ -43,6 +49,11 @@ final class HomeConfigParser {
   /// Highest contract version this app version understands.
   static const int supportedSchemaVersion = 1;
 
+  /// Levels of nested objects and lists a module's props may have, the props
+  /// object included. Real props use three or four; the limit keeps a hostile
+  /// or broken document from exhausting the stack.
+  static const int maxPropsDepth = 32;
+
   static const int _firstSchemaVersion = 1;
   static const String _destinationKey = 'destination';
 
@@ -57,6 +68,18 @@ final class HomeConfigParser {
   }
 
   ConfigParseResult parse(Object? raw) {
+    try {
+      return _parse(raw);
+    } on _PropsTooDeep {
+      return const ConfigRejected(ConfigRejectionReason.propsTooDeep);
+    } on Object {
+      // Last line of defense: the document comes from outside the app, so no
+      // defect in reading it may take down the code that asked.
+      return const ConfigRejected(ConfigRejectionReason.unreadable);
+    }
+  }
+
+  ConfigParseResult _parse(Object? raw) {
     if (raw is! Map) {
       return const ConfigRejected(ConfigRejectionReason.notAnObject);
     }
@@ -184,7 +207,7 @@ final class HomeConfigParser {
 
   Map<String, Object?> _props(Object? raw, Set<String> destinations) {
     if (raw is! Map) return const {};
-    return _sanitizedMap(raw, destinations);
+    return _sanitizedMap(raw, destinations, depth: 1);
   }
 
   /// Copies [raw] into an unmodifiable map, leaving out every nested object
@@ -194,8 +217,11 @@ final class HomeConfigParser {
   /// object has a `destination` is an action, wherever it sits.
   Map<String, Object?> _sanitizedMap(
     Map<Object?, Object?> raw,
-    Set<String> destinations,
-  ) {
+    Set<String> destinations, {
+    required int depth,
+  }) {
+    if (depth > maxPropsDepth) throw const _PropsTooDeep();
+
     final copy = <String, Object?>{};
     for (final entry in raw.entries) {
       final key = entry.key;
@@ -203,18 +229,24 @@ final class HomeConfigParser {
 
       final value = entry.value;
       if (_isForbiddenAction(value, destinations)) continue;
-      copy[key] = _sanitized(value, destinations);
+      copy[key] = _sanitized(value, destinations, depth: depth + 1);
     }
     return Map.unmodifiable(copy);
   }
 
-  Object? _sanitized(Object? value, Set<String> destinations) {
-    if (value is Map) return _sanitizedMap(value, destinations);
+  /// [depth] is the level [value] would occupy if it is an object or a list.
+  Object? _sanitized(
+    Object? value,
+    Set<String> destinations, {
+    required int depth,
+  }) {
+    if (value is Map) return _sanitizedMap(value, destinations, depth: depth);
     if (value is List) {
+      if (depth > maxPropsDepth) throw const _PropsTooDeep();
       return List<Object?>.unmodifiable(
         value
             .where((item) => !_isForbiddenAction(item, destinations))
-            .map((item) => _sanitized(item, destinations)),
+            .map((item) => _sanitized(item, destinations, depth: depth + 1)),
       );
     }
     return value;
@@ -232,4 +264,9 @@ final class HomeConfigParser {
 
   String _nonEmptyStringOr(Object? value, String fallback) =>
       value is String && value.isNotEmpty ? value : fallback;
+}
+
+/// Unwinds the recursion over a module's props once it passes the limit.
+final class _PropsTooDeep implements Exception {
+  const _PropsTooDeep();
 }

@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
@@ -515,6 +516,71 @@ void main() {
     });
   });
 
+  group('props nested too deep', () {
+    /// A props map whose `value` wraps a leaf in [levels] lists, so the leaf
+    /// sits [levels] + 1 levels below the props themselves.
+    Map<String, Object?> documentNesting(int levels) {
+      Object? value = 'leaf';
+      for (var level = 0; level < levels; level++) {
+        value = [value];
+      }
+      return _document(
+        modules: [
+          _module(
+            extra: {
+              'props': {'value': value},
+            },
+          ),
+        ],
+      );
+    }
+
+    test('are accepted up to the limit', () {
+      final config = _accepted(
+        documentNesting(HomeConfigParser.maxPropsDepth - 1),
+      );
+
+      expect(
+        config.segments['starting']!.modules.single.props,
+        contains('value'),
+      );
+    });
+
+    test('reject the document one level past the limit', () {
+      expect(
+        _rejection(documentNesting(HomeConfigParser.maxPropsDepth)),
+        ConfigRejectionReason.propsTooDeep,
+      );
+    });
+
+    test('reject a pathological document instead of overflowing the stack', () {
+      expect(
+        _rejection(documentNesting(20000)),
+        ConfigRejectionReason.propsTooDeep,
+      );
+    });
+
+    test('are rejected the same way when they arrive as JSON text', () {
+      final result = const HomeConfigParser().parseJson(
+        jsonEncode(documentNesting(HomeConfigParser.maxPropsDepth)),
+      );
+
+      expect(
+        (result as ConfigRejected).reason,
+        ConfigRejectionReason.propsTooDeep,
+      );
+    });
+  });
+
+  group('an error nobody anticipated', () {
+    test('rejects the document instead of escaping the parser', () {
+      expect(
+        _rejection(_ExplodingMap()),
+        ConfigRejectionReason.unreadable,
+      );
+    });
+  });
+
   group('robustness', () {
     test('a segment that is not an object is skipped, the rest is kept', () {
       final config = _accepted({
@@ -618,4 +684,23 @@ void main() {
       expect(config.segmentFor('platinum').id, 'family');
     });
   });
+}
+
+/// A map that fails on every access, standing in for any defect or input the
+/// parser did not anticipate.
+final class _ExplodingMap extends MapBase<Object?, Object?> {
+  @override
+  Object? operator [](Object? key) => throw StateError('unreadable');
+
+  @override
+  void operator []=(Object? key, Object? value) {}
+
+  @override
+  void clear() {}
+
+  @override
+  Iterable<Object?> get keys => const [];
+
+  @override
+  Object? remove(Object? key) => null;
 }

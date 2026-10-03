@@ -111,6 +111,19 @@ void main() {
         expect(cubit.state.invalidFields, {SignUpField.nationalId});
       });
 
+      test('accepts a cédula typed with spaces around it and stores it '
+          'without them', () async {
+        final cubit = await readyToCreate();
+        while (cubit.back()) {}
+        cubit.nationalIdChanged('  ${draft.nationalId} ');
+
+        await cubit.next();
+        await cubit.next();
+        await cubit.next();
+
+        expect(repository.signUps.single.profile.nationalId, draft.nationalId);
+      });
+
       test('clears the mark of a field when the customer edits it', () async {
         final cubit = newAccount();
         await cubit.next();

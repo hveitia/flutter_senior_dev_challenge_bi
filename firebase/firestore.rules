@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Deny by default: anything not matched below is rejected.
+// Balances, accounts and movements are never written from a client. They are
+// changed only by the server API through the Admin SDK, which bypasses rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Published experience configuration (home modules, flags, resilience).
+    match /config/{document} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // A customer reads only their own document and everything under it
+    // (accounts, movements, inbox). With rules_version 2 the recursive
+    // wildcard also matches the user document itself.
+    match /users/{uid}/{document=**} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+  }
+}

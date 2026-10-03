@@ -11,6 +11,7 @@ export 'src/components/module_container.dart';
 export 'src/components/skeleton_block.dart';
 export 'src/components/status_banner.dart';
 export 'src/components/status_chip.dart';
+export 'src/components/step_indicator.dart';
 export 'src/formatting/amount_formatter.dart';
 export 'src/theme/app_metrics.dart';
 export 'src/theme/app_semantic_colors.dart';

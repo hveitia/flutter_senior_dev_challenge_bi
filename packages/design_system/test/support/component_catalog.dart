@@ -111,5 +111,6 @@ Map<String, Widget> componentCatalog() {
       footnote: 'Actualizado hace 8 min',
       child: const SkeletonBlock(height: 72),
     ),
+    'StepIndicator': const StepIndicator(current: 2, total: 3),
   };
 }

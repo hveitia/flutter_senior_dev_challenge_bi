@@ -20,6 +20,15 @@ final class FirebaseTelemetry implements Telemetry {
        _analytics = analytics,
        _performance = performance;
 
+  /// Telemetry for the Firebase app initialized at startup.
+  factory FirebaseTelemetry.forDefaultApp() {
+    return FirebaseTelemetry(
+      crashlytics: FirebaseCrashlytics.instance,
+      analytics: FirebaseAnalytics.instance,
+      performance: FirebasePerformance.instance,
+    );
+  }
+
   static const String _logName = 'app';
 
   final FirebaseCrashlytics _crashlytics;

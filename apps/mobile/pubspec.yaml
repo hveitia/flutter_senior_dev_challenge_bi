@@ -9,6 +9,8 @@ environment:
 resolution: workspace
 
 dependencies:
+  app_platform: ^0.1.0
+  bloc: ^9.2.0
   design_system: ^0.1.0
   firebase_core: ^4.15.0
   flutter:

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_platform/app_platform.dart';
+import 'package:app_platform/testing.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,8 +16,28 @@ double _maxJitter() => 1;
 /// Random source pinned to the bottom of its range: backoff takes its minimum.
 double _minJitter() => 0;
 
+/// Most of these tests are about the retry path, which only operations
+/// declared as safe to repeat go through.
+extension on ResiliencePolicy {
+  Future<Result<T>> runIdempotent<T>(
+    Future<T> Function() operation, {
+    String? serviceId,
+    void Function(int attempt)? onRetry,
+    void Function()? onSlow,
+  }) {
+    return run(
+      operation,
+      idempotent: true,
+      serviceId: serviceId,
+      onRetry: onRetry,
+      onSlow: onSlow,
+    );
+  }
+}
+
 void main() {
   late List<Duration> requestedDelays;
+  late InMemoryTelemetry telemetry;
 
   Future<void> recordingDelay(Duration duration) {
     requestedDelays.add(duration);
@@ -25,12 +46,15 @@ void main() {
 
   ResiliencePolicy policy({
     ResilienceSettings Function()? faults,
+    bool allowFaultInjection = false,
     bool Function()? isOffline,
     double Function() random = _maxJitter,
   }) {
     return ResiliencePolicy(
       faults: faults,
+      allowFaultInjection: allowFaultInjection,
       isOffline: isOffline,
+      telemetry: telemetry,
       delay: recordingDelay,
       random: random,
       timeout: _timeout,
@@ -49,20 +73,24 @@ void main() {
     return value;
   }
 
-  List<Duration> backoffDelays() => requestedDelays
-      .where((delay) => delay != _timeout && delay != _slowThreshold)
-      .toList();
-
   Future<int> never() => Completer<int>().future;
 
-  setUp(() => requestedDelays = []);
+  List<Map<String, Object>> eventsNamed(String name) => telemetry.events
+      .where((event) => event.name == name)
+      .map((event) => event.parameters)
+      .toList();
+
+  setUp(() {
+    requestedDelays = [];
+    telemetry = InMemoryTelemetry();
+  });
 
   group('a healthy operation', () {
     test('returns its value after a single attempt', () {
       var calls = 0;
 
       final result = settle(
-        () => policy().run(() async {
+        () => policy().runIdempotent(() async {
           calls++;
           return 42;
         }),
@@ -79,7 +107,7 @@ void main() {
       var calls = 0;
 
       final result = settle(
-        () => policy().run(() {
+        () => policy().runIdempotent(() {
           calls++;
           return never();
         }),
@@ -94,7 +122,7 @@ void main() {
       var calls = 0;
 
       final result = settle(
-        () => policy().run(() {
+        () => policy().runIdempotent(() {
           calls++;
           return calls < 2 ? never() : Future.value(7);
         }),
@@ -107,7 +135,7 @@ void main() {
     test('announces every retry with the number of the attempt', () {
       final attempts = <int>[];
 
-      settle(() => policy().run(never, onRetry: attempts.add));
+      settle(() => policy().runIdempotent(never, onRetry: attempts.add));
 
       expect(attempts, [2, 3]);
     });
@@ -115,21 +143,21 @@ void main() {
 
   group('backoff between attempts', () {
     test('doubles on every retry', () {
-      settle(() => policy().run(never));
+      settle(() => policy().runIdempotent(never));
 
-      expect(backoffDelays(), [_baseBackoff, _baseBackoff * 2]);
+      expect(requestedDelays, [_baseBackoff, _baseBackoff * 2]);
     });
 
     test('is never shorter than half of its nominal value', () {
-      settle(() => policy(random: _minJitter).run(never));
+      settle(() => policy(random: _minJitter).runIdempotent(never));
 
-      expect(backoffDelays(), [_baseBackoff ~/ 2, _baseBackoff]);
+      expect(requestedDelays, [_baseBackoff ~/ 2, _baseBackoff]);
     });
 
     test('is not applied after the last attempt', () {
-      settle(() => policy().run(never));
+      settle(() => policy().runIdempotent(never));
 
-      expect(backoffDelays(), hasLength(ResiliencePolicy.maxAttempts - 1));
+      expect(requestedDelays, hasLength(ResiliencePolicy.maxAttempts - 1));
     });
   });
 
@@ -139,7 +167,7 @@ void main() {
       final cause = StateError('bug');
 
       final result = settle(
-        () => policy().run<int>(() {
+        () => policy().runIdempotent<int>(() {
           calls++;
           throw cause;
         }),
@@ -153,7 +181,7 @@ void main() {
 
     test('a typed failure thrown by the operation is kept as it is', () {
       final result = settle(
-        () => policy().run<int>(
+        () => policy().runIdempotent<int>(
           () => throw const ServiceUnavailableFailure(ServiceIds.movements),
         ),
       );
@@ -170,7 +198,7 @@ void main() {
       var calls = 0;
 
       settle(
-        () => policy().run<int>(() {
+        () => policy().runIdempotent<int>(() {
           calls++;
           throw const ServiceUnavailableFailure(ServiceIds.movements);
         }),
@@ -183,7 +211,7 @@ void main() {
       var calls = 0;
 
       final result = settle(
-        () => policy(isOffline: () => true).run(() async {
+        () => policy(isOffline: () => true).runIdempotent(() async {
           calls++;
           return 1;
         }),
@@ -198,7 +226,7 @@ void main() {
       var calls = 0;
 
       final result = settle(
-        () => policy(isOffline: () => calls > 0).run(() {
+        () => policy(isOffline: () => calls > 0).runIdempotent(() {
           calls++;
           return never();
         }),
@@ -217,7 +245,7 @@ void main() {
       var slowCalls = 0;
 
       final result = settle(
-        () => policy().run(
+        () => policy().runIdempotent(
           () => answerAfter(_slowThreshold + const Duration(seconds: 1)),
           onSlow: () => slowCalls++,
         ),
@@ -231,7 +259,7 @@ void main() {
       var slowCalls = 0;
 
       settle(
-        () => policy().run(
+        () => policy().runIdempotent(
           () => answerAfter(_slowThreshold - const Duration(seconds: 1)),
           onSlow: () => slowCalls++,
         ),
@@ -246,7 +274,7 @@ void main() {
       final subscription = resilience.slowChanges.listen(changes.add);
 
       settle(
-        () => resilience.run(
+        () => resilience.runIdempotent(
           () => answerAfter(_slowThreshold + const Duration(seconds: 1)),
         ),
       );
@@ -262,12 +290,12 @@ void main() {
 
       fakeAsync((async) {
         unawaited(
-          resilience.run(
+          resilience.runIdempotent(
             () => answerAfter(_slowThreshold + const Duration(seconds: 1)),
           ),
         );
         unawaited(
-          resilience.run(
+          resilience.runIdempotent(
             () => answerAfter(_slowThreshold + const Duration(seconds: 2)),
           ),
         );
@@ -296,7 +324,10 @@ void main() {
 
       fakeAsync((async) {
         unawaited(
-          policy(faults: () => faults(latency: latency)).run(() async {
+          policy(
+            allowFaultInjection: true,
+            faults: () => faults(latency: latency),
+          ).runIdempotent(() async {
             startedAt = async.elapsed;
             return 1;
           }),
@@ -313,9 +344,10 @@ void main() {
       final result = settle(
         () =>
             policy(
+              allowFaultInjection: true,
               faults: () =>
                   faults(latency: _timeout + const Duration(seconds: 1)),
-            ).run(() async {
+            ).runIdempotent(() async {
               calls++;
               return 1;
             }),
@@ -331,8 +363,9 @@ void main() {
       final result = settle(
         () =>
             policy(
+              allowFaultInjection: true,
               faults: () => faults(unavailable: {ServiceIds.movements}),
-            ).run(() async {
+            ).runIdempotent(() async {
               calls++;
               return 1;
             }, serviceId: ServiceIds.movements),
@@ -349,13 +382,17 @@ void main() {
 
     test('leaves other services and unnamed operations untouched', () {
       ResiliencePolicy lab() => policy(
+        allowFaultInjection: true,
         faults: () => faults(unavailable: {ServiceIds.movements}),
       );
 
       final other = settle(
-        () => lab().run(() async => 1, serviceId: ServiceIds.partnerInsurance),
+        () => lab().runIdempotent(
+          () async => 1,
+          serviceId: ServiceIds.partnerInsurance,
+        ),
       );
-      final unnamed = settle(() => lab().run(() async => 2));
+      final unnamed = settle(() => lab().runIdempotent(() async => 2));
 
       expect(other, isA<Success<int>>());
       expect(unnamed, isA<Success<int>>());
@@ -366,16 +403,193 @@ void main() {
 
       final result = settle(
         () => policy(
+          allowFaultInjection: true,
           faults: () {
             attempts++;
             return attempts == 1
                 ? faults(unavailable: {ServiceIds.movements})
                 : ResilienceSettings.none;
           },
-        ).run(() async => 9, serviceId: ServiceIds.movements),
+        ).runIdempotent(() async => 9, serviceId: ServiceIds.movements),
       );
 
       expect((result as Success<int>).value, 9);
+    });
+  });
+
+  group('an operation not declared idempotent', () {
+    test('is attempted exactly once when it times out', () {
+      var calls = 0;
+
+      final result = settle(
+        () => policy().run(() {
+          calls++;
+          return never();
+        }, idempotent: false),
+      );
+
+      expect(calls, 1);
+      expect((result as Failed<int>).failure, isA<TimeoutFailure>());
+    });
+
+    test('is attempted exactly once when the service is unavailable', () {
+      var calls = 0;
+
+      final result = settle(
+        () => policy().run<int>(() {
+          calls++;
+          throw const ServiceUnavailableFailure(ServiceIds.movements);
+        }, idempotent: false),
+      );
+
+      expect(calls, 1);
+      expect((result as Failed<int>).failure, isA<ServiceUnavailableFailure>());
+    });
+
+    test('never waits for a backoff nor announces a retry', () {
+      final attempts = <int>[];
+
+      settle(
+        () => policy().run(never, idempotent: false, onRetry: attempts.add),
+      );
+
+      expect(requestedDelays, isEmpty);
+      expect(attempts, isEmpty);
+      expect(eventsNamed(ResilienceTelemetry.retry), isEmpty);
+      expect(eventsNamed(ResilienceTelemetry.attemptsExhausted), isEmpty);
+    });
+  });
+
+  group('telemetry', () {
+    test('reports every timeout with the service and the attempt', () {
+      settle(
+        () => policy().runIdempotent(never, serviceId: ServiceIds.movements),
+      );
+
+      expect(eventsNamed(ResilienceTelemetry.timeout), [
+        for (
+          var attempt = 1;
+          attempt <= ResiliencePolicy.maxAttempts;
+          attempt++
+        )
+          {
+            ResilienceTelemetry.serviceKey: ServiceIds.movements,
+            ResilienceTelemetry.attemptKey: attempt,
+          },
+      ]);
+    });
+
+    test('reports every retry with the attempt about to start', () {
+      settle(
+        () => policy().runIdempotent(never, serviceId: ServiceIds.movements),
+      );
+
+      expect(eventsNamed(ResilienceTelemetry.retry), [
+        {
+          ResilienceTelemetry.serviceKey: ServiceIds.movements,
+          ResilienceTelemetry.attemptKey: 2,
+        },
+        {
+          ResilienceTelemetry.serviceKey: ServiceIds.movements,
+          ResilienceTelemetry.attemptKey: 3,
+        },
+      ]);
+    });
+
+    test('reports when the attempts ran out', () {
+      settle(
+        () => policy().runIdempotent(never, serviceId: ServiceIds.movements),
+      );
+
+      expect(eventsNamed(ResilienceTelemetry.attemptsExhausted), [
+        {
+          ResilienceTelemetry.serviceKey: ServiceIds.movements,
+          ResilienceTelemetry.attemptKey: ResiliencePolicy.maxAttempts,
+        },
+      ]);
+    });
+
+    test('names the service as unnamed when the caller gave none', () {
+      settle(() => policy().run(never, idempotent: false));
+
+      expect(eventsNamed(ResilienceTelemetry.timeout).single, {
+        ResilienceTelemetry.serviceKey: ResilienceTelemetry.unnamedService,
+        ResilienceTelemetry.attemptKey: 1,
+      });
+    });
+
+    test('reports nothing for an operation that answers at once', () {
+      settle(() => policy().runIdempotent(() async => 1));
+
+      expect(telemetry.events, isEmpty);
+      expect(telemetry.errors, isEmpty);
+      expect(telemetry.logs, isEmpty);
+    });
+  });
+
+  group('fault injection gate', () {
+    ResilienceSettings everythingDown() => const ResilienceSettings(
+      latency: Duration(seconds: 2),
+      unavailableServices: {ServiceIds.movements},
+    );
+
+    test('ignores the published faults unless the build allows them', () {
+      Duration? startedAt;
+
+      fakeAsync((async) {
+        Result<int>? result;
+        unawaited(
+          policy(faults: everythingDown)
+              .run(
+                () async {
+                  startedAt = async.elapsed;
+                  return 1;
+                },
+                idempotent: false,
+                serviceId: ServiceIds.movements,
+              )
+              .then((value) => result = value),
+        );
+        async.elapse(_longEnough);
+
+        expect(result, isA<Success<int>>());
+      });
+
+      expect(startedAt, Duration.zero);
+    });
+
+    test('is reported once when the build allows it', () {
+      final lab = policy(allowFaultInjection: true, faults: everythingDown);
+
+      settle(() => lab.run(() async => 1, idempotent: false));
+      settle(() => lab.run(() async => 2, idempotent: false));
+
+      expect(
+        eventsNamed(ResilienceTelemetry.faultInjectionEnabled),
+        hasLength(1),
+      );
+    });
+
+    test('is not reported when the build does not allow it', () {
+      settle(
+        () => policy(faults: everythingDown).run(
+          () async => 1,
+          idempotent: false,
+        ),
+      );
+
+      expect(eventsNamed(ResilienceTelemetry.faultInjectionEnabled), isEmpty);
+    });
+  });
+
+  group('timers', () {
+    test('none is left pending once an attempt has answered', () {
+      fakeAsync((async) {
+        unawaited(policy().run(() async => 1, idempotent: false));
+        async.flushMicrotasks();
+
+        expect(async.pendingTimers, isEmpty);
+      });
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'package:design_system/src/theme/app_theme_context.dart';
+import 'package:design_system/src/tokens/app_sizes.dart';
 import 'package:design_system/src/tokens/app_spacing.dart';
 import 'package:design_system/src/tokens/app_tone.dart';
 import 'package:design_system/src/tokens/app_typography.dart';
@@ -47,8 +48,6 @@ class StatusBanner extends StatelessWidget {
   /// Overrides the default message of the [kind].
   final String? message;
 
-  static const double _lineHeight = 2;
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -68,10 +67,10 @@ class StatusBanner extends StatelessWidget {
               child: reduceMotion
                   ? ColoredBox(
                       color: foreground,
-                      child: const SizedBox(height: _lineHeight),
+                      child: const SizedBox(height: AppSizes.progressStroke),
                     )
                   : LinearProgressIndicator(
-                      minHeight: _lineHeight,
+                      minHeight: AppSizes.progressStroke,
                       color: foreground,
                       backgroundColor: tint,
                     ),
@@ -86,7 +85,11 @@ class StatusBanner extends StatelessWidget {
               child: Row(
                 children: [
                   ExcludeSemantics(
-                    child: Icon(kind.icon, size: 20, color: foreground),
+                    child: Icon(
+                      kind.icon,
+                      size: AppSizes.iconMedium,
+                      color: foreground,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.x2),
                   Expanded(

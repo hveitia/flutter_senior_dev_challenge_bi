@@ -47,6 +47,9 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
+  /// Makes the field as tall as a button with one line of body text.
+  static const double _verticalPadding = 15;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -106,7 +109,7 @@ class AppTextField extends StatelessWidget {
               fillColor: enabled ? scheme.surface : colors.surfaceInset,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.x4,
-                vertical: 15,
+                vertical: _verticalPadding,
               ),
               border: resting,
               enabledBorder: resting,
@@ -123,7 +126,7 @@ class AppTextField extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.warning_amber_rounded,
-                    size: 18,
+                    size: AppSizes.iconSmall,
                     color: colors.danger,
                   ),
                   const SizedBox(width: AppSpacing.x2),

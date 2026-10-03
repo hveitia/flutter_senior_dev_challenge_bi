@@ -110,7 +110,7 @@ class _Content extends StatelessWidget {
           SizedBox.square(
             dimension: AppSizes.icon,
             child: CircularProgressIndicator(
-              strokeWidth: 2,
+              strokeWidth: AppSizes.progressStroke,
               color: DefaultTextStyle.of(context).style.color,
             ),
           ),

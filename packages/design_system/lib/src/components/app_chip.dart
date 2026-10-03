@@ -33,7 +33,11 @@ class AppChip extends StatelessWidget {
       onSelected: onSelected,
       showCheckmark: false,
       avatar: selected
-          ? Icon(Icons.check, size: 18, color: scheme.onSurface)
+          ? Icon(
+              Icons.check,
+              size: AppSizes.iconMedium,
+              color: scheme.onSurface,
+            )
           : null,
       labelStyle: AppTypography.body.copyWith(color: scheme.onSurface),
       backgroundColor: scheme.surface,

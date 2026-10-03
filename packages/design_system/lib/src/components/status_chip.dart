@@ -1,4 +1,5 @@
 import 'package:design_system/src/theme/app_theme_context.dart';
+import 'package:design_system/src/tokens/app_sizes.dart';
 import 'package:design_system/src/tokens/app_spacing.dart';
 import 'package:design_system/src/tokens/app_tone.dart';
 import 'package:design_system/src/tokens/app_typography.dart';
@@ -48,11 +49,11 @@ class StatusChip extends StatelessWidget {
             ExcludeSemantics(
               child: Icon(
                 icon ?? _defaultIcon(tone),
-                size: 16,
+                size: AppSizes.iconSmall,
                 color: foreground,
               ),
             ),
-            const SizedBox(width: AppSpacing.x1 + 2),
+            const SizedBox(width: AppSpacing.x2),
             Flexible(
               child: Text(
                 label,

@@ -4,6 +4,7 @@ library;
 export 'src/accessibility/contrast.dart';
 export 'src/components/amount_text.dart';
 export 'src/components/app_button.dart';
+export 'src/components/app_text_field.dart';
 export 'src/formatting/amount_formatter.dart';
 export 'src/theme/app_metrics.dart';
 export 'src/theme/app_semantic_colors.dart';

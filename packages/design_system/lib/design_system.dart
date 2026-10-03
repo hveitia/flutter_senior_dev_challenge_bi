@@ -5,6 +5,7 @@ export 'src/components/amount_text.dart';
 export 'src/components/app_button.dart';
 export 'src/components/app_chip.dart';
 export 'src/components/app_text_field.dart';
+export 'src/components/checkbox_row.dart';
 export 'src/components/empty_state.dart';
 export 'src/components/inline_alert.dart';
 export 'src/components/inline_error.dart';

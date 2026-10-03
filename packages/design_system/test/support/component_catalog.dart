@@ -150,5 +150,21 @@ Map<String, Widget> componentCatalog() {
         ),
       ],
     ),
+    'CheckboxRow': Column(
+      children: [
+        CheckboxRow(
+          value: true,
+          onChanged: (_) {},
+          semanticLabel: 'Acepto los términos y condiciones',
+          label: const Text('Acepto los términos y condiciones.'),
+        ),
+        CheckboxRow(
+          value: false,
+          onChanged: (_) {},
+          semanticLabel: 'Quiero recibir novedades',
+          label: const Text('Quiero recibir novedades por correo.'),
+        ),
+      ],
+    ),
   };
 }

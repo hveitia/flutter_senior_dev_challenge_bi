@@ -1,7 +1,6 @@
 /// Design tokens, theme and base components shared by every domain package.
 library;
 
-export 'src/accessibility/contrast.dart';
 export 'src/components/amount_text.dart';
 export 'src/components/app_button.dart';
 export 'src/components/app_chip.dart';

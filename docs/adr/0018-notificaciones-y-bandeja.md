@@ -98,7 +98,7 @@ Tras la integración se ejecutó en un teléfono Android, con la consola en loca
 
 Esa ejecución encontró dos defectos, corregidos con una prueba que falló primero: el aviso de un push recibido con la aplicación abierta no se retiraba solo y seguía en pantalla sobre otras pantallas, y un aviso tocado con la aplicación cerrada caía en la bandeja porque se abría antes de leerse la configuración.
 
-Sigue sin verificar: que el texto no se vea en la pantalla bloqueada (se comprobó que el aviso llega con visibilidad privada, no bloqueando el teléfono), el aviso tocado con el bloqueo biométrico activo, la sesión revocada desde la consola de Firebase, y todo lo de iOS (capacidad de notificaciones, APNs y `UIBackgroundModes`, añadido pero sin compilar). Tocar un aviso del sistema no lo marca como leído en la bandeja.
+Sigue sin verificar: que el texto no se vea en la pantalla bloqueada (se comprobó que el aviso llega con visibilidad privada, no bloqueando el teléfono), el aviso tocado con el bloqueo biométrico activo, la sesión revocada desde la consola de Firebase, y todo lo de iOS (capacidad de notificaciones, APNs y `UIBackgroundModes`: la aplicación compila y arranca en un iPhone, pero sin clave APNs ni la capacidad de notificaciones no recibe avisos). Tocar un aviso del sistema no lo marca como leído en la bandeja.
 
 ## Impacto a largo plazo
 

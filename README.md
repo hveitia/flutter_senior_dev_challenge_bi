@@ -53,14 +53,14 @@ Diagramas: [componentes y dependencias](docs/arquitectura/componentes.md), [fluj
 | Cuentas, saldos y movimientos | Cumplido | Transferencias solo entre cuentas propias |
 | Personalización dinámica | Cumplido | Por segmento e interruptores |
 | Servicio o micro aplicativo externo | Cumplido | Los dos aliados son simulados |
-| Notificaciones push | Cumplido en Android | iOS sin construir |
+| Notificaciones push | Cumplido en Android | En iOS no están configuradas: falta la clave APNs |
 | Monitoreo en producción | Explicado | Eventos y trazas emitidos; su llegada a la consola de Firebase no se comprobó |
 | Conectividad degradada, descrita y demostrada | Cumplido | Vista en un teléfono, con lo no visto señalado |
 | Pruebas unitarias, de widgets y E2E | Cumplido, E2E parcial | La versión repetible del E2E no tiene una ejecución válida |
 | Documentación del uso de IA | Cumplido | |
 | Trunk Based Development | Cumplido | |
 
-La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). El servidor está desplegado como demostración (ver [Demostración publicada](#demostración-publicada)); la aplicación no está publicada en ninguna tienda, e iOS no se compiló.
+La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). El servidor está desplegado como demostración (ver [Demostración publicada](#demostración-publicada)); la aplicación no está publicada en ninguna tienda. En iOS compila, se instala y arranca en un iPhone físico; sus flujos no se recorrieron allí.
 
 ## Requisitos
 
@@ -291,7 +291,7 @@ tool/                     setup.sh, verify.sh y local-stack.sh.
 
 ## Límites conocidos
 
-- **iOS** no se compiló ni se probó.
+- **iOS:** la aplicación compila con `flutter build ios`, se instala y arranca en un iPhone físico. Sus flujos no se recorrieron en iOS, y las notificaciones push no están configuradas allí (requieren una clave APNs).
 - **El servidor está desplegado solo como demostración** y la aplicación no está en ninguna tienda: se instala desde el código o desde un APK firmado con la clave de depuración de la plantilla. Falta la firma de publicación.
 - **El registro es abierto** y cada cliente nuevo recibe un depósito de demostración. Faltan verificación de correo, App Check y límites de frecuencia.
 - **Los aliados son simulados** y comparten servidor con la consola.

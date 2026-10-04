@@ -56,7 +56,7 @@ En modo local las notificaciones no salen del equipo: el envío queda «Validado
 | 19–21 | Servicios: cotizar el seguro de viaje. Dar por caído al aliado desde la consola con la mini aplicación abierta | «El origen del aliado se fija al compilar; la página solo conoce idioma y segmento.» | Integración externa | Abrir Recargas, que no depende de ese fallo |
 | 21–22 | Bandeja: el aviso de la transferencia. Un envío desde la consola llega al teléfono con la demostración desplegada; en modo local queda «Validado» | «La bandeja la escribe el servidor; el push solo la anuncia.» | Notificaciones | Explicar con [arquitectura/flujos.md](../arquitectura/flujos.md) |
 | 22–24 | `git log --oneline`, el hook y la CI en GitHub; el resumen de uso de IA | «Una rama, commits pequeños, la misma verificación en el hook y en la CI.» | Versionamiento, IA | — |
-| 24–25 | [alcance-y-riesgos.md](../alcance-y-riesgos.md): lo que quedó fuera y por qué | «iOS, la publicación en tiendas y la verificación de identidad quedaron fuera a propósito; está escrito.» | Pensamiento de producto | — |
+| 24–25 | [alcance-y-riesgos.md](../alcance-y-riesgos.md): lo que quedó fuera y por qué | «La publicación en tiendas, las notificaciones en iOS y la verificación de identidad quedaron fuera a propósito; está escrito.» | Pensamiento de producto | — |
 
 ## Ejercicios probables en vivo
 

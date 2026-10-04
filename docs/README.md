@@ -74,4 +74,4 @@ Los documentos citan las etapas por su número. El trabajo se hizo en once, cada
 ## Lo que la documentación no cubre
 
 - El servidor está desplegado como demostración y [su despliegue está documentado](operacion/backoffice.md#despliegue-en-firebase-app-hosting). No hay un entorno de producción ni publicación en tiendas, porque no se hicieron: [la estrategia](operacion/despliegue.md) describe cómo serían.
-- iOS no se compiló ni se probó; ningún documento lo da por verificado.
+- En iOS la aplicación compila, se instala y arranca en un iPhone físico. Sus flujos no se recorrieron allí; ningún documento los da por verificados en iOS.

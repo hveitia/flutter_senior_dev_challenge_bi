@@ -33,8 +33,13 @@ class NotificationsScope extends StatelessWidget {
     required this.onOpenInbox,
     required this.onInvite,
     required this.child,
+    this.destinationsReady = true,
     super.key,
   });
+
+  /// How long the notice of a push stays on screen before leaving by
+  /// itself.
+  static const Duration noticeDuration = Duration(seconds: 6);
 
   final NotificationsRepository repository;
   final DeviceRegistrar registrar;
@@ -50,6 +55,12 @@ class NotificationsScope extends StatelessWidget {
 
   /// Where a tapped notification leads in this build.
   final DestinationResolver destinations;
+
+  /// Whether [destinations] already knows what it can open. Right after the
+  /// app starts it may not: which features are on comes with the published
+  /// configuration. A tapped notification waits for it rather than being
+  /// sent to the inbox for a destination that is about to exist.
+  final bool destinationsReady;
 
   /// Opens the inbox.
   final void Function(BuildContext context) onOpenInbox;
@@ -86,6 +97,7 @@ class NotificationsScope extends StatelessWidget {
           opened: opened,
           segmentId: segmentId,
           destinations: destinations,
+          destinationsReady: destinationsReady,
           onOpenInbox: onOpenInbox,
           onInvite: onInvite,
           child: child,
@@ -102,6 +114,7 @@ class _Follower extends StatefulWidget {
     required this.opened,
     required this.segmentId,
     required this.destinations,
+    required this.destinationsReady,
     required this.onOpenInbox,
     required this.onInvite,
     required this.child,
@@ -112,6 +125,7 @@ class _Follower extends StatefulWidget {
   final OpenedNotifications opened;
   final String segmentId;
   final DestinationResolver destinations;
+  final bool destinationsReady;
   final void Function(BuildContext context) onOpenInbox;
   final void Function(BuildContext context) onInvite;
   final Widget child;
@@ -143,7 +157,9 @@ class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
   /// exists only in front of a signed-in, unlocked customer, so taking it
   /// here is what keeps a tap from going around the lock.
   void _openPending() {
-    if (!mounted) return;
+    // Left where it is until the destinations are known: it is taken when
+    // they are.
+    if (!mounted || !widget.destinationsReady) return;
     final message = widget.opened.take();
     if (message != null) _open(message);
   }
@@ -161,6 +177,9 @@ class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
     if (widget.segmentId != oldWidget.segmentId) {
       unawaited(widget.registrar.register(widget.segmentId));
+    }
+    if (widget.destinationsReady && !oldWidget.destinationsReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openPending());
     }
   }
 
@@ -204,6 +223,10 @@ class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
         content: Text(message.title),
+        // A notice with an action stays until dismissed unless told
+        // otherwise, and would still be there over an unrelated screen.
+        duration: NotificationsScope.noticeDuration,
+        persist: false,
         action: SnackBarAction(
           label: NotificationsStrings.view,
           onPressed: () {

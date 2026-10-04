@@ -1,3 +1,4 @@
+import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/destinations.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_notifications/feature_notifications.dart';
@@ -96,6 +97,9 @@ class _CustomerNotificationsState extends State<CustomerNotifications> {
       settings: dependencies.settings,
       segmentId: session.profile.segment.id,
       destinations: widget.destinations(context),
+      // Which features are on comes with the configuration: until it is
+      // read, a notification for one of them must wait, not be turned away.
+      destinationsReady: context.watch<RemoteConfigCubit>().state.isReady,
       onOpenInbox: openInbox,
       onInvite: openPermissionPrimer,
       child: widget.child,

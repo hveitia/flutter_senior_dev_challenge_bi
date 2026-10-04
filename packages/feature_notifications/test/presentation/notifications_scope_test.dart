@@ -19,7 +19,7 @@ void main() {
   late int inboxOpened;
   late int invitations;
 
-  Widget scope({String segmentId = 'family'}) {
+  Widget scope({String segmentId = 'family', bool destinationsReady = true}) {
     return RepositoryProvider<Telemetry>.value(
       value: telemetry,
       child: MaterialApp(
@@ -42,6 +42,7 @@ void main() {
             settings: FakeSystemSettings(),
             segmentId: segmentId,
             destinations: resolver,
+            destinationsReady: destinationsReady,
             onOpenInbox: (_) => inboxOpened++,
             onInvite: (_) => invitations++,
             child: const Text('Inicio'),
@@ -184,6 +185,45 @@ void main() {
     await tester.tap(find.text('Ver'));
 
     expect(inboxOpened, 1);
+  });
+
+  testWidgets('the notice of a push leaves by itself, so it is not still on '
+      'screen over whatever the customer does next', (tester) async {
+    await tester.pumpWidget(scope());
+    await tester.pumpAndSettle();
+
+    messaging.foregroundMessages.add(
+      const PushMessage(title: 'Recibiste un pago', destination: 'accounts'),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text('Recibiste un pago'), findsOneWidget);
+
+    await tester.pump(NotificationsScope.noticeDuration);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recibiste un pago'), findsNothing);
+  });
+
+  testWidgets('a tapped notification waits until the app knows which '
+      'destinations it can open, instead of falling back to the inbox', (
+    tester,
+  ) async {
+    messaging.initial = const PushMessage(
+      title: 'Aviso',
+      destination: 'accounts',
+    );
+
+    await tester.pumpWidget(scope(destinationsReady: false));
+    await tester.pumpAndSettle();
+    expect(resolver.opened, isEmpty);
+    expect(inboxOpened, 0);
+
+    await tester.pumpWidget(scope());
+    await tester.pumpAndSettle();
+
+    expect(resolver.opened, ['accounts']);
+    expect(inboxOpened, 0);
   });
 
   testWidgets('a notification tapped before the customer could see their '

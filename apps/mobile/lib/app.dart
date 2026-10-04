@@ -48,8 +48,13 @@ class _BancaDigitalAppState extends State<BancaDigitalApp> {
   /// A session that ended leaves nothing of the customer on the device.
   /// This also runs when the app starts without a session, which covers a
   /// previous use that was closed before it could clean up.
+  ///
+  /// The same goes for notifications: whatever path closed the session, the
+  /// device stops following the customer's topic and deletes its address.
   void _onSessionChanged(SessionState state) {
-    if (state is SessionSignedOut) unawaited(_removeSavedCustomerData());
+    if (state is! SessionSignedOut) return;
+    unawaited(widget.dependencies.notifications.registrations.sessionEnded());
+    unawaited(_removeSavedCustomerData());
   }
 
   Future<void> _removeSavedCustomerData() async {

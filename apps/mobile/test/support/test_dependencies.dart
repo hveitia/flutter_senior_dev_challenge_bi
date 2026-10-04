@@ -11,6 +11,7 @@ import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_auth/testing.dart';
+import 'package:feature_notifications/feature_notifications.dart';
 import 'package:feature_notifications/testing.dart';
 
 import 'fake_saved_customer_data.dart';
@@ -109,9 +110,14 @@ final class TestDependencies {
       appInfo: const AppInfo(version: '1.0.0', build: '12'),
       notifications: NotificationsDependencies(
         repositoryFor: (_) => inbox,
-        devicesFor: (_) => devices,
-        identity: const FakeDeviceIdentity(),
-        registrationMemory: registrationMemory,
+        registrations: DeviceRegistrations(
+          messaging: messaging,
+          devicesFor: (_) => devices,
+          identity: const FakeDeviceIdentity(),
+          memory: registrationMemory,
+          telemetry: this.telemetry,
+        ),
+        opened: OpenedNotifications(messaging)..start(),
         messaging: messaging,
         memory: primerMemory,
         settings: FakeSystemSettings(),

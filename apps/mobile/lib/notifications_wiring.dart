@@ -11,23 +11,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 final class NotificationsDependencies {
   const NotificationsDependencies({
     required this.repositoryFor,
-    required this.devicesFor,
-    required this.identity,
-    required this.registrationMemory,
+    required this.registrations,
+    required this.opened,
     required this.messaging,
     required this.memory,
     required this.settings,
   });
 
-  /// What this installation remembers about its own registration.
-  final RegistrationMemory registrationMemory;
-
   /// The inbox of the customer with the given uid.
   final NotificationsRepository Function(String uid) repositoryFor;
 
-  /// Where that customer's devices are registered.
-  final DeviceStore Function(String uid) devicesFor;
-  final DeviceIdentity identity;
+  /// This device's registration, one registrar per session. It outlives the
+  /// customer's screens, so a session that ends by any path can still be
+  /// cleaned up after.
+  final DeviceRegistrations registrations;
+
+  /// The notification the customer tapped, kept from the moment the app
+  /// starts until a signed-in, unlocked session can open it.
+  final OpenedNotifications opened;
   final PushMessaging messaging;
   final PrimerMemory memory;
   final SystemSettings settings;
@@ -46,8 +47,10 @@ AppDestinationResolver destinationsFor(BuildContext context) {
 /// Mounts the notifications of the signed-in customer: their inbox, this
 /// device's registration and the handling of pushes.
 ///
-/// It belongs inside the customer's scope. Everything it creates is the
-/// customer's own and is replaced when another customer signs in.
+/// It belongs inside the customer's scope, which exists only while a
+/// session is active: not while it is locked, pending or closed. So a
+/// tapped notification is opened, and the invitation shown, only in front
+/// of a customer who is in.
 class CustomerNotifications extends StatefulWidget {
   const CustomerNotifications({
     required this.dependencies,
@@ -64,39 +67,37 @@ class CustomerNotifications extends StatefulWidget {
 
 class _CustomerNotificationsState extends State<CustomerNotifications> {
   String? _uid;
-  late NotificationsRepository _repository;
-  late DeviceRegistrar _registrar;
+  NotificationsRepository? _repository;
 
-  /// Each customer gets a repository and a registrar of their own, so what
-  /// was read or registered for one never reaches the next.
-  void _prepareFor(String uid) {
-    if (uid == _uid) return;
-    final dependencies = widget.dependencies;
+  /// Each customer gets a repository of their own, so what was read for one
+  /// never reaches the next.
+  NotificationsRepository _repositoryFor(String uid) {
+    if (_repository case final repository? when uid == _uid) return repository;
     _uid = uid;
-    _repository = dependencies.repositoryFor(uid);
-    _registrar = DeviceRegistrar(
-      uid: uid,
-      memory: dependencies.registrationMemory,
-      messaging: dependencies.messaging,
-      devices: dependencies.devicesFor(uid),
-      identity: dependencies.identity,
-      telemetry: context.read<Telemetry>(),
-    );
+    return _repository = widget.dependencies.repositoryFor(uid);
   }
 
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionBloc>().state;
-    if (session is! SessionSignedIn) return widget.child;
+    if (session is! SessionSignedIn) {
+      _uid = null;
+      _repository = null;
+      return widget.child;
+    }
 
     final dependencies = widget.dependencies;
-    _prepareFor(session.profile.uid);
+    final uid = session.profile.uid;
 
     return NotificationsScope(
-      key: ValueKey(session.profile.uid),
-      repository: _repository,
-      registrar: _registrar,
+      key: ValueKey(uid),
+      repository: _repositoryFor(uid),
+      // Asked for on every build: a session that ended forgot its
+      // registrar, and the next one, even of the same customer, gets a new
+      // one.
+      registrar: dependencies.registrations.of(uid),
       messaging: dependencies.messaging,
+      opened: dependencies.opened,
       memory: dependencies.memory,
       settings: dependencies.settings,
       segmentId: session.profile.segment.id,
@@ -108,11 +109,13 @@ class _CustomerNotificationsState extends State<CustomerNotifications> {
   }
 }
 
-/// Makes this device stop being the customer's: no topic, no registration,
-/// no address. Called before the session ends, while there still is a
-/// session to remove the registration with.
+/// Makes this device stop being the customer's while their session is still
+/// open: no topic, no registration, no address. Removing the registration
+/// needs the session, which is why this runs before it closes.
 ///
-/// It never fails and never takes long: see [DeviceRegistrar.forget].
+/// It never fails and never takes long: see [DeviceRegistrar.forget]. A
+/// session that ends without passing through here is cleaned up as far as
+/// still possible by [DeviceRegistrations.sessionEnded].
 Future<void> forgetDevice(BuildContext context) {
   final DeviceRegistrar registrar;
   try {

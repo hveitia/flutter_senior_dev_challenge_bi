@@ -98,10 +98,12 @@ final class FakePushMessaging implements PushMessaging {
   PushMessage? initial;
 
   final StreamController<String> tokens = StreamController<String>.broadcast();
+  // Synchronous, so a listener set up outside a widget test's fake clock
+  // still hears what the test adds.
   final StreamController<PushMessage> foregroundMessages =
-      StreamController<PushMessage>.broadcast();
+      StreamController<PushMessage>.broadcast(sync: true);
   final StreamController<PushMessage> openedMessages =
-      StreamController<PushMessage>.broadcast();
+      StreamController<PushMessage>.broadcast(sync: true);
 
   int prompts = 0;
 

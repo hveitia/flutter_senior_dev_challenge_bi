@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_platform/app_platform.dart';
 import 'package:feature_notifications/src/data/device_registrar.dart';
+import 'package:feature_notifications/src/data/opened_notifications.dart';
 import 'package:feature_notifications/src/data/ports.dart';
 import 'package:feature_notifications/src/domain/notifications_repository.dart';
 import 'package:feature_notifications/src/domain/push_message.dart';
@@ -24,6 +25,7 @@ class NotificationsScope extends StatelessWidget {
     required this.repository,
     required this.registrar,
     required this.messaging,
+    required this.opened,
     required this.memory,
     required this.settings,
     required this.segmentId,
@@ -37,6 +39,9 @@ class NotificationsScope extends StatelessWidget {
   final NotificationsRepository repository;
   final DeviceRegistrar registrar;
   final PushMessaging messaging;
+
+  /// The notifications the customer tapped, kept until they can be opened.
+  final OpenedNotifications opened;
   final PrimerMemory memory;
   final SystemSettings settings;
 
@@ -78,6 +83,7 @@ class NotificationsScope extends StatelessWidget {
         child: _Follower(
           registrar: registrar,
           messaging: messaging,
+          opened: opened,
           segmentId: segmentId,
           destinations: destinations,
           onOpenInbox: onOpenInbox,
@@ -93,6 +99,7 @@ class _Follower extends StatefulWidget {
   const _Follower({
     required this.registrar,
     required this.messaging,
+    required this.opened,
     required this.segmentId,
     required this.destinations,
     required this.onOpenInbox,
@@ -102,6 +109,7 @@ class _Follower extends StatefulWidget {
 
   final DeviceRegistrar registrar;
   final PushMessaging messaging;
+  final OpenedNotifications opened;
   final String segmentId;
   final DestinationResolver destinations;
   final void Function(BuildContext context) onOpenInbox;
@@ -113,7 +121,7 @@ class _Follower extends StatefulWidget {
 }
 
 class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
-  StreamSubscription<PushMessage>? _opened;
+  StreamSubscription<void>? _opened;
   StreamSubscription<PushMessage>? _foreground;
   bool _invited = false;
 
@@ -123,15 +131,21 @@ class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     unawaited(context.read<PermissionCubit>().check());
 
-    _opened = widget.messaging.opened.listen(_open);
+    _opened = widget.opened.arrivals.listen((_) => _openPending());
     _foreground = widget.messaging.foreground.listen(_notice);
-    unawaited(_openInitialMessage());
+    // One may have been waiting since before these screens existed: tapped
+    // with nobody signed in, behind the lock, or the one that started the
+    // app. After the frame, when there is a navigator to open it with.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openPending());
   }
 
-  /// The notification that started the app, if one did.
-  Future<void> _openInitialMessage() async {
-    final message = await widget.messaging.initialMessage();
-    if (message != null && mounted) _open(message);
+  /// Opens the tapped notification that is waiting, if any. This widget
+  /// exists only in front of a signed-in, unlocked customer, so taking it
+  /// here is what keeps a tap from going around the lock.
+  void _openPending() {
+    if (!mounted) return;
+    final message = widget.opened.take();
+    if (message != null) _open(message);
   }
 
   @override
@@ -151,7 +165,10 @@ class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
   }
 
   void _onPermission(BuildContext context, PermissionState state) {
-    if (state.isGranted) {
+    // Asked whatever the answer was: with permission the device is
+    // registered, and without it a registration made earlier is withdrawn,
+    // as when the customer switched notifications off in the system.
+    if (state.permission != null) {
       unawaited(widget.registrar.register(widget.segmentId));
     }
     if (state.isPrimerDue && !_invited) {

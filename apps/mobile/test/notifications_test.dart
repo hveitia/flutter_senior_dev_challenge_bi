@@ -36,9 +36,132 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  late FakeBiometricAuthenticator biometrics;
+
   setUp(() {
     auth = FakeAuthRepository();
-    app = TestDependencies(auth: auth);
+    biometrics = FakeBiometricAuthenticator();
+    app = TestDependencies(auth: auth, biometrics: biometrics);
+  });
+
+  const payment = PushMessage(
+    title: 'Recibiste un pago',
+    destination: 'accounts',
+  );
+
+  /// The accounts section is on screen and the home is not.
+  void expectAccountsOpened() {
+    expect(find.textContaining('Hola, Valentina'), findsNothing);
+    expect(find.text('Cuentas'), findsWidgets);
+  }
+
+  group('a session that ends', () {
+    setUp(() => app.messaging.current = NotificationPermission.granted);
+
+    testWidgets('and starts again for the same customer registers the '
+        'device again', (tester) async {
+      await pumpSignedIn(tester);
+      await tester.tap(find.text('Perfil'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Cerrar sesión'));
+      await tester.tap(find.text('Cerrar sesión'));
+      await tester.pumpAndSettle();
+      expect(app.devices.saved, isEmpty);
+      app.messaging.calls.clear();
+
+      auth.announce(const ActiveSession(profile, unlockRequired: false));
+      await tester.pumpAndSettle();
+
+      expect(app.devices.saved, {'device-1': 'token-1'});
+      expect(app.messaging.calls, contains('subscribe:segment-starting'));
+    });
+
+    testWidgets('without the customer pressing anything still stops the '
+        'topic and deletes the address', (tester) async {
+      await pumpSignedIn(tester);
+      app.messaging.calls.clear();
+      app.devices.calls.clear();
+
+      // As a revoked or expired session is announced by the repository.
+      auth.announce(const SignedOutSession());
+      await tester.pumpAndSettle();
+
+      expect(app.messaging.calls, [
+        'unsubscribe:segment-starting',
+        'deleteToken',
+      ]);
+      expect(app.devices.calls, isEmpty);
+      expect(app.registrationMemory.uid, isNull);
+    });
+  });
+
+  testWidgets('a phone the previous customer left registered is cleaned '
+      'before the next one is registered on it', (tester) async {
+    app.messaging.current = NotificationPermission.granted;
+    await app.registrationMemory.save(
+      uid: 'uid-previous',
+      topics: {'segment-wealth'},
+    );
+
+    await pumpSignedIn(tester);
+
+    expect(app.messaging.calls.take(2), [
+      'unsubscribe:segment-wealth',
+      'deleteToken',
+    ]);
+    expect(app.registrationMemory.uid, 'uid-1');
+    expect(app.registrationMemory.topics, {'segment-starting'});
+  });
+
+  group('a notification tapped', () {
+    testWidgets('while the session is locked waits behind the lock and is '
+        'opened once the customer is in', (tester) async {
+      auth.restored = const ActiveSession(profile, unlockRequired: true);
+      biometrics.passes = false;
+      await tester.pumpWidget(BancaDigitalApp(dependencies: app.dependencies));
+      await tester.pumpAndSettle();
+
+      app.messaging.openedMessages.add(payment);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hola de nuevo, Valentina'), findsOneWidget);
+
+      biometrics.passes = true;
+      await tester.tap(find.text('Ingresar con huella o rostro'));
+      await tester.pumpAndSettle();
+
+      expectAccountsOpened();
+    });
+
+    testWidgets('with nobody signed in waits for a customer to sign in', (
+      tester,
+    ) async {
+      await tester.pumpWidget(BancaDigitalApp(dependencies: app.dependencies));
+      await tester.pumpAndSettle();
+
+      app.messaging.openedMessages.add(payment);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tu banco, sin filas ni sucursales'), findsOneWidget);
+
+      auth.announce(const ActiveSession(profile, unlockRequired: false));
+      await tester.pumpAndSettle();
+
+      expectAccountsOpened();
+    });
+  });
+
+  testWidgets('the invitation does not appear over the lock', (tester) async {
+    app.primerMemory.wasAnswered = false;
+    auth.restored = const ActiveSession(profile, unlockRequired: true);
+    biometrics.passes = false;
+
+    await tester.pumpWidget(BancaDigitalApp(dependencies: app.dependencies));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hola de nuevo, Valentina'), findsOneWidget);
+    expect(find.text('Entérate al instante'), findsNothing);
+    expect(app.messaging.prompts, 0);
   });
 
   testWidgets('the bell of the home says what is unread and opens the inbox', (

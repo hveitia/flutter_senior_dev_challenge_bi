@@ -15,6 +15,7 @@ void main() {
   late InMemoryTelemetry telemetry;
   late FakeDestinationResolver resolver;
   DeviceRegistrar? created;
+  OpenedNotifications? tapped;
   late int inboxOpened;
   late int invitations;
 
@@ -36,6 +37,7 @@ void main() {
               identity: const FakeDeviceIdentity(),
             ),
             messaging: messaging,
+            opened: tapped ??= OpenedNotifications(messaging)..start(),
             memory: memory,
             settings: FakeSystemSettings(),
             segmentId: segmentId,
@@ -56,6 +58,7 @@ void main() {
     telemetry = InMemoryTelemetry();
     resolver = FakeDestinationResolver(available: {'accounts'});
     created = null;
+    tapped = null;
     inboxOpened = 0;
     invitations = 0;
   });
@@ -181,6 +184,38 @@ void main() {
     await tester.tap(find.text('Ver'));
 
     expect(inboxOpened, 1);
+  });
+
+  testWidgets('a notification tapped before the customer could see their '
+      'screens is opened once they can, and only once', (tester) async {
+    tapped = OpenedNotifications(messaging)..start();
+    messaging.openedMessages.add(
+      const PushMessage(title: 'Recibiste un pago', destination: 'accounts'),
+    );
+    await tester.pump();
+    expect(resolver.opened, isEmpty);
+
+    await tester.pumpWidget(scope());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(scope(segmentId: 'wealth'));
+    await tester.pumpAndSettle();
+
+    expect(resolver.opened, ['accounts']);
+  });
+
+  testWidgets('removes the registration when the permission was taken away '
+      'while the app was in the background', (tester) async {
+    await tester.pumpWidget(scope());
+    await tester.pumpAndSettle();
+    expect(devices.saved, {'device-1': 'token-1'});
+
+    messaging.current = NotificationPermission.denied;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(devices.saved, isEmpty);
+    expect(messaging.calls, contains('unsubscribe:segment-family'));
+    expect(messaging.calls.last, 'deleteToken');
   });
 
   testWidgets('checks the permission again when the app comes back to the '

@@ -2,7 +2,7 @@
 
 Cómo se sabría que la aplicación falla o que la experiencia empeora, y con qué se diagnosticaría. Primera versión: describe la base instalada en la etapa 3 y lo que se añadirá sobre ella.
 
-Cada apartado separa lo **implementado** de lo **planificado**. La aplicación ya se ejecutó en un emulador contra el proyecto real, pero **nada de lo descrito se ha observado todavía en la consola de Firebase**: no se comprobó que los eventos y los informes llegaran.
+Cada apartado separa lo **implementado** de lo **planificado**. La aplicación ya se ejecutó en un emulador y en un teléfono contra el proyecto real, pero **nada de lo descrito se ha observado todavía en la consola de Firebase**: no se comprobó que los eventos y los informes llegaran.
 
 ## Qué hay instalado hoy
 
@@ -31,7 +31,18 @@ Cada apartado separa lo **implementado** de lo **planificado**. La aplicación y
 | `auth_unlock_succeeded`, `auth_unlock_failed` | Resultado de la comprobación biométrica | Ninguno |
 | `auth_signed_out` | El cliente cerró la sesión | Ninguno |
 
-- **Eventos de la política de resiliencia** (`resilience_timeout`, `resilience_retry`, `resilience_attempts_exhausted`) para los servicios `auth` y `profile`, que ya la usan.
+- **Trazas y eventos de cuentas y movimientos** ([ADR 0012](../adr/0012-lectura-de-cuentas-y-movimientos.md)), sin importes, números de cuenta, descripciones ni nombres:
+
+| Nombre | Tipo | Cuándo se emite | Datos |
+|---|---|---|---|
+| `accounts_first_load` | Traza | Desde que la sesión empieza a seguir las cuentas hasta que hay algo que mostrar | Origen (`server` o `cache`) y cantidad de cuentas; o resultado `failed` si terminó sin datos |
+| `movements_first_load` | Traza | Desde que se abre una cuenta hasta que hay movimientos que mostrar | Igual que la anterior |
+| `accounts_data_load_failed` | Evento | Una actualización no pudo completarse | Servicio (`accounts` o `movements`) y clase de fallo (`offline`, `timeout`, `unavailable`, `unexpected`) |
+| `accounts_data_retry_requested` | Evento | El cliente toca «Reintentar» | Servicio |
+| `accounts_data_served_from_cache` | Evento | Un conjunto de datos se mostró desde la copia del dispositivo, una vez por escucha | Servicio y cantidad de elementos |
+
+- **Errores inesperados de cuentas y movimientos**, con el motivo `accounts_unexpected` y solo el tipo del error.
+- **Eventos de la política de resiliencia** (`resilience_timeout`, `resilience_retry`, `resilience_attempts_exhausted`) para los servicios `auth`, `profile`, `accounts` y `movements`, que ya la usan.
 - **Errores inesperados del proveedor de identidad**, con el motivo `auth_unexpected` y solo el tipo del error, porque su mensaje puede citar el correo.
 
 **Implementado en la biblioteca, aún sin emitirse.** El repositorio de configuración no se instancia todavía en la aplicación, así que sus señales no llegan hoy a Firebase. Las de la política de resiliencia sí se emiten, para el acceso:
@@ -79,7 +90,11 @@ Un fallo es visible. Una pantalla que tarda, un reintento constante o un módulo
 |---|---|---|---|
 | Duración de `home_load` | Cuánto tarda el inicio en ser útil, por origen de datos (red o caché) | Traza de Performance | Planificada, etapa 6 |
 | Duración de `transfer_submit` | Latencia de la operación más sensible | Traza de Performance | Planificada, etapa 8 |
-| Eventos `resilience_timeout`, `resilience_retry` y `resilience_attempts_exhausted`, por servicio | El servicio responde mal aunque no haya fallos | Evento de Analytics | En la biblioteca; se emitirán cuando un repositorio use la política (etapa 5) |
+| Eventos `resilience_timeout`, `resilience_retry` y `resilience_attempts_exhausted`, por servicio | El servicio responde mal aunque no haya fallos | Evento de Analytics | La aplicación los emite para acceso, cuentas y movimientos |
+| Duración de `accounts_first_load` y `movements_first_load`, por origen | Cuánto tarda el cliente en ver su saldo y sus movimientos, y cuántas veces los ve desde la copia | Traza de Performance | La aplicación las emite |
+| Proporción de `accounts_data_load_failed` por servicio y clase de fallo | Indisponibilidad parcial: los movimientos fallan mientras las cuentas responden, o al revés | Evento de Analytics | La aplicación emite el evento |
+| Proporción de `accounts_data_served_from_cache` | Cuánto se usa la aplicación con datos guardados | Evento de Analytics | La aplicación emite el evento |
+| Eventos `accounts_data_retry_requested` | Clientes que insisten ante un error: mide la fricción que deja una falla | Evento de Analytics | La aplicación emite el evento |
 | Eventos de módulo con error | Indisponibilidad parcial: qué módulo falla y con qué frecuencia | Evento de Analytics | Planificada, etapa 6 |
 | Transferencias en cola y su tiempo hasta enviarse | Cuánto se usa la aplicación sin conexión | Evento de Analytics | Planificada, etapa 8 |
 | Abandono en el registro, por paso | Fricción en el alta: cuántos superan cada paso y cuántos omiten los intereses | Embudo de Analytics sobre `auth_sign_up_step_completed` y `auth_sign_up_succeeded` | La aplicación emite los eventos; el embudo no está configurado |
@@ -88,11 +103,11 @@ Un fallo es visible. Una pantalla que tarda, un reintento constante o un módulo
 | Proporción de `auth_unlock_failed` | Fricción del desbloqueo biométrico | Evento de Analytics | La aplicación emite el evento |
 | Arranque de la aplicación y pantallas lentas | Rendimiento general | Performance, automático | Disponible con el SDK |
 
-Los umbrales de la política de resiliencia (8 s de tiempo de espera, 3 s para considerar lenta una operación) se eligieron sin mediciones. Las dos primeras trazas son las que permitirán ajustarlos.
+Los umbrales de la política de resiliencia (8 s de tiempo de espera, 3 s para considerar lenta una operación) se eligieron sin mediciones. Las trazas de primera carga son las que permitirán ajustarlos.
 
 ## Qué no se registra
 
-Ninguna señal de las anteriores incluye datos del cliente. Los eventos del acceso llevan números de paso y clases de fallo, nunca el correo, el nombre, la cédula ni el celular; lo comprueban pruebas que recorren toda la telemetría del flujo. Los estados y los errores de los Blocs se informan por su tipo, no por su contenido, y hay pruebas que fallan si un importe, un número de cuenta o un nombre llegan a la telemetría. El detalle y sus límites están en el [ADR 0010](../adr/0010-observabilidad.md).
+Ninguna señal de las anteriores incluye datos del cliente. Los eventos del acceso llevan números de paso y clases de fallo, nunca el correo, el nombre, la cédula ni el celular; lo comprueban pruebas que recorren toda la telemetría del flujo. Los eventos de cuentas y movimientos llevan el servicio, la clase de fallo y cantidades de elementos; sus pruebas comparan el contenido exacto de cada evento. Los estados y los errores de los Blocs se informan por su tipo, no por su contenido, y hay pruebas que fallan si un importe, un número de cuenta o un nombre llegan a la telemetría. El detalle y sus límites están en el [ADR 0010](../adr/0010-observabilidad.md).
 
 ## Pendiente
 

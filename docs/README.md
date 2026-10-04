@@ -19,12 +19,14 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0009](adr/0009-politica-de-resiliencia.md) | Una única política de resiliencia, con inyección de fallos para demostración | Aceptada |
 | [0010](adr/0010-observabilidad.md) | Observabilidad detrás de una interfaz, sin datos del cliente en los registros | Aceptada |
 | [0011](adr/0011-autenticacion-y-perfil.md) | Autenticación con Firebase Auth y perfil escrito por el cliente bajo reglas | Aceptada |
+| [0012](adr/0012-lectura-de-cuentas-y-movimientos.md) | Lectura de cuentas y movimientos en tiempo real, con la copia local de Firestore como caché | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
 
 ## Operación
 
 - [Monitoreo en producción](operacion/monitoreo.md): cómo se detectarían problemas operativos y de experiencia, y qué está implementado hoy.
+- [Comportamiento con conectividad degradada](operacion/conectividad-degradada.md): qué hace la aplicación sin conexión, con alta latencia y con un servicio caído, separando lo visto en un dispositivo de lo cubierto solo por pruebas y de lo planificado.
 
 ## Uso de inteligencia artificial
 
@@ -36,6 +38,6 @@ Estos documentos se escriben cuando exista lo que describen:
 
 - Diagramas de componentes, flujos y dependencias.
 - Estrategia de despliegue.
-- Comportamiento ante conectividad limitada, alta latencia e indisponibilidad parcial.
+- Comportamiento ante conectividad limitada, alta latencia e indisponibilidad parcial del inicio, las transferencias y los servicios de aliados (el de acceso, cuentas y movimientos ya está escrito).
 - Supuestos, riesgos técnicos y estrategia de escalamiento.
 - Decisiones conscientes de alcance.

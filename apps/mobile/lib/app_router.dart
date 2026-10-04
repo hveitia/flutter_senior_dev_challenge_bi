@@ -89,6 +89,8 @@ GoRouter createAppRouter({
           publishedFaults: dependencies.publishedFaults,
           child: CustomerNotifications(
             dependencies: dependencies.notifications,
+            destinations: (context) =>
+                appDestinations(context, dependencies.services),
             child: child,
           ),
         ),
@@ -142,7 +144,10 @@ GoRouter createAppRouter({
           ),
           transferRoute(onDone: (context) => context.go(AppPaths.home)),
           preferencesRoute(),
-          ...notificationsRoutes(destinations: destinationsFor),
+          ...notificationsRoutes(
+            destinations: (context) =>
+                appDestinations(context, dependencies.services),
+          ),
           miniAppRoute(dependencies.services, servicesPath: AppPaths.services),
         ],
       ),

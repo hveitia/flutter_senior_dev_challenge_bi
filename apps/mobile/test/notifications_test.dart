@@ -263,6 +263,22 @@ void main() {
     expect(find.textContaining('Hola, Valentina'), findsNothing);
   });
 
+  testWidgets('a tapped notification can open a partner mini app, like a '
+      'home action would', (tester) async {
+    await pumpSignedIn(tester);
+
+    app.messaging.openedMessages.add(
+      const PushMessage(
+        title: 'Tu seguro de viaje',
+        destination: 'partner:travelInsurance',
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Servicio de Aliado Seguros'), findsOneWidget);
+  });
+
   testWidgets('a tapped notification that names a place this build does not '
       'have opens the inbox', (tester) async {
     await pumpSignedIn(tester);

@@ -4,6 +4,7 @@ import 'package:banca_digital/services_wiring.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:feature_auth/feature_auth.dart';
+import 'package:feature_notifications/feature_notifications.dart';
 import 'package:feature_services/feature_services.dart';
 import 'package:feature_services/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -124,6 +125,9 @@ void main() {
       expect(find.text('De aliados'), findsOneWidget);
       expect(find.text('Seguro de viaje'), findsOneWidget);
       expect(find.text('Recargas'), findsOneWidget);
+      // The bank's own service is listed next to the partners'.
+      expect(find.text('Del banco'), findsOneWidget);
+      expect(find.text('Transferencias'), findsOneWidget);
 
       await publish(
         tester,
@@ -183,6 +187,9 @@ void main() {
       await pumpApp(tester);
 
       expect(find.text('Para ti'), findsOneWidget);
+      // The header keeps the notifications bell next to it: two domains
+      // contribute to the same screen without knowing each other.
+      expect(find.byType(NotificationsBell), findsOneWidget);
 
       await tester.ensureVisible(find.text('Recargas'));
       await openMiniApp(tester, 'Recargas');

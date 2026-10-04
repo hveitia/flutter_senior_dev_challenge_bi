@@ -1,4 +1,3 @@
-import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/destinations.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_notifications/feature_notifications.dart';
@@ -34,16 +33,6 @@ final class NotificationsDependencies {
   final SystemSettings settings;
 }
 
-/// The destination resolver for the customer whose configuration is in the
-/// tree: the same one the home uses, so a notification leads only where a
-/// home action could.
-AppDestinationResolver destinationsFor(BuildContext context) {
-  final config = context.read<RemoteConfigCubit>();
-  return AppDestinationResolver(
-    features: () => config.state.segment?.features ?? FeatureFlags.allOff,
-  );
-}
-
 /// Mounts the notifications of the signed-in customer: their inbox, this
 /// device's registration and the handling of pushes.
 ///
@@ -54,11 +43,16 @@ AppDestinationResolver destinationsFor(BuildContext context) {
 class CustomerNotifications extends StatefulWidget {
   const CustomerNotifications({
     required this.dependencies,
+    required this.destinations,
     required this.child,
     super.key,
   });
 
   final NotificationsDependencies dependencies;
+
+  /// The resolver the home uses, so a notification leads only where a home
+  /// action could, partners' mini apps included.
+  final AppDestinationResolver Function(BuildContext context) destinations;
   final Widget child;
 
   @override
@@ -101,7 +95,7 @@ class _CustomerNotificationsState extends State<CustomerNotifications> {
       memory: dependencies.memory,
       settings: dependencies.settings,
       segmentId: session.profile.segment.id,
-      destinations: destinationsFor(context),
+      destinations: widget.destinations(context),
       onOpenInbox: openInbox,
       onInvite: openPermissionPrimer,
       child: widget.child,

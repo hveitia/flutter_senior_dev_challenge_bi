@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_platform/app_platform.dart';
 import 'package:design_system/design_system.dart';
+import 'package:feature_home/src/connection_notice.dart';
 import 'package:feature_home/src/home_composition.dart';
 import 'package:feature_home/src/home_composition_cubit.dart';
 import 'package:feature_home/src/home_strings.dart';
@@ -251,7 +252,7 @@ class _HomeBodyState extends State<_HomeBody> implements HomeModuleHost {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ConnectionBanner(hasSavedData: _hasSomethingSaved(composition)),
+        ConnectionNotice(hasSavedData: _hasSomethingSaved(composition)),
         Expanded(
           child: Stack(
             children: [

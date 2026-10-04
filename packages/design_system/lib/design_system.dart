@@ -8,6 +8,7 @@ export 'src/components/app_button.dart';
 export 'src/components/app_chip.dart';
 export 'src/components/app_text_field.dart';
 export 'src/components/checkbox_row.dart';
+export 'src/components/connection_banner.dart';
 export 'src/components/detail_row.dart';
 export 'src/components/empty_state.dart';
 export 'src/components/group_header.dart';

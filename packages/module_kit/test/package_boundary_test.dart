@@ -5,16 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _sourceRoot = 'lib/';
 
-/// Every domain package depends on this one, so it must depend on none of
-/// them, nor on a backend or a device plugin.
+/// Every domain package depends on this one, so it holds the contract and
+/// nothing else: no domain, no backend, no plugin, and not even the design
+/// system or the platform package.
 const _contract = ImportBoundary(
   package: 'module_kit',
-  allowedPackages: {'app_platform', 'design_system', 'flutter', 'flutter_bloc'},
-  closedLibraries: {'package:app_platform/adapters.dart'},
+  allowedPackages: {'flutter'},
 );
 
 void main() {
-  test('the contract depends on no domain, backend or plugin', () {
+  test('the contract depends on nothing but the framework', () {
     final files = Directory(_sourceRoot)
         .listSync(recursive: true)
         .whereType<File>()

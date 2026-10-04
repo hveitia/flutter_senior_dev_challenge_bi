@@ -10,13 +10,13 @@ import 'package:feature_accounts/src/presentation/accounts_strings.dart';
 import 'package:feature_accounts/src/presentation/detail/movement_detail_sheet.dart';
 import 'package:feature_accounts/src/presentation/detail/movements_bloc.dart';
 import 'package:feature_accounts/src/presentation/formatting/time_labels.dart';
+import 'package:feature_accounts/src/presentation/widgets/connection_notice.dart';
 import 'package:feature_accounts/src/presentation/widgets/freshness_caption.dart';
 import 'package:feature_accounts/src/presentation/widgets/load_failure_view.dart';
 import 'package:feature_accounts/src/presentation/widgets/movement_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:module_kit/module_kit.dart';
 
 /// One account: its balances, its number and its movements.
 ///
@@ -51,7 +51,7 @@ class AccountDetailScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ConnectionBanner(hasSavedData: account != null),
+          ConnectionNotice(hasSavedData: account != null),
           Expanded(
             child: switch (account) {
               final account? => _AccountContent(

@@ -4,11 +4,11 @@ import 'package:feature_accounts/src/domain/data_snapshot.dart';
 import 'package:feature_accounts/src/domain/load_state.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
+import 'package:feature_accounts/src/presentation/widgets/connection_notice.dart';
 import 'package:feature_accounts/src/presentation/widgets/freshness_caption.dart';
 import 'package:feature_accounts/src/presentation/widgets/load_failure_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:module_kit/module_kit.dart';
 
 /// The customer's accounts and what they add up to.
 ///
@@ -35,7 +35,7 @@ class AccountsScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ConnectionBanner(hasSavedData: _showable(accounts) != null),
+          ConnectionNotice(hasSavedData: _showable(accounts) != null),
           Expanded(child: _content(context, accounts)),
         ],
       ),

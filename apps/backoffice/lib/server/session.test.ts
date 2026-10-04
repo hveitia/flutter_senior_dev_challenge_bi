@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   adminFromCookie,
+  cookieFrom,
   createSession,
+  endSession,
   RECENT_SIGN_IN_SECONDS,
   SESSION_MAX_AGE_MS,
   type AuthPort,
@@ -34,6 +36,7 @@ function authReturning(decoded: DecodedToken): AuthPort {
     verifyIdToken: vi.fn().mockResolvedValue(decoded),
     createSessionCookie: vi.fn().mockResolvedValue("signed-cookie"),
     verifySessionCookie: vi.fn().mockResolvedValue(decoded),
+    revokeRefreshTokens: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -43,6 +46,7 @@ function authRejecting(): AuthPort {
     verifyIdToken: vi.fn(rejected),
     createSessionCookie: vi.fn(rejected),
     verifySessionCookie: vi.fn(rejected),
+    revokeRefreshTokens: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -124,6 +128,52 @@ describe("createSession", () => {
     );
 
     expect(result).toEqual({ ok: false, reason: "invalid" });
+  });
+});
+
+describe("endSession", () => {
+  it("revokes the sessions of the administrator behind the cookie", async () => {
+    const auth = authReturning(token());
+
+    expect(await endSession(auth, "signed-cookie")).toBe(true);
+    expect(auth.verifySessionCookie).toHaveBeenCalledWith("signed-cookie", true);
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith("uid-ana");
+  });
+
+  it("revokes nothing for a cookie it cannot verify", async () => {
+    const auth = authRejecting();
+
+    expect(await endSession(auth, "forged")).toBe(false);
+    expect(auth.revokeRefreshTokens).not.toHaveBeenCalled();
+  });
+
+  it("revokes nothing without a cookie", async () => {
+    const auth = authReturning(token());
+
+    expect(await endSession(auth, undefined)).toBe(false);
+    expect(auth.verifySessionCookie).not.toHaveBeenCalled();
+  });
+
+  it("reports a revocation that failed instead of throwing", async () => {
+    const auth = authReturning(token());
+    vi.mocked(auth.revokeRefreshTokens).mockRejectedValue(new Error("down"));
+
+    expect(await endSession(auth, "signed-cookie")).toBe(false);
+  });
+});
+
+describe("cookieFrom", () => {
+  it("finds one cookie among several", () => {
+    expect(cookieFrom("a=1; __session=abc.def; b=2", "__session")).toBe("abc.def");
+  });
+
+  it("finds nothing when the cookie is absent or there is no header", () => {
+    expect(cookieFrom("a=1; b=2", "__session")).toBeUndefined();
+    expect(cookieFrom(null, "__session")).toBeUndefined();
+  });
+
+  it("does not confuse a cookie whose name merely ends the same way", () => {
+    expect(cookieFrom("x__session=evil", "__session")).toBeUndefined();
   });
 });
 

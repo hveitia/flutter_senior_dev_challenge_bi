@@ -36,6 +36,38 @@ export interface AuthPort {
     options: { expiresIn: number },
   ): Promise<string>;
   verifySessionCookie(cookie: string, checkRevoked: boolean): Promise<DecodedToken>;
+  revokeRefreshTokens(uid: string): Promise<void>;
+}
+
+/** The value of one cookie in a `Cookie` request header. */
+export function cookieFrom(header: string | null, name: string): string | undefined {
+  if (!header) return undefined;
+  for (const pair of header.split(";")) {
+    const separator = pair.indexOf("=");
+    if (separator !== -1 && pair.slice(0, separator).trim() === name) {
+      return pair.slice(separator + 1).trim();
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Ends the administrator's sessions on the server, not only on this browser:
+ * every cookie issued to them so far stops verifying, including one copied
+ * before they signed out. Returns whether the revocation happened.
+ */
+export async function endSession(
+  auth: AuthPort,
+  cookie: string | undefined,
+): Promise<boolean> {
+  if (!cookie) return false;
+  try {
+    const decoded = await auth.verifySessionCookie(cookie, true);
+    await auth.revokeRefreshTokens(decoded.uid);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export type AdmissionFailure = "invalid" | "not-allowed" | "unverified" | "stale";

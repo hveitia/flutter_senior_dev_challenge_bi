@@ -5,6 +5,7 @@ const auth = {
   verifyIdToken: vi.fn(),
   createSessionCookie: vi.fn(),
   verifySessionCookie: vi.fn(),
+  revokeRefreshTokens: vi.fn(),
 };
 
 vi.mock("@/lib/server/firebase", () => ({
@@ -52,6 +53,8 @@ function admitted() {
 beforeEach(() => {
   auth.verifyIdToken.mockReset();
   auth.createSessionCookie.mockReset();
+  auth.verifySessionCookie.mockReset();
+  auth.revokeRefreshTokens.mockReset().mockResolvedValue(undefined);
 });
 
 describe("POST /api/session", () => {
@@ -139,13 +142,50 @@ describe("POST /api/session", () => {
 });
 
 describe("DELETE /api/session", () => {
+  function signedIn(): Request {
+    const signOut = request("DELETE");
+    signOut.headers.set("cookie", `other=1; ${SESSION_COOKIE}=signed-cookie`);
+    return signOut;
+  }
+
   it("clears the cookie", async () => {
-    const response = await DELETE(request("DELETE"));
+    auth.verifySessionCookie.mockResolvedValue({ uid: "uid-ana" });
+
+    const response = await DELETE(signedIn());
 
     expect(response.status).toBe(200);
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toContain(`${SESSION_COOKIE}=;`);
     expect(cookie).toMatch(/Max-Age=0/i);
+  });
+
+  it("revokes the administrator's sessions, so a copied cookie stops working", async () => {
+    auth.verifySessionCookie.mockResolvedValue({ uid: "uid-ana" });
+
+    await DELETE(signedIn());
+
+    expect(auth.verifySessionCookie).toHaveBeenCalledWith("signed-cookie", true);
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith("uid-ana");
+  });
+
+  it("still clears the cookie when it cannot be verified, and revokes nothing", async () => {
+    auth.verifySessionCookie.mockRejectedValue(new Error("auth/argument-error"));
+
+    const response = await DELETE(signedIn());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE}=;`);
+    expect(auth.revokeRefreshTokens).not.toHaveBeenCalled();
+  });
+
+  it("revokes nothing for a request from another site", async () => {
+    auth.verifySessionCookie.mockResolvedValue({ uid: "uid-ana" });
+    const crossSite = request("DELETE", undefined, "https://evil.example.net");
+    crossSite.headers.set("cookie", `${SESSION_COOKIE}=signed-cookie`);
+
+    await DELETE(crossSite);
+
+    expect(auth.revokeRefreshTokens).not.toHaveBeenCalled();
   });
 
   it("refuses a request from another site", async () => {

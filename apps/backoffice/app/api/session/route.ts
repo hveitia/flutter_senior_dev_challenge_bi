@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { adminAuth, serverSettings } from "@/lib/server/firebase";
 import { isSameOrigin } from "@/lib/server/same-origin";
 import {
+  cookieFrom,
   createSession,
+  endSession,
   SESSION_COOKIE,
   SESSION_MAX_AGE_MS,
 } from "@/lib/server/session";
@@ -57,11 +59,19 @@ export async function POST(request: Request): Promise<NextResponse> {
   return response;
 }
 
-/** Ends the session on this browser. */
+/**
+ * Ends the administrator's sessions everywhere and clears the cookie here.
+ * The cookie is cleared even if the revocation could not be done; the answer
+ * says which, so a failed revocation is not mistaken for a full sign-out.
+ */
 export async function DELETE(request: Request): Promise<NextResponse> {
   if (!isSameOrigin(request)) return refused(403);
 
-  const response = NextResponse.json({ ok: true });
+  const revoked = await endSession(
+    adminAuth(),
+    cookieFrom(request.headers.get("cookie"), SESSION_COOKIE),
+  );
+  const response = NextResponse.json({ ok: true, revoked });
   response.cookies.set(SESSION_COOKIE, "", { ...cookieOptions, maxAge: 0 });
   return response;
 }

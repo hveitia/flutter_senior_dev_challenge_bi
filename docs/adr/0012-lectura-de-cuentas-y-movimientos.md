@@ -75,7 +75,7 @@ flowchart LR
 
 **Cada entrega dice de dónde viene y de cuándo es.** El repositorio marca cada entrega como confirmada por el servidor o tomada de la copia local. Cuando el servidor confirma, guarda el momento en las preferencias del dispositivo, por cliente y por conjunto de datos; solo se guarda la hora, nunca los datos. Con eso la pantalla puede escribir «Actualizado hace 8 min» incluso tras cerrar y abrir la aplicación sin conexión.
 
-**Una copia vacía en un dispositivo que nunca sincronizó no se muestra.** Sin conexión y sin lectura previa, Firestore entrega una lista vacía «desde la copia». Mostrarla afirmaría que el cliente no tiene cuentas sin saberlo. El repositorio la descarta mientras no exista una sincronización registrada.
+**Una copia vacía en un dispositivo que nunca sincronizó no se muestra.** Sin conexión y sin lectura previa, Firestore entrega una lista vacía «desde la copia». Mostrarla afirmaría que el cliente no tiene cuentas sin saberlo. El repositorio la descarta mientras no exista una sincronización registrada. La pantalla de cuentas aplica además su propia regla: una lista vacía que solo respalda la copia local, aunque haya una sincronización anterior, no se presenta como «Estamos preparando tu cuenta». Se muestran los marcadores de carga hasta que el servidor responde, y el error si no responde. Solo una lista vacía confirmada por el servidor dice que el cliente aún no tiene cuentas.
 
 **El estado separa lo que se puede mostrar de si actualizarlo falló.** `LoadState` guarda por un lado el último valor, su origen y su antigüedad, y por otro si hay una actualización en curso o fallida. De ahí salen los estados del diseño:
 

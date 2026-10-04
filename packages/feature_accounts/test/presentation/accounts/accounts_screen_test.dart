@@ -218,6 +218,53 @@ void main() {
     expect(harness.repository.accountRefreshes, 2);
   });
 
+  group('an empty saved copy, which the backend has not confirmed', () {
+    final emptyCopy = accountsSnapshot(const [], origin: DataOrigin.cache);
+
+    testWidgets('keeps the placeholders while the backend is asked', (
+      tester,
+    ) async {
+      harness.repository.onRefreshAccounts = () =>
+          Completer<Result<AccountsSnapshot>>().future;
+      await harness.pump(tester, screen());
+
+      await harness.deliverAccounts(tester, emptyCopy);
+
+      expect(find.text('Estamos preparando tu cuenta'), findsNothing);
+      expect(find.byType(SkeletonBlock), findsWidgets);
+    });
+
+    testWidgets('is an error when the backend cannot be reached, not "no '
+        'accounts"', (tester) async {
+      harness = AccountsHarness(online: false);
+      backendAnswers(const Failed(OfflineFailure()));
+      await harness.pump(tester, screen());
+
+      await harness.deliverAccounts(tester, emptyCopy);
+
+      expect(find.text('Estamos preparando tu cuenta'), findsNothing);
+      expect(find.text('No pudimos conectarnos'), findsOneWidget);
+      // There is nothing saved worth announcing either.
+      expect(
+        find.text('Sin conexión. Mostrando datos guardados'),
+        findsNothing,
+      );
+      expect(find.text('Reintentar'), findsOneWidget);
+    });
+
+    testWidgets('becomes "no accounts" once the backend confirms it', (
+      tester,
+    ) async {
+      backendAnswers(Success(accountsSnapshot(const [])));
+      await harness.pump(tester, screen());
+
+      await harness.deliverAccounts(tester, emptyCopy);
+      await harness.deliverAccounts(tester, accountsSnapshot(const []));
+
+      expect(find.text('Estamos preparando tu cuenta'), findsOneWidget);
+    });
+  });
+
   testWidgets('fits a small phone at 130% text in every state', (
     tester,
   ) async {

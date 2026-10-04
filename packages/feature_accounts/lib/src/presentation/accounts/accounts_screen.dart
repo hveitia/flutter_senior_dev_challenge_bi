@@ -35,11 +35,21 @@ class AccountsScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ConnectionBanner(hasSavedData: accounts.hasData),
+          ConnectionBanner(hasSavedData: _showable(accounts) != null),
           Expanded(child: _content(context, accounts)),
         ],
       ),
     );
+  }
+
+  /// What can be put on screen. An empty list that only the saved copy
+  /// vouches for is not: the copy may simply have been emptied, and it
+  /// would read as a customer without accounts.
+  static List<Account>? _showable(LoadState<List<Account>> accounts) {
+    final data = accounts.data;
+    if (data == null) return null;
+    if (data.isEmpty && accounts.origin != DataOrigin.server) return null;
+    return data;
   }
 
   Widget _content(BuildContext context, LoadState<List<Account>> accounts) {
@@ -47,7 +57,7 @@ class AccountsScreen extends StatelessWidget {
       AccountsRefreshRequested(isRetry: isRetry),
     );
 
-    final data = accounts.data;
+    final data = _showable(accounts);
     if (data == null) {
       return switch (accounts.failure) {
         null => const _AccountsSkeleton(),

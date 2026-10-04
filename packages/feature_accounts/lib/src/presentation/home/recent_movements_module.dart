@@ -77,7 +77,7 @@ class _RecentMovements extends StatelessWidget {
   Widget build(BuildContext context) {
     final bloc = context.read<RecentMovementsBloc>();
     final movements = context.watch<RecentMovementsBloc>().state.movements;
-    final seeAll = module.destinations.resolve(Destinations.accounts);
+    final seeAll = module.destinations.resolve(Destinations.movements);
 
     Future<void> refresh({bool isRetry = false}) {
       bloc.add(RecentMovementsRefreshRequested(isRetry: isRetry));

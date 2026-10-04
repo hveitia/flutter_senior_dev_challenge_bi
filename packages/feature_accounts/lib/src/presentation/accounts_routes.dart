@@ -5,6 +5,7 @@ import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_screen.dart';
 import 'package:feature_accounts/src/presentation/detail/account_detail_screen.dart';
 import 'package:feature_accounts/src/presentation/detail/movements_bloc.dart';
+import 'package:feature_accounts/src/presentation/movements/movements_screen.dart';
 import 'package:feature_accounts/src/presentation/transfer/transfer_cubit.dart';
 import 'package:feature_accounts/src/presentation/transfer/transfer_notices.dart';
 import 'package:feature_accounts/src/presentation/transfer/transfer_screen.dart';
@@ -23,6 +24,9 @@ abstract final class AccountsPaths {
   /// The detail of one account.
   static String account(String accountId) =>
       '$accounts/${Uri.encodeComponent(accountId)}';
+
+  /// Every movement of the customer, across accounts.
+  static const String movements = '/movimientos';
 
   /// A transfer between the customer's accounts.
   static const String transfer = '/transferir';
@@ -49,6 +53,25 @@ GoRoute accountsTabRoute({
     notices: notices,
     onOpenAccount: (accountId) =>
         context.push(AccountsPaths.account(accountId)),
+    onOpenMovements: () => context.push(AccountsPaths.movements),
+  ),
+);
+
+/// Every movement of the customer, across accounts. The app mounts it
+/// outside its navigation shell: it covers the whole screen and is left
+/// with the back arrow.
+///
+/// It takes [AccountsRepository], [Telemetry] and `AccountsBloc` from the
+/// tree, and follows the movements for as long as the screen is open.
+GoRoute movementsRoute({DateTime Function() now = DateTime.now}) => GoRoute(
+  path: AccountsPaths.movements,
+  builder: (context, state) => BlocProvider(
+    create: (context) => MovementsBloc(
+      repository: context.read<AccountsRepository>(),
+      telemetry: context.read<Telemetry>(),
+      now: now,
+    )..add(const MovementsStarted()),
+    child: MovementsScreen(now: now),
   ),
 );
 

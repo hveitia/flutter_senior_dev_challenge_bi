@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import {
   decideTransfer,
+  TRANSFER_REJECTIONS,
   type AccountBalance,
   type TransferOrder,
   type TransferRejection,
@@ -105,15 +106,6 @@ export class LedgerCorruptionError extends Error {
   }
 }
 
-const REJECTIONS: readonly TransferRejection[] = [
-  "invalid-request",
-  "invalid-amount",
-  "same-account",
-  "unknown-account",
-  "currency-mismatch",
-  "insufficient-funds",
-];
-
 const REFERENCE_DIGEST_LENGTH = 10;
 
 /**
@@ -157,7 +149,7 @@ function recordedOutcome(id: string, stored: Record<string, unknown>): TransferO
     id,
     status: "rejected",
     processedAt: processedAt.toISOString(),
-    reason: REJECTIONS.find((known) => known === reason) ?? "invalid-request",
+    reason: TRANSFER_REJECTIONS.find((known) => known === reason) ?? "invalid-request",
   };
 }
 

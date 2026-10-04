@@ -110,7 +110,7 @@ void main() {
     telemetry = InMemoryTelemetry();
     host = RecordingModuleHost();
     destinations = FakeDestinationResolver(
-      available: {Destinations.accounts},
+      available: {Destinations.accounts, Destinations.movements},
     );
     openedAccounts = [];
     registry = HomeModuleRegistry();
@@ -439,7 +439,7 @@ void main() {
       await settle(tester);
 
       await tester.tap(find.text('Ver todos'));
-      expect(destinations.opened, [Destinations.accounts]);
+      expect(destinations.opened, [Destinations.movements]);
 
       destinations.available.clear();
       await pumpModules(tester, types);

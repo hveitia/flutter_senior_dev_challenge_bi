@@ -142,6 +142,7 @@ GoRouter createAppRouter({
                     .transfers ??
                 false,
           ),
+          movementsRoute(),
           transferRoute(onDone: (context) => context.go(AppPaths.home)),
           preferencesRoute(),
           ...notificationsRoutes(

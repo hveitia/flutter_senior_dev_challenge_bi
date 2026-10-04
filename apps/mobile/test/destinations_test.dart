@@ -34,6 +34,7 @@ void main() {
         ),
         for (final path in [
           AccountsPaths.accounts,
+          AccountsPaths.movements,
           AppPaths.services,
           AppPaths.profile,
         ])
@@ -57,6 +58,10 @@ void main() {
     expect(await open(tester, Destinations.accounts), AccountsPaths.accounts);
     expect(await open(tester, Destinations.services), AppPaths.services);
     expect(await open(tester, Destinations.profile), AppPaths.profile);
+  });
+
+  testWidgets('opens the movements of every account', (tester) async {
+    expect(await open(tester, Destinations.movements), AccountsPaths.movements);
   });
 
   test('opens a transfer only while the published features have transfers '

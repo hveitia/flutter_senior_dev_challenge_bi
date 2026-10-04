@@ -45,6 +45,11 @@ abstract final class TimeLabels {
   static String moment(DateTime moment, {required DateTime now}) =>
       '${day(moment, now: now)}$_separator${time(moment)}';
 
+  /// `09:12 · Cuenta de ahorros ****4821`, as written under a movement in a
+  /// list that mixes accounts. Without a [label] it is the time alone.
+  static String timeWith(DateTime moment, String? label) =>
+      label == null ? time(moment) : '${time(moment)}$_separator$label';
+
   /// `3 oct 2026 · 08:45`, as written in the details of a movement.
   static String fullMoment(DateTime moment) =>
       '${_date(moment)}$_separator${time(moment)}';

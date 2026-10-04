@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { AccountBalance, TransferOrder } from "@/lib/api/transfer";
+import {
+  TRANSFER_REJECTIONS,
+  type AccountBalance,
+  type TransferOrder,
+} from "@/lib/api/transfer";
 import { MemoryLedger } from "@/test/support/memory-ledger";
 import { processTransfer, transferReference } from "./transfers";
 
@@ -246,6 +250,38 @@ describe("processTransfer, a request the app left pending", () => {
     });
     expect(balances()).toEqual([357_035, 125_000]);
   });
+
+  it("rejects a transfer into an investment with that reason, the first time and when asked again", async () => {
+    ledger.putAccount(UID, { ...checking, id: "fund", kind: "investment" });
+    ledger.putTransfer(UID, TRANSFER_ID, pending({ toAccountId: "fund" }));
+
+    const first = await processTransfer(ledger, UID, TRANSFER_ID, now);
+    const again = await processTransfer(ledger, UID, TRANSFER_ID, later);
+
+    for (const result of [first, again]) {
+      expect(result).toMatchObject({
+        kind: "settled",
+        transfer: { status: "rejected", reason: "account-not-eligible" },
+      });
+    }
+    expect(balances()).toEqual([357_035, 125_000]);
+  });
+
+  it.each(TRANSFER_REJECTIONS)(
+    "answers a settled rejection with the reason that was recorded: %s",
+    async (reason) => {
+      ledger.putTransfer(
+        UID,
+        TRANSFER_ID,
+        pending({ status: "rejected", reason, processedAt: now }),
+      );
+
+      expect(await processTransfer(ledger, UID, TRANSFER_ID, later)).toMatchObject({
+        kind: "settled",
+        transfer: { status: "rejected", reason },
+      });
+    },
+  );
 
   it("does not find a request that was never created", async () => {
     expect(await processTransfer(ledger, UID, TRANSFER_ID, now)).toEqual({

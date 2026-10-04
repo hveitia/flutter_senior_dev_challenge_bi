@@ -58,11 +58,13 @@ final class AccountsHarness {
   final List<String> copied = [];
 
   /// Pumps [screen]. [accountId] also provides the movements of that
-  /// account, as the detail route does.
+  /// account, as the detail route does; [allMovements] provides the
+  /// movements of every account, as the movements route does.
   Future<void> pump(
     WidgetTester tester,
     Widget screen, {
     String? accountId,
+    bool allMovements = false,
     double textScale = 1,
     int pageSize = MovementsBloc.defaultPageSize,
   }) async {
@@ -94,7 +96,7 @@ final class AccountsHarness {
                 AccountsBloc(repository: repository, telemetry: telemetry)
                   ..add(const AccountsStarted()),
           ),
-          if (accountId != null)
+          if (accountId != null || allMovements)
             BlocProvider<MovementsBloc>(
               create: (_) => MovementsBloc(
                 repository: repository,
@@ -136,6 +138,16 @@ final class AccountsHarness {
     MovementsSnapshot snapshot,
   ) async {
     repository.movements.add(snapshot);
+    await tester.pump();
+    await tester.pump();
+  }
+
+  /// Delivers through the listener of the movements of every account.
+  Future<void> deliverAllMovements(
+    WidgetTester tester,
+    MovementsSnapshot snapshot,
+  ) async {
+    repository.recentMovements.add(snapshot);
     await tester.pump();
     await tester.pump();
   }

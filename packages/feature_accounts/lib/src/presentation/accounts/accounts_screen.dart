@@ -16,10 +16,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({
     required this.onOpenAccount,
+    this.onOpenMovements,
     this.now = DateTime.now,
     this.notices = const [],
     super.key,
   });
+
+  /// Opens the movements of every account. Without it the entry is left
+  /// out.
+  final VoidCallback? onOpenMovements;
 
   /// Shown above the accounts: what the route wants said that is not about
   /// the list itself, such as transfers waiting to be sent.
@@ -153,6 +158,14 @@ class AccountsScreen extends StatelessWidget {
               maskedNumber: account.maskedNumber,
               balanceCents: account.availableCents,
               onTap: () => onOpenAccount(account.id),
+            ),
+          ],
+          if (onOpenMovements case final openMovements?) ...[
+            SizedBox(height: context.metrics.componentGap),
+            AppButton(
+              label: AccountsStrings.seeAllMovements,
+              variant: AppButtonVariant.text,
+              onPressed: openMovements,
             ),
           ],
         ],

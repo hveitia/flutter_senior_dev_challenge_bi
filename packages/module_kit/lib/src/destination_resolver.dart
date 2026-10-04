@@ -14,6 +14,10 @@ typedef DestinationOpener = void Function(BuildContext context);
 abstract final class Destinations {
   static const String transfer = 'transfer';
   static const String accounts = 'accounts';
+
+  /// Every movement of the customer, across accounts. Not part of the
+  /// published allow-list: only the app's own actions lead here.
+  static const String movements = 'movements';
   static const String services = 'services';
   static const String inbox = 'inbox';
   static const String profile = 'profile';

@@ -38,6 +38,8 @@ abstract final class AccountsStrings {
   static const String showAmounts = 'Mostrar montos';
   static const String recentMovementsTitle = 'Últimos movimientos';
   static const String seeAll = 'Ver todos';
+  static const String movementsTitle = 'Movimientos';
+  static const String seeAllMovements = 'Ver todos los movimientos';
 
   static const String searchLabel = 'Buscar movimientos';
   static const String searchHint = 'Nombre o descripción';
@@ -53,6 +55,8 @@ abstract final class AccountsStrings {
   static const String noMovementsTitle = 'Aún no tienes movimientos';
   static const String noMovementsMessage =
       'Cuando uses esta cuenta, verás aquí cada movimiento.';
+  static const String allNoMovementsMessage =
+      'Cuando uses tus cuentas, verás aquí cada movimiento.';
   static const String noMatchesTitle = 'No hay movimientos';
   static const String noMatchesMessage = 'Prueba con otro nombre o filtro.';
 
@@ -81,6 +85,8 @@ abstract final class AccountsStrings {
   static const String accountsIncomplete =
       'No pudimos mostrar todas tus cuentas, por eso no calculamos el saldo '
       'total.';
+  static const String allMovementsIncomplete =
+      'No pudimos mostrar algunos de tus movimientos.';
   static const String movementsIncomplete =
       'No pudimos mostrar algunos movimientos de esta cuenta.';
 

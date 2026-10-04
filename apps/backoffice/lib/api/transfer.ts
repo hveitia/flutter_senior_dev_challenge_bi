@@ -10,15 +10,22 @@ export const MAX_TRANSFER_CENTS = 500_000;
 /** Longest note a customer may attach to a transfer. */
 export const MAX_CONCEPT_LENGTH = 80;
 
-/** Why a transfer was not carried out. Stable codes: the app shows its own text. */
-export type TransferRejection =
-  | "invalid-request"
-  | "invalid-amount"
-  | "same-account"
-  | "unknown-account"
-  | "account-not-eligible"
-  | "currency-mismatch"
-  | "insufficient-funds";
+/**
+ * Why a transfer was not carried out. Stable codes: the app shows its own
+ * text. The list and the type are one thing, so a reason the decision can
+ * give is always one the server can read back from a settled transfer.
+ */
+export const TRANSFER_REJECTIONS = [
+  "invalid-request",
+  "invalid-amount",
+  "same-account",
+  "unknown-account",
+  "account-not-eligible",
+  "currency-mismatch",
+  "insufficient-funds",
+] as const;
+
+export type TransferRejection = (typeof TRANSFER_REJECTIONS)[number];
 
 /**
  * The kinds of account money can be moved between. An investment is not

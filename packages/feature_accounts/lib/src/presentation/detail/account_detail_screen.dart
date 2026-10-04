@@ -4,16 +4,13 @@ import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/src/domain/account.dart';
 import 'package:feature_accounts/src/domain/data_snapshot.dart';
 import 'package:feature_accounts/src/domain/load_state.dart';
-import 'package:feature_accounts/src/domain/movement_filter.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
-import 'package:feature_accounts/src/presentation/detail/movement_detail_sheet.dart';
 import 'package:feature_accounts/src/presentation/detail/movements_bloc.dart';
-import 'package:feature_accounts/src/presentation/formatting/time_labels.dart';
 import 'package:feature_accounts/src/presentation/widgets/connection_notice.dart';
 import 'package:feature_accounts/src/presentation/widgets/freshness_caption.dart';
 import 'package:feature_accounts/src/presentation/widgets/load_failure_view.dart';
-import 'package:feature_accounts/src/presentation/widgets/movement_icons.dart';
+import 'package:feature_accounts/src/presentation/widgets/movements_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -130,10 +127,8 @@ class _AccountContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<MovementsBloc>().state;
     final bloc = context.read<MovementsBloc>();
     final margin = context.metrics.screenMargin;
-    final horizontal = EdgeInsets.symmetric(horizontal: margin);
 
     return RefreshIndicator(
       onRefresh: () {
@@ -184,175 +179,24 @@ class _AccountContent extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: AppSpacing.x8),
-                AppTextField(
-                  label: AccountsStrings.searchLabel,
-                  hintText: AccountsStrings.searchHint,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (query) => bloc.add(MovementsSearchChanged(query)),
-                ),
-                SizedBox(height: context.metrics.componentGap),
-                Wrap(
-                  spacing: AppSpacing.x2,
-                  runSpacing: AppSpacing.x2,
-                  children: [
-                    for (final filter in MovementFilter.values)
-                      AppChip(
-                        label: AccountsStrings.filter(filter),
-                        selected: state.filter == filter,
-                        // Tapping the chosen filter keeps it: one of them is
-                        // always in effect.
-                        onSelected: (_) =>
-                            bloc.add(MovementsFilterChanged(filter)),
-                      ),
-                  ],
-                ),
+                const MovementsControls(),
                 SizedBox(height: context.metrics.componentGap),
               ],
             ),
           ),
-          ..._movements(context, state, bloc, horizontal),
+          ...movementsSlivers(
+            context,
+            now: now,
+            accountOf: (_) => account,
+            incompleteMessage: AccountsStrings.movementsIncomplete,
+            emptyMessage: AccountsStrings.noMovementsMessage,
+          ),
           SliverToBoxAdapter(
             child: SizedBox(height: context.metrics.moduleGap),
           ),
         ],
       ),
     );
-  }
-
-  List<Widget> _movements(
-    BuildContext context,
-    MovementsState state,
-    MovementsBloc bloc,
-    EdgeInsets horizontal,
-  ) {
-    Widget box(Widget child) => SliverPadding(
-      padding: horizontal,
-      sliver: SliverToBoxAdapter(child: child),
-    );
-    void retry() => bloc.add(const MovementsRefreshRequested(isRetry: true));
-
-    final movements = state.movements;
-    if (!movements.hasData) {
-      return [
-        box(
-          switch (movements.failure) {
-            null => const _MovementsSkeleton(),
-            _ => InlineError(
-              message: AccountsStrings.movementsFailed,
-              isRetrying: movements.isLoading,
-              onRetry: retry,
-            ),
-          },
-        ),
-      ];
-    }
-
-    final days = groupByDay(state.visible);
-    final showsAge =
-        movements.origin == DataOrigin.cache || movements.isOutdated;
-
-    return [
-      if (movements.needsOutdatedNotice)
-        box(
-          OutdatedNotice(
-            message: AccountsStrings.movementsOutdated,
-            isRetrying: movements.isLoading,
-            onRetry: retry,
-          ),
-        ),
-      if (movements.isIncomplete)
-        box(
-          const InlineAlert(
-            message: AccountsStrings.movementsIncomplete,
-            tone: AppTone.warning,
-          ),
-        ),
-      if (showsAge)
-        box(
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.x2),
-            child: FreshnessCaption(syncedAt: movements.syncedAt, now: now),
-          ),
-        ),
-      if (days.isEmpty)
-        box(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.x6),
-            child: state.isNarrowed
-                ? const EmptyState(
-                    icon: Icons.search_off,
-                    title: AccountsStrings.noMatchesTitle,
-                    message: AccountsStrings.noMatchesMessage,
-                  )
-                : const EmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    title: AccountsStrings.noMovementsTitle,
-                    message: AccountsStrings.noMovementsMessage,
-                  ),
-          ),
-        ),
-      for (final day in days)
-        SliverPadding(
-          padding: horizontal,
-          sliver: SliverList.list(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: AppSpacing.x4,
-                  bottom: AppSpacing.x1,
-                ),
-                child: GroupHeader(
-                  label: TimeLabels.day(day.day, now: now()),
-                ),
-              ),
-              for (final (index, movement) in day.movements.indexed) ...[
-                if (index > 0) const Divider(),
-                MovementRow(
-                  icon: movementIcon(movement),
-                  description: movement.description,
-                  detail: TimeLabels.moment(movement.postedAt, now: now()),
-                  amountCents: movement.amountCents,
-                  onTap: () => unawaited(
-                    showMovementDetail(
-                      context,
-                      movement: movement,
-                      account: account,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      // The search and the filters work on the loaded pages. With older
-      // movements still on the server, "nothing found" would be a guess.
-      if (state.isNarrowed && state.hasMore)
-        box(
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.x4),
-            child: Text(
-              AccountsStrings.narrowedScope,
-              style: AppTypography.caption.copyWith(
-                color: context.colors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      // While the next page is on its way there is nothing "more" yet, but
-      // the button stays to show the progress.
-      if (state.hasMore || state.isLoadingMore)
-        box(
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.x4),
-            child: AppButton(
-              label: AccountsStrings.more,
-              variant: AppButtonVariant.secondary,
-              isLoading: state.isLoadingMore,
-              onPressed: () => bloc.add(const MovementsMoreRequested()),
-            ),
-          ),
-        ),
-    ];
   }
 }
 
@@ -407,29 +251,6 @@ class _BalanceSkeleton extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Placeholders with the geometry of a few movement rows.
-class _MovementsSkeleton extends StatelessWidget {
-  const _MovementsSkeleton();
-
-  static const double _row = 56;
-  static const int _rows = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var row = 0; row < _rows; row++) ...[
-          if (row > 0) const SizedBox(height: AppSpacing.x3),
-          SkeletonBlock(
-            height: _row,
-            borderRadius: BorderRadius.circular(context.metrics.inputRadius),
-          ),
-        ],
-      ],
     );
   }
 }

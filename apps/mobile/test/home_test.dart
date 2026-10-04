@@ -4,6 +4,7 @@ import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:feature_auth/feature_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_dependencies.dart';
@@ -139,21 +140,23 @@ void main() {
       );
     });
 
-    testWidgets('takes to the accounts from the latest movements', (
-      tester,
-    ) async {
+    testWidgets('"Ver todos" under the latest movements opens every movement, '
+        'and going back returns to the home', (tester) async {
       await pumpApp(tester);
 
       await tester.ensureVisible(find.text('Ver todos'));
       await tester.tap(find.text('Ver todos'));
       await tester.pumpAndSettle();
 
-      expect(
-        tester
-            .widget<AppBottomNavigation>(find.byType(AppBottomNavigation))
-            .currentIndex,
-        1,
-      );
+      expect(find.widgetWithText(AppBar, 'Movimientos'), findsOneWidget);
+      // It covers the navigation: it is a screen of its own, not a section.
+      expect(find.byType(AppBottomNavigation), findsNothing);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppBottomNavigation), findsOneWidget);
+      expect(find.text('Ver todos'), findsOneWidget);
     });
   });
 

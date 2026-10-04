@@ -102,8 +102,9 @@ final class MovementsState extends Equatable {
   ];
 }
 
-/// The movements of one account: a page that grows on demand, with the
-/// filter and the search the customer chose.
+/// The movements of one account, or of every account when none is named: a
+/// page that grows on demand, with the filter and the search the customer
+/// chose.
 ///
 /// It is separate from the accounts on purpose: movements can fail or be
 /// slow while the balance stays on screen.
@@ -113,7 +114,7 @@ final class MovementsState extends Equatable {
 final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
   MovementsBloc({
     required AccountsRepository repository,
-    required this.accountId,
+    this.accountId,
     Telemetry telemetry = const NoopTelemetry(),
     DateTime Function() now = DateTime.now,
     this.pageSize = defaultPageSize,
@@ -137,7 +138,9 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
   /// Movements brought at a time.
   static const int defaultPageSize = 20;
 
-  final String accountId;
+  /// The account whose movements are followed. Null follows the movements
+  /// of every account of the customer.
+  final String? accountId;
   final int pageSize;
 
   final AccountsRepository _repository;
@@ -190,7 +193,7 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
     emit(_with(movements: state.movements.startLoading()));
 
     final limit = state.limit;
-    final result = await _repository.refreshMovements(accountId, limit: limit);
+    final result = await _refreshOnce(limit);
     if (isClosed) return;
 
     // The customer may have asked for more while the backend was answering.
@@ -244,14 +247,26 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
 
   void _listen(int limit) {
     _listenerBroke = false;
-    _subscription = _repository
-        .watchMovements(accountId, limit: limit)
-        .listen(
-          (snapshot) => add(_MovementsDelivered(snapshot, limit: limit)),
-          onError: (Object error, StackTrace stackTrace) =>
-              add(_MovementsListenerFailed(error, stackTrace)),
-        );
+    _subscription = _watch(limit).listen(
+      (snapshot) => add(_MovementsDelivered(snapshot, limit: limit)),
+      onError: (Object error, StackTrace stackTrace) =>
+          add(_MovementsListenerFailed(error, stackTrace)),
+    );
   }
+
+  Stream<DataSnapshot<List<Movement>>> _watch(int limit) => switch (accountId) {
+    null => _repository.watchRecentMovements(limit: limit),
+    final accountId => _repository.watchMovements(accountId, limit: limit),
+  };
+
+  Future<Result<DataSnapshot<List<Movement>>>> _refreshOnce(int limit) =>
+      switch (accountId) {
+        null => _repository.refreshRecentMovements(limit: limit),
+        final accountId => _repository.refreshMovements(
+          accountId,
+          limit: limit,
+        ),
+      };
 
   /// The state with the given changes and the visible list recomputed, so
   /// the two can never disagree.

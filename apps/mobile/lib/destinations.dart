@@ -41,6 +41,7 @@ final class AppDestinationResolver implements DestinationResolver {
       isEnabled: _transfersOn,
     ),
     Destinations.accounts: AppDestination(open: _openAccounts),
+    Destinations.movements: AppDestination(open: _openMovements),
     Destinations.services: AppDestination(open: _openServices),
     Destinations.profile: AppDestination(open: _openProfile),
     Destinations.inbox: AppDestination(open: openInbox),
@@ -63,6 +64,9 @@ final class AppDestinationResolver implements DestinationResolver {
 
   static void _openAccounts(BuildContext context) =>
       context.go(AccountsPaths.accounts);
+
+  static void _openMovements(BuildContext context) =>
+      context.push(AccountsPaths.movements);
 
   static void _openServices(BuildContext context) =>
       context.go(AppPaths.services);

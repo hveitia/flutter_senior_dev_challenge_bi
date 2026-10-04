@@ -133,6 +133,38 @@ void main() {
     expect(find.byType(AccountCard), findsNWidgets(2));
   });
 
+  testWidgets('offers the movements of every account under the cards', (
+    tester,
+  ) async {
+    var openedMovements = 0;
+    backendAnswers(Success(accountsSnapshot(const [savings, checking])));
+    await harness.pump(
+      tester,
+      AccountsScreen(
+        onOpenAccount: opened.add,
+        onOpenMovements: () => openedMovements++,
+        now: () => now,
+      ),
+    );
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Ver todos los movimientos'));
+    await tester.tap(find.text('Ver todos los movimientos'));
+
+    expect(openedMovements, 1);
+  });
+
+  testWidgets('leaves that entry out when there is nowhere to take it', (
+    tester,
+  ) async {
+    backendAnswers(Success(accountsSnapshot(const [savings, checking])));
+    await harness.pump(tester, screen());
+    await tester.pump();
+
+    expect(find.text('Ver todos los movimientos'), findsNothing);
+    expect(find.byType(AccountCard), findsNWidgets(2));
+  });
+
   testWidgets('opens the account that was tapped', (tester) async {
     backendAnswers(Success(accountsSnapshot(const [savings, checking])));
     await harness.pump(tester, screen());

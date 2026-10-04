@@ -175,4 +175,4 @@ En un teléfono se vio que un aviso tocado con la aplicación cerrada abre su de
 - **El servidor del aliado detenido, visto en un dispositivo.** Se comprobó la falta de conexión, no el servidor caído con conexión.
 - **El contador «Intento 2 de 3» del diseño.** La pantalla indica que está reintentando y, al terminar, cuántos intentos hubo.
 - **Detección de falta de salida real a internet.** El estado de conectividad dice si el dispositivo tiene una interfaz de red activa, no si esa red llega a internet (un portal cautivo, por ejemplo). En ese caso las peticiones agotan su tiempo y se muestran como una falla, no como «sin conexión».
-- **iOS.** La aplicación arranca en un iPhone físico, pero nada de lo anterior se ha comprobado en iOS.
+- **iOS.** La aplicación funciona en un iPhone físico, pero los casos de este documento se comprobaron en Android y no se repitieron en iOS.

@@ -152,7 +152,7 @@ Los tres más probables, con las señales que ya existen en [monitoreo.md](monit
 Dicho sin rodeos, porque nada de esto está hecho:
 
 - **Firma de publicación** de Android e iOS, y la canalización que compila y sube a las tiendas.
-- **iOS.** La aplicación compila con `flutter build ios`, se instala y arranca en un iPhone físico con firma de desarrollo. Faltan recorrer sus flujos, la clave APNs para las notificaciones y la firma de distribución.
+- **iOS.** La aplicación compila con `flutter build ios`, se instala y funciona en un iPhone físico con firma de desarrollo; el autor la recorrió allí sin encontrar fallos. Faltan repetir en iOS las comprobaciones detalladas hechas en Android, la clave APNs para las notificaciones y la firma de distribución.
 - **App Check**, para que Firestore y la API acepten solo la aplicación legítima.
 - **Restricción de las claves de cliente por aplicación** (paquete y huella en Android, identificador en iOS). Hoy solo están limitadas a las API de Firebase.
 - **Límites de frecuencia** en la API de clientes y en el acceso a la consola, y límites por cliente en las transferencias.

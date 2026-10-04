@@ -60,7 +60,7 @@ Diagramas: [componentes y dependencias](docs/arquitectura/componentes.md), [fluj
 | Documentación del uso de IA | Cumplido | |
 | Trunk Based Development | Cumplido | |
 
-La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). El servidor está desplegado como demostración (ver [Demostración publicada](#demostración-publicada)); la aplicación no está publicada en ninguna tienda. En iOS compila, se instala y arranca en un iPhone físico; sus flujos no se recorrieron allí.
+La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). El servidor está desplegado como demostración (ver [Demostración publicada](#demostración-publicada)); la aplicación no está publicada en ninguna tienda. En iOS compila, se instala y funciona en un iPhone físico: el autor recorrió la aplicación allí sin encontrar fallos, salvo las notificaciones push, que no están configuradas.
 
 ## Requisitos
 
@@ -195,6 +195,8 @@ flutter run -t lib/main_gallery.dart    # el sistema de diseño completo, sin ni
 
 Para instalar una compilación de demostración sin depender del modo de depuración: `flutter build apk --profile` con las mismas opciones y `adb install -r build/app/outputs/flutter-apk/app-profile.apk`.
 
+En iOS hace falta macOS con Xcode y CocoaPods, un iPhone con iOS 15 o superior y un equipo de desarrollo de Apple elegido en Xcode (`apps/mobile/ios/Runner.xcworkspace`, pestaña *Signing & Capabilities*); el identificador del equipo es de cada persona y no está versionado. Con el iPhone conectado, `flutter run` con las mismas opciones, o `flutter build ios --release` y `xcrun devicectl device install app --device <id> build/ios/iphoneos/Runner.app`.
+
 ## Pruebas
 
 ```bash
@@ -205,10 +207,10 @@ Comprueba el formato, el análisis estático, que no quede ninguna prueba enfoca
 
 | Suite | Pruebas | Qué cubre | Cómo se ejecuta sola |
 | --- | --- | --- | --- |
-| `packages/design_system` | 359 | Tokens contra `tokens.json`, contraste WCAG de cada combinación permitida, formato de importes, estados y semántica de cada componente, texto al 130 % | `flutter test` en la carpeta |
+| `packages/design_system` | 412 | Tokens contra `tokens.json`, contraste WCAG de cada combinación permitida, formato e ingreso de importes, estados y semántica de cada componente, texto al 130 % | `flutter test` en la carpeta |
 | `packages/app_platform` | 208 | Lectura tolerante de la configuración, esquema, orígenes de respaldo, política de resiliencia con reloj simulado, conectividad, telemetría sin datos del cliente | ídem |
 | `packages/feature_auth` | 286 | Cédula y demás validadores, sesión y sus carreras, registro, inicio de sesión, cuenta a medio crear, pantallas | ídem |
-| `packages/feature_accounts` | 444 | Cuentas y movimientos (origen, antigüedad, paginación), tendencia del saldo, transferencias (idempotencia, cola, resultados), pantallas en cada estado | ídem |
+| `packages/feature_accounts` | 446 | Cuentas y movimientos (origen, antigüedad, paginación), tendencia del saldo, transferencias (idempotencia, cola, resultados), pantallas en cada estado | ídem |
 | `packages/module_kit` | 19 | Registro de módulos, lectura de propiedades, aviso de estado, frontera del contrato | ídem |
 | `packages/feature_home` | 63 | Composición por segmento, tipos desconocidos, falla parcial frente a falla total, actualización | ídem |
 | `packages/feature_notifications` | 129 | Invitación al permiso, registro y olvido del dispositivo, teléfono compartido, bandeja, aviso tocado sin sesión | ídem |
@@ -219,7 +221,7 @@ Comprueba el formato, el análisis estático, que no quede ninguna prueba enfoca
 | Reglas de Firestore | 110 | Qué puede leer y escribir cada quien, caso permitido y casos denegados, contra el emulador | `npm ci` y `npm test` en `firebase` (Node, y Java 21 o superior el primero del `PATH`) |
 | Herramientas de carga | 31 | Saldos que cuadran con sus movimientos, documento publicado, identidades locales | `npm run test:seed` en `firebase` |
 
-En total, 1866 pruebas de Dart. No hay pruebas de imagen: las fuentes se dibujan distinto en macOS y en el Linux de la CI ([ADR 0007](docs/adr/0007-sistema-de-diseno.md)).
+En total, 1921 pruebas de Dart. No hay pruebas de imagen: las fuentes se dibujan distinto en macOS y en el Linux de la CI ([ADR 0007](docs/adr/0007-sistema-de-diseno.md)).
 
 ### Prueba de extremo a extremo
 
@@ -291,7 +293,7 @@ tool/                     setup.sh, verify.sh y local-stack.sh.
 
 ## Límites conocidos
 
-- **iOS:** la aplicación compila con `flutter build ios`, se instala y arranca en un iPhone físico. Sus flujos no se recorrieron en iOS, y las notificaciones push no están configuradas allí (requieren una clave APNs).
+- **iOS:** la aplicación compila con `flutter build ios`, se instala y funciona en un iPhone físico; el autor la recorrió allí sin encontrar fallos. Las notificaciones push no están configuradas en iOS (requieren una clave APNs) y «Activar en Ajustes» no abre los ajustes del sistema. Las comprobaciones detalladas de [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md) se hicieron en Android y no se repitieron una por una en iOS.
 - **El servidor está desplegado solo como demostración** y la aplicación no está en ninguna tienda: se instala desde el código o desde un APK firmado con la clave de depuración de la plantilla. Falta la firma de publicación.
 - **El registro es abierto** y cada cliente nuevo recibe un depósito de demostración. Faltan verificación de correo, App Check y límites de frecuencia.
 - **Los aliados son simulados** y comparten servidor con la consola.

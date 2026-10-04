@@ -5,6 +5,7 @@ import "server-only";
 export const EXPECTED_PROJECT_ID = "flutter-challenge-bi";
 
 const DEMO_ENVIRONMENT = "demo";
+const LIVE_DELIVERY = "live";
 
 export class SettingsError extends Error {
   constructor(message: string) {
@@ -19,7 +20,10 @@ export interface ServerSettings {
   adminEmails: ReadonlySet<string>;
   /** Only a demonstration environment may publish simulated faults. */
   isDemo: boolean;
-  /** Ask the messaging service to validate a send without delivering it. */
+  /**
+   * Ask the messaging service to validate a send without delivering it.
+   * True unless the environment sets PUSH_DELIVERY=live.
+   */
   pushDryRun: boolean;
   /** Parsed service account, or null to use the default credentials. */
   serviceAccount: Record<string, unknown> | null;
@@ -76,7 +80,9 @@ export function readServerSettings(env: Environment): ServerSettings {
     projectId: readProjectId(env),
     adminEmails: readAdminEmails(env),
     isDemo: env.BACKOFFICE_ENVIRONMENT === DEMO_ENVIRONMENT,
-    pushDryRun: isOn(env.PUSH_DRY_RUN),
+    // Delivering to real phones is opt-in: a deployment that forgot the
+    // setting, or mistyped it, validates its sends and delivers nothing.
+    pushDryRun: env.PUSH_DELIVERY !== LIVE_DELIVERY,
     serviceAccount: readServiceAccount(env),
   };
 }

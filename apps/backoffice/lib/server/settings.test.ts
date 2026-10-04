@@ -67,9 +67,18 @@ describe("readServerSettings", () => {
     ).toBe(false);
   });
 
-  it("sends real notifications unless a dry run is requested", () => {
-    expect(readServerSettings(valid).pushDryRun).toBe(false);
-    expect(readServerSettings({ ...valid, PUSH_DRY_RUN: "true" }).pushDryRun).toBe(
+  it("only validates notifications unless real delivery is enabled explicitly", () => {
+    expect(readServerSettings(valid).pushDryRun).toBe(true);
+    expect(readServerSettings({ ...valid, PUSH_DELIVERY: "live" }).pushDryRun).toBe(
+      false,
+    );
+  });
+
+  it("stays in dry run for any delivery value it does not recognize", () => {
+    expect(readServerSettings({ ...valid, PUSH_DELIVERY: "true" }).pushDryRun).toBe(
+      true,
+    );
+    expect(readServerSettings({ ...valid, PUSH_DELIVERY: "LIVE " }).pushDryRun).toBe(
       true,
     );
   });

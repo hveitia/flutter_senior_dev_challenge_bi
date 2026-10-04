@@ -6,12 +6,15 @@ import 'package:banca_digital/bootstrap.dart';
 import 'package:banca_digital/notifications_composition.dart';
 import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
+import 'package:banca_digital/services_wiring.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:feature_accounts/adapters.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/adapters.dart';
 import 'package:feature_home/feature_home.dart';
+import 'package:feature_services/adapters.dart';
+import 'package:feature_services/feature_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -115,6 +118,7 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
       policy: policy,
       telemetry: telemetry,
     ),
+    services: composeServices(policy: policy, telemetry: telemetry),
     savedCustomerData: StepwiseSavedCustomerData(
       telemetry: telemetry,
       steps: [
@@ -123,6 +127,9 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
           name: _syncTimesStep,
           run: () => SharedPreferencesSyncTimes.clearAll(preferences),
         ),
+        // What a partner's pages kept in the web view: the next customer
+        // on this device must not find it.
+        (name: miniAppDataStep, run: const WebViewMiniAppData().clear),
       ],
     ),
   );
@@ -131,13 +138,14 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
 /// Every home module this build can draw, each registered by the domain
 /// that owns it.
 ///
-/// The published configuration may name other types, such as
-/// `investmentSummary` or `serviceRecommendations`. Nobody registers them
-/// yet, so the home leaves them out until their domain is built.
+/// The published configuration may name types this build does not know.
+/// Nobody registers them, so the home leaves them out until a version that
+/// has their domain is installed.
 HomeModuleRegistry composeHomeModules() {
   final registry = HomeModuleRegistry();
   registerAccountsHomeModules(registry);
   registerHomeModules(registry);
+  registerServicesHomeModules(registry);
   return registry;
 }
 

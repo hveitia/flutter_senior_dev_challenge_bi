@@ -146,7 +146,7 @@ void main() {
     expect(currentDestination(tester), 1);
   });
 
-  testWidgets('Servicios says honestly that it is not built yet', (
+  testWidgets('Servicios lists what the bank and its partners offer', (
     tester,
   ) async {
     await pumpSignedIn(tester);
@@ -155,7 +155,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Servicios'), findsNWidgets(2));
-    expect(find.text('Estamos construyendo esta sección'), findsOneWidget);
+    expect(
+      find.text('Productos del banco y de nuestros aliados'),
+      findsOneWidget,
+    );
     expect(currentDestination(tester), 2);
   });
 

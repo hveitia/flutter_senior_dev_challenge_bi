@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Plain HTTP is allowed to the developer's machine only, which a phone
-     reaches through `adb reverse`. Everything else stays HTTPS only. -->
+<!-- Debug builds only. Plain HTTP is allowed to the developer's own machine
+     and nowhere else, for the customer API and for the web view of a
+     partner's mini app: a phone reaches it as localhost through
+     `adb reverse`, an emulator as 10.0.2.2. Release builds have no such
+     file, so they refuse all cleartext traffic. -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">localhost</domain>

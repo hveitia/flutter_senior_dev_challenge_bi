@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
-import 'package:banca_digital/destinations.dart';
 import 'package:banca_digital/notifications_wiring.dart';
+import 'package:banca_digital/services_wiring.dart';
 import 'package:banca_digital/shell/app_shell.dart';
 import 'package:banca_digital/shell/customer_scope.dart';
 import 'package:banca_digital/shell/section_screens.dart';
@@ -12,6 +12,7 @@ import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_home/feature_home.dart';
 import 'package:feature_notifications/feature_notifications.dart';
+import 'package:feature_services/feature_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -106,19 +107,18 @@ GoRouter createAppRouter({
                   context,
                   productName: productName,
                   registry: dependencies.homeModules,
+                  services: dependencies.services,
                 ),
               ),
               accountsTabRoute(
                 // --- transfers (stage 8) ---
                 notices: const [QueuedTransfersNotice(), ProvisioningNotice()],
               ),
-              GoRoute(
+              servicesTabRoute(
                 path: AppPaths.services,
-                builder: (context, state) => const SectionPlaceholderScreen(
-                  title: ShellStrings.services,
-                  message: ShellStrings.servicesComing,
-                  icon: Icons.grid_view,
-                ),
+                catalog: dependencies.services.catalog,
+                destinations: (context) =>
+                    appDestinations(context, dependencies.services),
               ),
               GoRoute(
                 path: AppPaths.profile,
@@ -143,6 +143,7 @@ GoRouter createAppRouter({
           transferRoute(onDone: (context) => context.go(AppPaths.home)),
           preferencesRoute(),
           ...notificationsRoutes(destinations: destinationsFor),
+          miniAppRoute(dependencies.services, servicesPath: AppPaths.services),
         ],
       ),
     ],
@@ -157,16 +158,14 @@ Widget _home(
   BuildContext context, {
   required String productName,
   required HomeModuleRegistry registry,
+  required ServicesDependencies services,
 }) {
   final session = context.watch<SessionBloc>().state;
   final profile = session is SessionSignedIn ? session.profile : null;
-  final config = context.read<RemoteConfigCubit>();
 
   return HomeScreen(
     registry: registry,
-    destinations: AppDestinationResolver(
-      features: () => config.state.segment?.features ?? FeatureFlags.allOff,
-    ),
+    destinations: appDestinations(context, services),
     productName: productName,
     firstName: profile?.firstName ?? '',
     fullName: profile?.fullName ?? '',

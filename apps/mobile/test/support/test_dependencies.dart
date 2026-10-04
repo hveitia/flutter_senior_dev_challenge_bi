@@ -13,6 +13,8 @@ import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_auth/testing.dart';
 import 'package:feature_notifications/feature_notifications.dart';
 import 'package:feature_notifications/testing.dart';
+import 'package:feature_services/feature_services.dart';
+import 'package:feature_services/testing.dart';
 
 import 'fake_saved_customer_data.dart';
 
@@ -87,6 +89,7 @@ final class TestDependencies {
     SavedCustomerData? savedData,
     InMemoryTelemetry? telemetry,
     BiometricAuthenticator? biometrics,
+    String? partnerOrigin = partnerOriginOfTests,
   }) : auth = auth ?? FakeAuthRepository(),
        telemetry = telemetry ?? InMemoryTelemetry() {
     dependencies = AppDependencies(
@@ -122,6 +125,19 @@ final class TestDependencies {
         memory: primerMemory,
         settings: FakeSystemSettings(),
       ),
+      services: ServicesDependencies(
+        origin: partnerOrigin == null
+            ? null
+            : PartnerOrigin.parse(partnerOrigin, isDevelopment: false),
+        policy: _policyFollowing(faults),
+        telemetry: this.telemetry,
+        surfaceFactory: (events) {
+          final surface = FakeMiniAppSurface(events);
+          miniApps.add(surface);
+          return surface;
+        },
+        externalLinks: FakeExternalLinks(),
+      ),
     );
   }
 
@@ -135,6 +151,25 @@ final class TestDependencies {
   /// that is not about notifications.
   final FakePushMessaging messaging = FakePushMessaging();
   final FakePrimerMemory primerMemory = FakePrimerMemory(wasAnswered: true);
+
+  /// A policy that applies the published faults, tied to [faults] as the
+  /// app's own is: told at once when they change.
+  static ResiliencePolicy _policyFollowing(PublishedFaults faults) {
+    final policy = ResiliencePolicy(
+      faults: () => faults.current,
+      allowFaultInjection: true,
+      delay: (_) async {},
+    );
+    faults.onChanged = policy.faultsChanged;
+    return policy;
+  }
+
+  /// Where the partners of these tests serve their mini apps.
+  static const String partnerOriginOfTests = 'https://partners.example.com';
+
+  /// The surface of every mini app opened, in order. A test plays the
+  /// partner's page through the last one.
+  final List<FakeMiniAppSurface> miniApps = [];
 
   final FakeAuthRepository auth;
   final InMemoryTelemetry telemetry;

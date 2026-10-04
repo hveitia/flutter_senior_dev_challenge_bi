@@ -18,6 +18,7 @@ dependencies:
   feature_auth: ^0.1.0
   feature_home: ^0.1.0
   feature_notifications: ^0.1.0
+  feature_services: ^0.1.0
   firebase_auth: ^6.7.0
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0

@@ -133,7 +133,10 @@ void main() {
       await tester.tap(find.text('Pagar'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Estamos construyendo esta sección'), findsOneWidget);
+      expect(
+        find.text('Productos del banco y de nuestros aliados'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('takes to the accounts from the latest movements', (

@@ -4,6 +4,7 @@ import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
+import 'package:feature_services/feature_services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:module_kit/module_kit.dart';
 
@@ -37,6 +38,7 @@ final class AppDependencies {
     required this.homeModules,
     required this.appInfo,
     required this.notifications,
+    required this.services,
   });
 
   /// The customer's inbox, this device's registration and the messaging
@@ -75,4 +77,8 @@ final class AppDependencies {
   final HomeModuleRegistry homeModules;
 
   final AppInfo appInfo;
+
+  /// What Servicios and the partners' mini apps need: where partner content
+  /// lives and what shows it.
+  final ServicesDependencies services;
 }

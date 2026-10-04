@@ -70,6 +70,9 @@ final class InboxCubit extends Cubit<InboxState> {
   final NotificationsRepository _repository;
   StreamSubscription<InboxSnapshot>? _subscription;
 
+  /// Notifications whose mark is on its way to the backend.
+  final Set<String> _marking = {};
+
   /// A listener that reported an error delivers nothing more: the next
   /// retry has to listen again, not only ask once.
   bool _listenerBroke = false;
@@ -98,7 +101,7 @@ final class InboxCubit extends Cubit<InboxState> {
     }
     emit(
       InboxState(
-        items: snapshot.items,
+        items: _shown(snapshot.items),
         fromCache: snapshot.fromCache,
         // Fresh data proves the backend is reachable again.
         failure: snapshot.fromCache ? state.failure : null,
@@ -136,7 +139,7 @@ final class InboxCubit extends Cubit<InboxState> {
 
     emit(switch (result) {
       Success(value: final snapshot) => InboxState(
-        items: snapshot.items,
+        items: _shown(snapshot.items),
         fromCache: snapshot.fromCache,
       ),
       Failed(:final failure) => InboxState(
@@ -159,13 +162,28 @@ final class InboxCubit extends Cubit<InboxState> {
 
   /// Marks [item] as read. The screen shows it at once; if the backend
   /// refuses, it goes back to unread.
+  ///
+  /// Only the mark is ever changed here. What the notification says is
+  /// whatever the listener delivered last, which may be newer than [item].
   Future<void> markRead(InboxItem item) async {
-    if (item.isRead) return;
-    _replace(item.id, (current) => current.asRead());
+    if (item.isRead || _marking.contains(item.id)) return;
+    _marking.add(item.id);
+    _replace(item.id, (current) => current.withRead(isRead: true));
 
     final result = await _repository.markRead(item.id);
+    _marking.remove(item.id);
     if (isClosed || result is Success<void>) return;
-    _replace(item.id, (_) => item);
+    _replace(item.id, (current) => current.withRead(isRead: false));
+  }
+
+  /// [items] as they are shown: a notification being marked stays read even
+  /// if a snapshot taken before the backend answered still says unread.
+  List<InboxItem> _shown(List<InboxItem> items) {
+    if (_marking.isEmpty) return items;
+    return [
+      for (final each in items)
+        _marking.contains(each.id) ? each.withRead(isRead: true) : each,
+    ];
   }
 
   void _replace(String id, InboxItem Function(InboxItem current) change) {

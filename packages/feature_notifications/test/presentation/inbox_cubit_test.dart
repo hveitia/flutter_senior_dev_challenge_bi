@@ -146,6 +146,61 @@ void main() {
 
       expect(repository.markedRead, isEmpty);
     });
+
+    test('a refusal puts back only the unread mark, keeping what arrived '
+        'while the backend was answering', () async {
+      final answer = Completer<Result<void>>();
+      repository.onMarkRead = (_) => answer.future;
+      final reworded = InboxItem(
+        id: salary.id,
+        title: 'Recibiste un pago',
+        body: salary.body,
+        kind: salary.kind,
+        destination: salary.destination,
+        createdAt: salary.createdAt,
+        isRead: false,
+      );
+
+      final marking = cubit.markRead(salary);
+      repository.inbox.add(fresh([travel, reworded, signIn]));
+      await pumpEventQueue();
+      answer.complete(const Failed(TimeoutFailure()));
+      await marking;
+
+      expect(cubit.state.items, [travel, reworded, signIn]);
+    });
+
+    test('a snapshot that arrives while marking does not show the '
+        'notification as unread again', () async {
+      final answer = Completer<Result<void>>();
+      repository.onMarkRead = (_) => answer.future;
+
+      final marking = cubit.markRead(salary);
+      repository.inbox.add(fresh([salary, signIn]));
+      await pumpEventQueue();
+
+      expect(cubit.state.items!.first.isRead, isTrue);
+      expect(cubit.state.unreadCount, 1);
+
+      answer.complete(const Success(null));
+      await marking;
+
+      expect(cubit.state.items!.first.isRead, isTrue);
+    });
+
+    test('a refusal for a notification that is no longer in the inbox '
+        'changes nothing', () async {
+      final answer = Completer<Result<void>>();
+      repository.onMarkRead = (_) => answer.future;
+
+      final marking = cubit.markRead(salary);
+      repository.inbox.add(fresh([signIn]));
+      await pumpEventQueue();
+      answer.complete(const Failed(TimeoutFailure()));
+      await marking;
+
+      expect(cubit.state.items, [signIn]);
+    });
   });
 
   test(

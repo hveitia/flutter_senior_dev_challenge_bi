@@ -39,14 +39,14 @@ final class InboxItem extends Equatable {
   final DateTime createdAt;
   final bool isRead;
 
-  InboxItem asRead() => InboxItem(
+  InboxItem withRead({required bool isRead}) => InboxItem(
     id: id,
     title: title,
     body: body,
     kind: kind,
     destination: destination,
     createdAt: createdAt,
-    isRead: true,
+    isRead: isRead,
   );
 
   @override

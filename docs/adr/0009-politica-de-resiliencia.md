@@ -73,6 +73,7 @@ stateDiagram-v2
 - La latencia se añade antes de cada intento y cuenta contra el tiempo de espera.
 - Un servicio marcado como no disponible responde con `ServiceUnavailableFailure` en cada intento, sin llamar al servicio real.
 - Los ajustes se leen en cada intento, así un cambio publicado desde la consola se aplica a mitad de una operación.
+- Lo que no pasa por una llamada, como una escucha en tiempo real, pregunta a la política si su servicio está dado por caído (`isTakenDown`) y, si lo está, entrega el mismo fallo en lugar de datos. Se añadió en la etapa 6: sin ello, un servicio «caído» seguía actualizando la pantalla por su escucha. La decisión sigue en un solo lugar, la política, que es la única que lee el bloque.
 
 Es una capacidad de demostración y tiene candado en la aplicación:
 

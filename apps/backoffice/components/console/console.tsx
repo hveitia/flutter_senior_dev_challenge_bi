@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import type { PublishOutcome } from "@/app/actions";
 import {
   moveModule,
@@ -11,6 +11,7 @@ import {
   setPromo,
   setResilience,
 } from "@/lib/config/editing";
+import { moduleLabel } from "@/lib/config/labels";
 import {
   hasFaults,
   NO_FAULTS,
@@ -65,6 +66,8 @@ export function Console({
   const segmentId = state.selectedSegment;
   const segment = state.draft.segments[segmentId];
   const edit = (draft: HomeConfig) => dispatch({ type: "edited", draft });
+  // Read out by screen readers: what just happened that sight alone shows.
+  const [announcement, setAnnouncement] = useState("");
 
   async function publishDraft() {
     dispatch({ type: "publish-started" });
@@ -79,6 +82,7 @@ export function Console({
           version: outcome.version,
           publishedAt: outcome.publishedAt,
         });
+        setAnnouncement(`Configuración v${outcome.version} publicada`);
       } else {
         dispatch({ type: "publish-failed", failure: outcome });
       }
@@ -99,6 +103,9 @@ export function Console({
 
   return (
     <div className="min-h-screen">
+      <p role="status" aria-live="polite" className="sr-only" data-testid="announcer">
+        {announcement}
+      </p>
       <TopBar
         configVersion={state.source === "published" ? state.baseVersion : null}
         isDemo={isDemo}
@@ -136,7 +143,15 @@ export function Console({
           >
           <ModulesCard
             modules={segment.modules}
-            onMove={(from, to) => edit(moveModule(state.draft, segmentId, from, to))}
+            onMove={(from, to) => {
+              const moved = segment.modules[from];
+              const next = moveModule(state.draft, segmentId, from, to);
+              if (!moved || next === state.draft) return;
+              edit(next);
+              setAnnouncement(
+                `${moduleLabel(moved.type)}, posición ${to + 1} de ${segment.modules.length}`,
+              );
+            }}
             onVisibilityChange={(moduleId, visible) =>
               edit(setModuleVisible(state.draft, segmentId, moduleId, visible))
             }

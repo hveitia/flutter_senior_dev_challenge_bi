@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isVisible } from "@/lib/config/editing";
 import { moduleLabel } from "@/lib/config/labels";
 import type { ModuleConfig } from "@/lib/config/types";
 import { ArrowDownIcon, ArrowUpIcon, Card, GripIcon, Toggle } from "../ui";
+
+type Direction = "up" | "down";
+
+function arrowKey(id: string, direction: Direction): string {
+  return `${id}:${direction}`;
+}
 
 const arrowButton =
   "grid size-9 place-items-center rounded-admin text-ink-900 disabled:cursor-not-allowed disabled:text-ink-300";
@@ -25,6 +31,33 @@ export function ModulesCard({
 }) {
   const [dragged, setDragged] = useState<number | null>(null);
   const last = modules.length - 1;
+
+  // A reorder moves the row in the document, which can drop keyboard focus.
+  // Focus goes back to the arrow that was used, or to the opposite one when
+  // the module reached an end and that arrow became disabled.
+  const arrows = useRef(new Map<string, HTMLButtonElement>());
+  const refocus = useRef<{ id: string; direction: Direction } | null>(null);
+  useEffect(() => {
+    const wanted = refocus.current;
+    if (!wanted) return;
+    refocus.current = null;
+    const used = arrows.current.get(arrowKey(wanted.id, wanted.direction));
+    const opposite = arrows.current.get(
+      arrowKey(wanted.id, wanted.direction === "up" ? "down" : "up"),
+    );
+    (used && !used.disabled ? used : opposite)?.focus();
+  }, [modules]);
+
+  const register = (id: string, direction: Direction) => (node: HTMLButtonElement | null) => {
+    const key = arrowKey(id, direction);
+    if (node) arrows.current.set(key, node);
+    else arrows.current.delete(key);
+  };
+
+  const moveWithArrow = (id: string, index: number, direction: Direction) => {
+    refocus.current = { id, direction };
+    onMove(index, direction === "up" ? index - 1 : index + 1);
+  };
 
   return (
     <Card title="Módulos del inicio">
@@ -57,7 +90,8 @@ export function ModulesCard({
                 type="button"
                 aria-label={`Subir ${name}`}
                 disabled={index === 0}
-                onClick={() => onMove(index, index - 1)}
+                ref={register(item.id, "up")}
+                onClick={() => moveWithArrow(item.id, index, "up")}
                 className={arrowButton}
               >
                 <ArrowUpIcon />
@@ -66,7 +100,8 @@ export function ModulesCard({
                 type="button"
                 aria-label={`Bajar ${name}`}
                 disabled={index === last}
-                onClick={() => onMove(index, index + 1)}
+                ref={register(item.id, "down")}
+                onClick={() => moveWithArrow(item.id, index, "down")}
                 className={arrowButton}
               >
                 <ArrowDownIcon />

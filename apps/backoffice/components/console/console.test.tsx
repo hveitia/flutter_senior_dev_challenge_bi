@@ -162,6 +162,60 @@ describe("Console", () => {
     expect(previewText()).not.toContain("Protege tu próximo viaje");
   });
 
+  it("announces a successful publication to assistive technology", async () => {
+    const publish = renderConsole();
+    publish.mockResolvedValue({
+      ok: true,
+      version: 15,
+      publishedAt: "2026-10-03T14:00:00.000Z",
+    });
+    expect(screen.getByTestId("announcer").getAttribute("aria-live")).toBe("polite");
+
+    await hidePromo();
+    await userEvent.click(publishButton());
+    await screen.findByText("Configuración v15");
+
+    expect(screen.getByTestId("announcer").textContent).toBe(
+      "Configuración v15 publicada",
+    );
+  });
+
+  it("keeps focus on the moved module and announces its new position", async () => {
+    renderConsole();
+
+    await userEvent.click(screen.getByRole("button", { name: "Bajar Saldo total" }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Bajar Saldo total" }),
+    );
+    expect(screen.getByTestId("announcer").textContent).toBe(
+      "Saldo total, posición 2 de 6",
+    );
+  });
+
+  it("moves focus to the opposite arrow when the module reaches an end", async () => {
+    renderConsole();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Bajar Últimos movimientos" }),
+    );
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Subir Últimos movimientos" }),
+    );
+  });
+
+  it("can keep moving a module with the keyboard alone", async () => {
+    renderConsole();
+
+    screen.getByRole("button", { name: "Bajar Saldo total" }).focus();
+    await userEvent.keyboard("{Enter}{Enter}");
+
+    expect(screen.getByTestId("announcer").textContent).toBe(
+      "Saldo total, posición 3 de 6",
+    );
+  });
+
   it("cannot move the first module up nor the last one down", () => {
     renderConsole();
 

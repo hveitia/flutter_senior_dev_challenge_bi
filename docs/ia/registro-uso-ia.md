@@ -41,7 +41,7 @@ Fue el primer uso de la IA y el que fijó el aspecto del producto.
 
 ## Impacto
 
-**Productividad.** El alcance construido (aplicación con ocho paquetes, consola, API de clientes, reglas y documentación) no habría cabido en el plazo de otro modo. El límite no fue la velocidad de escritura sino la verificación.
+**Productividad.** La IA permitió construir un alcance amplio: aplicación con ocho paquetes, consola, API de clientes, reglas y documentación. El límite no fue la velocidad de escritura sino la verificación.
 
 **Calidad.** Lo que más defectos evitó fueron las revisiones independientes. Encontraron, entre otros, datos del cliente que quedaban en el dispositivo tras cerrar sesión, una transferencia que podía quedar en cola después de haberse enviado y un teléfono compartido que habría recibido avisos del cliente anterior. Ejecutar en un dispositivo encontró lo que las pruebas no veían, como un campo de contraseña anunciado como botón a los lectores de pantalla.
 

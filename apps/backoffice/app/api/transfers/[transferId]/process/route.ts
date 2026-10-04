@@ -2,6 +2,7 @@ import { isTransferId } from "@/lib/api/transfer-request";
 import { failure, handleApi } from "@/lib/server/api-http";
 import { customerFromRequest } from "@/lib/server/customer-auth";
 import { adminAuth, adminDb } from "@/lib/server/firebase";
+import { announceSettled } from "@/lib/server/transfer-announce";
 import { transferAnswer } from "@/lib/server/transfer-http";
 import { firestoreTransferLedger } from "@/lib/server/transfer-store";
 import { processTransfer } from "@/lib/server/transfers";
@@ -27,13 +28,14 @@ export async function POST(
       return failure("invalid-request", { fields: ["transferId"] });
     }
 
-    return transferAnswer(
-      await processTransfer(
-        firestoreTransferLedger(adminDb()),
-        customer.uid,
-        transferId,
-        new Date(),
-      ),
+    const now = new Date();
+    const result = await processTransfer(
+      firestoreTransferLedger(adminDb()),
+      customer.uid,
+      transferId,
+      now,
     );
+    announceSettled(result, customer.uid, transferId, now);
+    return transferAnswer(result);
   });
 }

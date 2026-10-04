@@ -2,6 +2,7 @@ import { parseTransferBody } from "@/lib/api/transfer-request";
 import { failure, handleApi, readJsonObject } from "@/lib/server/api-http";
 import { customerFromRequest } from "@/lib/server/customer-auth";
 import { adminAuth, adminDb } from "@/lib/server/firebase";
+import { announceSettled } from "@/lib/server/transfer-announce";
 import { transferAnswer } from "@/lib/server/transfer-http";
 import { firestoreTransferLedger } from "@/lib/server/transfer-store";
 import { processTransfer } from "@/lib/server/transfers";
@@ -26,14 +27,15 @@ export async function POST(request: Request): Promise<Response> {
     const parsed = parseTransferBody(json.body);
     if (!parsed.ok) return failure("invalid-request", { fields: parsed.fields });
 
-    return transferAnswer(
-      await processTransfer(
-        firestoreTransferLedger(adminDb()),
-        customer.uid,
-        parsed.transferId,
-        new Date(),
-        parsed.order,
-      ),
+    const now = new Date();
+    const result = await processTransfer(
+      firestoreTransferLedger(adminDb()),
+      customer.uid,
+      parsed.transferId,
+      now,
+      parsed.order,
     );
+    announceSettled(result, customer.uid, parsed.transferId, now);
+    return transferAnswer(result);
   });
 }

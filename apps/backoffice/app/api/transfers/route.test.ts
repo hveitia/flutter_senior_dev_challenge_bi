@@ -24,6 +24,8 @@ vi.mock("@/lib/server/firebase", () => ({
 vi.mock("@/lib/server/transfer-store", () => ({
   firestoreTransferLedger: () => ledger,
 }));
+const announce = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/server/transfer-announce", () => ({ announceSettled: announce }));
 
 const { POST } = await import("./route");
 
@@ -137,6 +139,30 @@ describe("POST /api/transfers, settling", () => {
       },
     });
     expect(balances()).toEqual([342_025, 140_010]);
+  });
+
+  it("hands every settlement to the notice, for the customer of the token", async () => {
+    announce.mockClear();
+
+    await POST(post(PATH, body));
+    await POST(post(PATH, body));
+
+    expect(announce).toHaveBeenCalledTimes(2);
+    expect(announce).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ kind: "settled", replayed: false }),
+      UID,
+      TRANSFER_ID,
+      expect.any(Date),
+    );
+    // The notice itself tells a replay apart and stays quiet for it.
+    expect(announce).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ kind: "settled", replayed: true }),
+      UID,
+      TRANSFER_ID,
+      expect.any(Date),
+    );
   });
 
   it("names the request in the answer and forbids caching it", async () => {

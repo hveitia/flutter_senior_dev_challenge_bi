@@ -21,6 +21,8 @@ vi.mock("@/lib/server/firebase", () => ({
 vi.mock("@/lib/server/transfer-store", () => ({
   firestoreTransferLedger: () => ledger,
 }));
+const announce = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/server/transfer-announce", () => ({ announceSettled: announce }));
 
 const { POST } = await import("./route");
 
@@ -86,6 +88,20 @@ describe("POST /api/transfers/{transferId}/process", () => {
       transfer: { id: TRANSFER_ID, status: "completed" },
     });
     expect(balances()).toEqual([342_025, 140_010]);
+  });
+
+  it("hands the settlement of a queued request to the notice", async () => {
+    announce.mockClear();
+    leavePending();
+
+    await call(TRANSFER_ID);
+
+    expect(announce).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "settled", replayed: false }),
+      UID,
+      TRANSFER_ID,
+      expect.any(Date),
+    );
   });
 
   it("answers 422 with the reason when the request cannot be carried out", async () => {

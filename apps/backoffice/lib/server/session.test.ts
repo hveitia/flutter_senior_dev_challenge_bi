@@ -20,6 +20,7 @@ const settings: ServerSettings = {
   pushDryRun: false,
   serviceAccount: null,
   usesEmulators: false,
+  isHosted: false,
 };
 
 function token(overrides: Partial<DecodedToken> = {}): DecodedToken {

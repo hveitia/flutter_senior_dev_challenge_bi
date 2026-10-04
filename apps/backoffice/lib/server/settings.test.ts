@@ -148,4 +148,39 @@ describe("readServerSettings", () => {
 
     expect(settings.pushDryRun).toBe(true);
   });
+
+  // A hosting platform is a deployment whatever NODE_ENV says: a server
+  // started there in development mode must still refuse the emulators.
+  describe.each([
+    ["Cloud Run and Firebase App Hosting", "K_SERVICE", "backoffice"],
+    ["Vercel", "VERCEL", "1"],
+  ])("on %s", (_platform, marker, value) => {
+    it.each(["FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST"])(
+      "refuses to start with %s set, even outside production mode",
+      (variable) => {
+        const read = () =>
+          readServerSettings({
+            ...valid,
+            NODE_ENV: "development",
+            [marker]: value,
+            [variable]: "localhost:9099",
+          });
+
+        expect(read).toThrow(SettingsError);
+        expect(read).toThrow(new RegExp(variable));
+      },
+    );
+
+    it("knows it is hosted and uses the platform's own credentials", () => {
+      const settings = readServerSettings({ ...valid, [marker]: value });
+
+      expect(settings.isHosted).toBe(true);
+      expect(settings.serviceAccount).toBeNull();
+      expect(settings.usesEmulators).toBe(false);
+    });
+  });
+
+  it("is not hosted on a developer machine", () => {
+    expect(readServerSettings(valid).isHosted).toBe(false);
+  });
 });

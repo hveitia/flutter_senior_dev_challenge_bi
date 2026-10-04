@@ -51,6 +51,32 @@ describe("isSameOrigin", () => {
     ).toBe(false);
   });
 
+  it("accepts the console's own pages behind a hosting platform's proxy", () => {
+    // Firebase App Hosting serves the container from a `*.hosted.app` domain:
+    // the container sees its internal host, the browser sent the public one.
+    expect(
+      isSameOrigin(
+        request({
+          origin: "https://backoffice--flutter-challenge-bi.us-east4.hosted.app",
+          host: "backoffice-abc123-uk.a.run.app",
+          "x-forwarded-host": "backoffice--flutter-challenge-bi.us-east4.hosted.app",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects another site even when the proxy forwards the console's host", () => {
+    expect(
+      isSameOrigin(
+        request({
+          origin: "https://evil.example.com",
+          host: "backoffice-abc123-uk.a.run.app",
+          "x-forwarded-host": "backoffice--flutter-challenge-bi.us-east4.hosted.app",
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("uses the forwarded host when the console sits behind a proxy", () => {
     expect(
       isSameOrigin(

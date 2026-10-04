@@ -1,0 +1,70 @@
+# Firebase App Hosting configuration for the experience console, the customer
+# API and the partners' pages (one Next.js server). Nothing in this file is
+# secret: sensitive values are references to Cloud Secret Manager.
+#
+# How to deploy, and what each variable means: docs/operacion/despliegue.md
+
+# The backend runs on Cloud Run. A public demonstration has no reason to
+# scale: the cap bounds what a burst of traffic can cost.
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  # The server refuses any other project unless ALLOW_OTHER_PROJECT is set.
+  - variable: FIREBASE_PROJECT_ID
+    value: flutter-challenge-bi
+    availability:
+      - RUNTIME
+
+  # Shows the resilience lab in the console and lets it publish simulated
+  # faults. Remove it for an environment that is not a demonstration.
+  - variable: BACKOFFICE_ENVIRONMENT
+    value: demo
+    availability:
+      - RUNTIME
+
+  # Real delivery of push notifications is opt-in. Without this value every
+  # send is validated and nothing reaches a phone.
+  - variable: PUSH_DELIVERY
+    value: live
+    availability:
+      - RUNTIME
+
+  # Public identifiers of the Firebase web app, read by the sign-in page.
+  # They are compiled into the browser bundle, so the build needs them.
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: flutter-challenge-bi
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: flutter-challenge-bi.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  # Not confidential (every visitor's browser receives them), but kept out of
+  # the repository so the key is not flagged by secret scanning.
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: backoffice-web-api-key
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: backoffice-web-app-id
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Comma-separated addresses allowed to use the console. Personal data, so
+  # it lives in Secret Manager and never in the repository.
+  - variable: ADMIN_EMAILS
+    secret: backoffice-admin-emails
+    availability:
+      - RUNTIME
+
+# No FIREBASE_SERVICE_ACCOUNT: on App Hosting the Admin SDK uses the service
+# identity of the backend through the default credentials. No key exists.

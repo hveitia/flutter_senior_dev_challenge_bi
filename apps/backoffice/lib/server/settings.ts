@@ -25,8 +25,14 @@ export interface ServerSettings {
    * True unless the environment sets PUSH_DELIVERY=live.
    */
   pushDryRun: boolean;
-  /** Parsed service account, or null to use the default credentials. */
+  /**
+   * Parsed service account, or null to use the default credentials: the
+   * developer's own on a workstation, the service identity of the platform
+   * on Firebase App Hosting, where no key exists at all.
+   */
   serviceAccount: Record<string, unknown> | null;
+  /** The process runs on a hosting platform, not on a developer machine. */
+  isHosted: boolean;
   /**
    * The environment points the admin SDK at local emulators: a local stack
    * that needs no credentials and never reaches the messaging service.
@@ -85,21 +91,34 @@ function readServiceAccount(env: Environment): Record<string, unknown> | null {
 const EMULATOR_VARIABLES = ["FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST"];
 
 /**
+ * Variables a hosting platform sets by itself: `K_SERVICE` on Cloud Run,
+ * which is what Firebase App Hosting runs on, and `VERCEL` on Vercel.
+ */
+const HOSTING_MARKERS = ["K_SERVICE", "VERCEL"];
+
+function isHostedEnvironment(env: Environment): boolean {
+  return HOSTING_MARKERS.some((marker) => Boolean(env[marker]));
+}
+
+/**
  * An emulator accepts tokens nobody signed. Left set in a deployment, anyone
  * could present themselves as any customer, so the server does not start.
+ * A deployment is recognized two ways, because either alone can be wrong: a
+ * server started in development mode on a hosting platform is still public.
  */
-function refuseEmulatorsInProduction(env: Environment): void {
-  if (env.NODE_ENV !== "production") return;
+function refuseEmulatorsInDeployment(env: Environment): void {
+  if (env.NODE_ENV !== "production" && !isHostedEnvironment(env)) return;
   const set = EMULATOR_VARIABLES.filter((variable) => env[variable]);
   if (set.length > 0) {
-    throw new SettingsError(`${set.join(", ")} must not be set in production`);
+    throw new SettingsError(`${set.join(", ")} must not be set in a deployment`);
   }
 }
 
 export function readServerSettings(env: Environment): ServerSettings {
-  refuseEmulatorsInProduction(env);
+  refuseEmulatorsInDeployment(env);
   const usesEmulators = EMULATOR_VARIABLES.some((variable) => Boolean(env[variable]));
   return {
+    isHosted: isHostedEnvironment(env),
     projectId: readProjectId(env),
     adminEmails: readAdminEmails(env),
     isDemo: env.BACKOFFICE_ENVIRONMENT === DEMO_ENVIRONMENT,

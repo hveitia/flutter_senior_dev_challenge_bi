@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH } from "@/lib/push/types";
 import {
+  canClaimRetry,
+  RETRY_CLAIM_TTL_MS,
   retryPush,
   segmentTopic,
   sendPush,
@@ -11,6 +13,7 @@ import {
 
 const admin = { uid: "uid-ana", email: "ana@example.com" };
 const now = new Date("2026-10-03T14:09:00Z");
+const later = new Date("2026-10-03T14:10:00Z");
 const destinations = ["inbox", "transfer", "partner:travelInsurance"];
 const segments = ["starting", "family", "wealth"];
 
@@ -48,7 +51,14 @@ function ports(overrides: Partial<PushPorts> = {}): PushPorts & {
         records.set(id, record);
         return id;
       }),
-      get: vi.fn(async (id: string) => records.get(id) ?? null),
+      // Atomic, as the real store's transaction is: check and mark in one step.
+      claimRetry: vi.fn(async (id: string, at: Date) => {
+        const current = records.get(id);
+        if (!current || !canClaimRetry(current, at)) return null;
+        const claimed = { ...current, status: "retrying" as const, retryClaimedAt: at };
+        records.set(id, claimed);
+        return claimed;
+      }),
       update: vi.fn(async (id: string, patch: Partial<StoredPush>) => {
         const current = records.get(id);
         if (current) records.set(id, { ...current, ...patch });
@@ -294,7 +304,7 @@ describe("retryPush", () => {
     const p = ports();
     const failed = await failedSend(p);
 
-    const retried = await retryPush(p, { pushDryRun: false }, failed.id);
+    const retried = await retryPush(p, { pushDryRun: false }, failed.id, later);
 
     expect(retried).toMatchObject({ id: failed.id, status: "sent", error: null });
     expect(p.records.size).toBe(1);
@@ -307,7 +317,7 @@ describe("retryPush", () => {
     const failed = await failedSend(p);
     vi.mocked(p.gateway.sendToTopic).mockRejectedValueOnce(new Error("still down"));
 
-    const retried = await retryPush(p, { pushDryRun: false }, failed.id);
+    const retried = await retryPush(p, { pushDryRun: false }, failed.id, later);
 
     expect(retried).toMatchObject({ status: "failed" });
     expect(p.records.get(failed.id)?.attempts).toBe(2);
@@ -324,13 +334,77 @@ describe("retryPush", () => {
       "Familia",
     );
 
-    const retried = await retryPush(p, { pushDryRun: false }, sent.id);
+    const retried = await retryPush(p, { pushDryRun: false }, sent.id, later);
 
     expect(retried).toBeNull();
     expect(p.gateway.sendToTopic).toHaveBeenCalledTimes(1);
   });
 
   it("answers nothing for a record that does not exist", async () => {
-    expect(await retryPush(ports(), { pushDryRun: false }, "missing")).toBeNull();
+    expect(await retryPush(ports(), { pushDryRun: false }, "missing", later)).toBeNull();
+  });
+
+  it("sends once when two retries of the same notification race", async () => {
+    const p = ports();
+    const failed = await failedSend(p);
+
+    const outcomes = await Promise.all([
+      retryPush(p, { pushDryRun: false }, failed.id, later),
+      retryPush(p, { pushDryRun: false }, failed.id, later),
+    ]);
+
+    expect(outcomes.filter((outcome) => outcome !== null)).toHaveLength(1);
+    expect(p.gateway.sendToTopic).toHaveBeenCalledTimes(2);
+    expect(p.records.get(failed.id)).toMatchObject({ status: "sent", attempts: 2 });
+  });
+
+  it("can be retried again after a retry that failed", async () => {
+    const p = ports();
+    const failed = await failedSend(p);
+    vi.mocked(p.gateway.sendToTopic).mockRejectedValueOnce(new Error("still down"));
+    await retryPush(p, { pushDryRun: false }, failed.id, later);
+
+    const retried = await retryPush(p, { pushDryRun: false }, failed.id, later);
+
+    expect(retried).toMatchObject({ status: "sent" });
+    expect(p.records.get(failed.id)?.attempts).toBe(3);
+  });
+});
+
+describe("canClaimRetry", () => {
+  const record = (overrides: Partial<StoredPush>): StoredPush => ({
+    createdAt: now,
+    title: "t",
+    body: "b",
+    destination: "inbox",
+    audience: { kind: "segment", segmentId: "family" },
+    audienceLabel: "Familia",
+    status: "failed",
+    error: "unknown",
+    attempts: 1,
+    sentBy: "ana@example.com",
+    dryRun: false,
+    ...overrides,
+  });
+
+  it("allows a failed send", () => {
+    expect(canClaimRetry(record({}), later)).toBe(true);
+  });
+
+  it("does not allow a send that went out, was validated or is being retried", () => {
+    expect(canClaimRetry(record({ status: "sent" }), later)).toBe(false);
+    expect(canClaimRetry(record({ status: "validated" }), later)).toBe(false);
+    expect(
+      canClaimRetry(record({ status: "retrying", retryClaimedAt: later }), later),
+    ).toBe(false);
+  });
+
+  it("allows a retry whose claim was abandoned long enough ago", () => {
+    const abandoned = record({ status: "retrying", retryClaimedAt: now });
+    const justBefore = new Date(now.getTime() + RETRY_CLAIM_TTL_MS - 1);
+    const justAfter = new Date(now.getTime() + RETRY_CLAIM_TTL_MS + 1);
+
+    expect(canClaimRetry(abandoned, justBefore)).toBe(false);
+    expect(canClaimRetry(abandoned, justAfter)).toBe(true);
   });
 });

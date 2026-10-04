@@ -3,7 +3,12 @@ import type { Auth } from "firebase-admin/auth";
 import type { Firestore, Timestamp } from "firebase-admin/firestore";
 import type { Messaging } from "firebase-admin/messaging";
 import type { PushRecord } from "@/lib/push/types";
-import type { PushMessage, PushPorts, StoredPush } from "./push";
+import {
+  canClaimRetry,
+  type PushMessage,
+  type PushPorts,
+  type StoredPush,
+} from "./push";
 
 /** One document per send. Clients cannot read or write it. */
 export const PUSH_HISTORY_COLLECTION = "pushHistory";
@@ -21,11 +26,18 @@ function payload(message: PushMessage) {
   };
 }
 
-type StoredDocument = Omit<StoredPush, "createdAt"> & { createdAt: Timestamp };
+type StoredDocument = Omit<StoredPush, "createdAt" | "retryClaimedAt"> & {
+  createdAt: Timestamp;
+  retryClaimedAt?: Timestamp;
+};
 
 function storedFrom(data: FirebaseFirestore.DocumentData): StoredPush {
-  const document = data as StoredDocument;
-  return { ...document, createdAt: document.createdAt.toDate() };
+  const { retryClaimedAt, ...document } = data as StoredDocument;
+  return {
+    ...document,
+    createdAt: document.createdAt.toDate(),
+    ...(retryClaimedAt ? { retryClaimedAt: retryClaimedAt.toDate() } : {}),
+  };
 }
 
 export function firebasePushPorts(
@@ -71,10 +83,17 @@ export function firebasePushPorts(
       async add(record) {
         return (await history.add(record)).id;
       },
-      async get(id) {
-        const snapshot = await history.doc(id).get();
-        const data = snapshot.data();
-        return data ? storedFrom(data) : null;
+      claimRetry(id, now) {
+        const reference = history.doc(id);
+        return db.runTransaction(async (transaction) => {
+          const data = (await transaction.get(reference)).data();
+          if (!data) return null;
+          const stored = storedFrom(data);
+          if (!canClaimRetry(stored, now)) return null;
+          const claim = { status: "retrying" as const, retryClaimedAt: now };
+          transaction.update(reference, claim);
+          return { ...stored, ...claim };
+        });
       },
       async update(id, patch) {
         await history.doc(id).update(patch);

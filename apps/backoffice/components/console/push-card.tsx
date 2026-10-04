@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   CheckIcon,
+  ClockIcon,
   Field,
   InfoIcon,
   Select,
@@ -36,6 +37,7 @@ const STATUS: Record<PushStatus, { label: string; tone: string; icon: React.Reac
   // A dry run the service accepted. It was not delivered and is not shown as sent.
   validated: { label: "Validado", tone: "text-info-500", icon: <InfoIcon /> },
   failed: { label: "Fallido", tone: "text-danger-500", icon: <AlertIcon /> },
+  retrying: { label: "Reintentando", tone: "text-secondary", icon: <ClockIcon /> },
 };
 
 type Submission =
@@ -232,7 +234,9 @@ export function PushCard({
                       <button
                         type="button"
                         onClick={() => retry(row.id)}
-                        disabled={retrying === row.id}
+                        // One retry at a time from this screen; the server
+                        // refuses a second one for the same record anyway.
+                        disabled={retrying !== null}
                         className="mt-1 font-semibold text-brand-700 disabled:text-secondary"
                       >
                         {retrying === row.id ? "Reintentando…" : "Reintentar"}

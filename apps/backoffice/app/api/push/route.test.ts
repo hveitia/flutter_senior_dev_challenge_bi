@@ -3,7 +3,7 @@ import { exampleConfig } from "@/test/support/fixtures";
 
 const currentAdmin = vi.fn();
 const gateway = { sendToTopic: vi.fn(), sendToTokens: vi.fn() };
-const history = { add: vi.fn(), get: vi.fn(), update: vi.fn() };
+const history = { add: vi.fn(), claimRetry: vi.fn(), update: vi.fn() };
 const customers = { uidByEmail: vi.fn(), deviceTokens: vi.fn() };
 
 vi.mock("@/lib/server/current-admin", () => ({ currentAdmin }));
@@ -55,7 +55,7 @@ beforeEach(() => {
   });
   gateway.sendToTopic.mockReset().mockResolvedValue(undefined);
   history.add.mockReset().mockResolvedValue("push-1");
-  history.get.mockReset();
+  history.claimRetry.mockReset();
   history.update.mockReset();
 });
 
@@ -118,7 +118,7 @@ describe("POST /api/push", () => {
   });
 
   it("retries a failed send by id", async () => {
-    history.get.mockResolvedValue({
+    history.claimRetry.mockResolvedValue({
       createdAt: new Date("2026-10-03T13:30:00Z"),
       title: "Tu cuenta está protegida",
       body: "Activamos una nueva verificación.",
@@ -142,7 +142,7 @@ describe("POST /api/push", () => {
   });
 
   it("answers a conflict when there is nothing to retry", async () => {
-    history.get.mockResolvedValue(null);
+    history.claimRetry.mockResolvedValue(null);
 
     const response = await POST(request({ retryOf: "missing" }));
 

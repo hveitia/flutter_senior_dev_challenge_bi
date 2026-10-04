@@ -42,6 +42,21 @@ export interface StoredPush {
   attempts: number;
   sentBy: string;
   dryRun: boolean;
+  /** When the retry in progress was claimed; set only while `retrying`. */
+  retryClaimedAt?: Date;
+}
+
+/**
+ * How long a retry may stay claimed. A server that died between claiming and
+ * recording the outcome would otherwise leave the record unretryable for good.
+ */
+export const RETRY_CLAIM_TTL_MS = 2 * 60 * 1000;
+
+/** Whether a record can be claimed for a retry at `now`. */
+export function canClaimRetry(stored: StoredPush, now: Date): boolean {
+  if (stored.status === "failed") return true;
+  if (stored.status !== "retrying" || !stored.retryClaimedAt) return false;
+  return now.getTime() - stored.retryClaimedAt.getTime() > RETRY_CLAIM_TTL_MS;
 }
 
 export interface PushPorts {
@@ -59,7 +74,11 @@ export interface PushPorts {
   };
   history: {
     add(record: StoredPush): Promise<string>;
-    get(id: string): Promise<StoredPush | null>;
+    /**
+     * Atomically marks a record as being retried and returns it, or returns
+     * null when `canClaimRetry` says it cannot be retried now.
+     */
+    claimRetry(id: string, now: Date): Promise<StoredPush | null>;
     update(id: string, patch: Partial<StoredPush>): Promise<void>;
   };
 }
@@ -225,9 +244,12 @@ export async function retryPush(
   ports: PushPorts,
   settings: PushSettings,
   id: string,
+  now: Date,
 ): Promise<PushRecord | null> {
-  const stored = await ports.history.get(id);
-  if (!stored || stored.status !== "failed") return null;
+  // Claimed before sending: of two clicks, or two administrators, only the
+  // one whose claim lands goes on to deliver.
+  const stored = await ports.history.claimRetry(id, now);
+  if (!stored) return null;
 
   const attempt = await deliver(ports, settings, stored.audience, {
     title: stored.title,

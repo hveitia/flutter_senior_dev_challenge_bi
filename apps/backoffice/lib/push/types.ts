@@ -19,8 +19,11 @@ export interface PushDraft {
 
 export type PushField = keyof PushDraft;
 
-/** `validated` is a dry run the service accepted: nothing was delivered. */
-export type PushStatus = "sent" | "validated" | "failed";
+/**
+ * `validated` is a dry run the service accepted: nothing was delivered.
+ * `retrying` is a failed send that someone is sending again right now.
+ */
+export type PushStatus = "sent" | "validated" | "failed" | "retrying";
 
 /** What the history table shows. */
 export interface PushRecord {

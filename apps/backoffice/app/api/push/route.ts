@@ -47,7 +47,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const settings = serverSettings();
 
     if (typeof body.retryOf === "string") {
-      const record = await retryPush(ports, settings, body.retryOf);
+      const record = await retryPush(ports, settings, body.retryOf, new Date());
       return record
         ? answer(200, { record })
         : answer(409, { error: "nothing-to-retry" });

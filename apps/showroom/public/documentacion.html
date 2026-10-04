@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Documentación de la entrega de Hector Veitia</title>
+    <meta name="description" content="Cómo probar la demostración de Banca Digital: pasos, capturas, flujos principales, guía de la consola, enlaces al código y alcance.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/css/site.css">
+  </head>
+  <body>
+    <a class="skip" href="#contenido">Saltar al contenido</a>
+
+    <header class="bar">
+      <div class="wrap bar__in">
+        <a class="bar__name" href="index.html">Hector Veitia <span>/ entrega del reto técnico</span></a>
+        <nav aria-label="Secciones del sitio">
+          <ul class="bar__nav">
+            <li><a href="documentacion.html" aria-current="page">Documentación</a></li>
+            <li><a href="avisos.html">Avisos</a></li>
+            <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi">Código fuente</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="contenido">
+      <div class="wrap">
+        <header class="doc-head measure">
+          <h1>Documentación</h1>
+          <p>Todo lo necesario para probar la demostración sin instalar herramientas de desarrollo, y dónde mirar en el código si quieres ir más a fondo.</p>
+        </header>
+
+        <div class="doc">
+          <nav class="toc" aria-label="En esta página">
+            <ol>
+              <li><a href="#probar">Pruébalo en cinco minutos</a></li>
+              <li><a href="#capturas">La aplicación en capturas</a></li>
+              <li><a href="#flujos">Flujos principales</a></li>
+              <li><a href="#consola">Guía de la consola</a></li>
+              <li><a href="#codigo">Qué mirar en el código</a></li>
+              <li><a href="#alcance">Alcance y límites</a></li>
+            </ol>
+          </nav>
+
+          <div>
+            <section class="section" id="probar" aria-labelledby="probar-t">
+              <h2 id="probar-t">Pruébalo en cinco minutos</h2>
+              <p class="measure">Necesitas un teléfono Android y las dos credenciales que recibiste por correo de mi parte: una de cliente, para la aplicación, y una de administrador, para la consola. En este sitio no hay credenciales.</p>
+
+              <ol class="steps measure">
+                <li><div><strong>Instala la aplicación</strong><span data-apk data-apk-label="Descarga el instalador para Android">Abre en el teléfono el instalador que recibiste junto con las credenciales.</span> <span>Android pedirá permiso para instalar aplicaciones de origen desconocido.</span></div></li>
+                <li><div><strong>Entra como cliente</strong><span>Toca «Ya soy cliente» y usa las credenciales de cliente del correo. Verás el inicio con el saldo, las cuentas y los últimos movimientos.</span></div></li>
+                <li><div><strong>Abre la consola</strong><span>En un ordenador, abre el <a href="https://backoffice--flutter-challenge-bi.us-east4.hosted.app" target="_blank" rel="noopener">backoffice</a> e inicia sesión con las credenciales de administrador del correo.</span></div></li>
+                <li><div><strong>Elige el segmento «Estoy empezando»</strong><span>Es el segmento del cliente de demostración. Los cambios de la consola se aplican al segmento seleccionado.</span></div></li>
+                <li><div><strong>Mueve un módulo y publica</strong><span>En «Inicio», baja «Saldo total» con las flechas y pulsa «Publicar cambios».</span></div></li>
+                <li><div><strong>Mira el teléfono</strong><span>El inicio se reordena en unos segundos, sin cerrar ni actualizar la aplicación. En Perfil, la tarjeta de diagnóstico muestra la versión nueva de la configuración.</span></div></li>
+              </ol>
+
+              <h3>Dos cosas más que vale la pena probar</h3>
+              <div class="prose measure">
+                <ul>
+                  <li><strong>Apagar «Transferencias».</strong> En «Funcionalidades», apaga el interruptor y publica. El botón «Transferir» desaparece del inicio, del detalle de cuenta y de Servicios; al encenderlo y publicar, vuelve.</li>
+                  <li><strong>El laboratorio de resiliencia.</strong> En «Resiliencia», marca «Servicio de movimientos no disponible» y publica: los movimientos muestran su propio aviso con «Reintentar» mientras el saldo y las cuentas siguen visibles. Sube la latencia simulada y aparece el aviso de conexión lenta. Deja todo apagado al terminar.</li>
+                </ul>
+              </div>
+              <p class="callout measure"><strong>Sin conexión.</strong> Pon el teléfono en modo avión: el inicio muestra los datos guardados con su antigüedad, y una transferencia queda «En cola» hasta que vuelva la red.</p>
+            </section>
+
+            <section class="section" id="capturas" aria-labelledby="capturas-t">
+              <h2 id="capturas-t">La aplicación en capturas</h2>
+              <p class="measure">Todas son del mismo cliente de demostración, tomadas en un teléfono Android contra el servidor desplegado. Cada imagen se abre a tamaño completo.</p>
+
+              <h3>Acceso</h3>
+              <ul class="shots">
+                <li><figure class="shot"><a href="assets/img/app-bienvenida.webp"><img src="assets/img/app-bienvenida.webp" width="720" height="1510" loading="lazy" alt="Pantalla de bienvenida con las acciones Abrir mi cuenta y Ya soy cliente."></a><figcaption>Bienvenida.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-ingreso.webp"><img src="assets/img/app-ingreso.webp" width="720" height="1510" loading="lazy" alt="Formulario de ingreso con correo, contraseña y enlace para recuperarla."></a><figcaption>Ingreso con correo y contraseña.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-personalizacion.webp"><img src="assets/img/app-personalizacion.webp" width="720" height="1510" loading="lazy" alt="Pantalla de personalización con los intereses y los tres segmentos."></a><figcaption>Intereses y segmento, que el cliente puede cambiar.</figcaption></figure></li>
+              </ul>
+
+              <h3>Inicio según el segmento</h3>
+              <ul class="shots">
+                <li><figure class="shot"><a href="assets/img/app-inicio.webp"><img src="assets/img/app-inicio.webp" width="720" height="1510" loading="lazy" alt="Inicio del segmento Estoy empezando: saldo total, cuentas, acciones rápidas y últimos movimientos."></a><figcaption>Segmento «Estoy empezando».</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-inicio-para-ti.webp"><img src="assets/img/app-inicio-para-ti.webp" width="720" height="1510" loading="lazy" alt="Parte inferior del inicio con los últimos movimientos y el módulo Para ti con un servicio de un aliado."></a><figcaption>Más abajo, el módulo «Para ti».</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-inicio-patrimonio.webp"><img src="assets/img/app-inicio-patrimonio.webp" width="720" height="1510" loading="lazy" alt="Inicio del segmento Patrimonio: saldo con inversiones, línea de tendencia, acción Invertir y módulo de inversiones."></a><figcaption>Segmento «Patrimonio»: los mismos componentes en otra composición.</figcaption></figure></li>
+              </ul>
+
+              <h3>Cuentas y movimientos</h3>
+              <ul class="shots">
+                <li><figure class="shot"><a href="assets/img/app-cuentas.webp"><img src="assets/img/app-cuentas.webp" width="720" height="1510" loading="lazy" alt="Pestaña Cuentas con el saldo total, tres cuentas y el acceso a todos los movimientos."></a><figcaption>Cuentas.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-cuenta-detalle.webp"><img src="assets/img/app-cuenta-detalle.webp" width="720" height="1510" loading="lazy" alt="Detalle de la cuenta de ahorros con saldo disponible y contable, búsqueda, filtros y movimientos."></a><figcaption>Detalle de una cuenta.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-movimientos.webp"><img src="assets/img/app-movimientos.webp" width="720" height="1510" loading="lazy" alt="Pantalla Movimientos con todos los movimientos agrupados por día y la cuenta de cada uno."></a><figcaption>Todos los movimientos, con la cuenta de cada uno.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-movimiento-detalle.webp"><img src="assets/img/app-movimiento-detalle.webp" width="720" height="1510" loading="lazy" alt="Panel con el detalle de un movimiento: monto, estado, fecha, cuenta, referencia, categoría y canal."></a><figcaption>Detalle de un movimiento.</figcaption></figure></li>
+              </ul>
+
+              <h3>Transferencias</h3>
+              <ul class="shots">
+                <li><figure class="shot"><a href="assets/img/app-transferir.webp"><img src="assets/img/app-transferir.webp" width="720" height="1510" loading="lazy" alt="Formulario de transferencia con cuenta de origen, cuenta de destino, monto y concepto."></a><figcaption>Formulario.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-transferir-confirmar.webp"><img src="assets/img/app-transferir-confirmar.webp" width="720" height="1510" loading="lazy" alt="Confirmación de la transferencia con el monto y las dos cuentas."></a><figcaption>Confirmación.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-transferir-resultado.webp"><img src="assets/img/app-transferir-resultado.webp" width="720" height="1510" loading="lazy" alt="Resultado Transferencia realizada con el monto y la referencia."></a><figcaption>Resultado, con la referencia del servidor.</figcaption></figure></li>
+              </ul>
+
+              <h3>Sin conexión</h3>
+              <ul class="shots">
+                <li><figure class="shot"><a href="assets/img/app-sin-conexion.webp"><img src="assets/img/app-sin-conexion.webp" width="720" height="1510" loading="lazy" alt="Inicio en modo avión con el aviso Sin conexión, mostrando datos guardados y la antigüedad de cada dato."></a><figcaption>Inicio con datos guardados.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-en-cola.webp"><img src="assets/img/app-en-cola.webp" width="720" height="1510" loading="lazy" alt="Resultado Transferencia pendiente con la etiqueta En cola."></a><figcaption>Una transferencia espera en cola.</figcaption></figure></li>
+              </ul>
+
+              <h3>Servicios, notificaciones y diagnóstico</h3>
+              <ul class="shots">
+                <li><figure class="shot"><a href="assets/img/app-servicios.webp"><img src="assets/img/app-servicios.webp" width="720" height="1510" loading="lazy" alt="Pestaña Servicios con Transferencias del banco y dos servicios de aliados."></a><figcaption>Servicios del banco y de aliados.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-mini-app.webp"><img src="assets/img/app-mini-app.webp" width="720" height="1510" loading="lazy" alt="Mini aplicación de seguro de viaje de un aliado dentro del contenedor de la aplicación."></a><figcaption>Mini aplicación de un aliado.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-notificaciones.webp"><img src="assets/img/app-notificaciones.webp" width="720" height="1510" loading="lazy" alt="Bandeja de notificaciones con dos avisos de transferencia realizada marcados como nuevos."></a><figcaption>Bandeja de notificaciones.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-diagnostico.webp"><img src="assets/img/app-diagnostico.webp" width="720" height="1147" loading="lazy" alt="Tarjeta de diagnóstico en Perfil: conexión, última sincronización, versión de configuración, versión de la app y entorno."></a><figcaption>Diagnóstico en Perfil.</figcaption></figure></li>
+              </ul>
+            </section>
+
+            <section class="section" id="flujos" aria-labelledby="flujos-t">
+              <h2 id="flujos-t">Flujos principales</h2>
+              <p class="measure">Quién hace qué en cada recorrido. Los diagramas de secuencia completos están en el repositorio, en <a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/arquitectura/flujos.md">docs/arquitectura/flujos.md</a>.</p>
+
+              <div class="flows">
+                <div>
+                  <h3>Alta con apertura de cuentas</h3>
+                  <ol class="flow">
+                    <li><b>Cliente</b>Completa tres pasos: datos, intereses y acceso.</li>
+                    <li><b>Aplicación</b>Crea el usuario y su perfil.</li>
+                    <li><b>Aplicación</b>Pide al servidor que abra las cuentas.</li>
+                    <li><b>Servidor</b>Abre ahorros y corriente una sola vez, aunque se lo pidan dos.</li>
+                    <li><b>Aplicación</b>Muestra las cuentas en cuanto existen.</li>
+                  </ol>
+                </div>
+                <div>
+                  <h3>Transferencia en línea</h3>
+                  <ol class="flow">
+                    <li><b>Aplicación</b>Genera un identificador único para la orden.</li>
+                    <li><b>Aplicación</b>Envía la orden con el token del cliente.</li>
+                    <li><b>Servidor</b>Valida y mueve el dinero en una sola transacción.</li>
+                    <li><b>Servidor</b>Responde con la referencia y deja un aviso en la bandeja.</li>
+                    <li><b>Aplicación</b>Muestra el resultado y los dos movimientos.</li>
+                  </ol>
+                </div>
+                <div>
+                  <h3>Transferencia en cola, sin conexión</h3>
+                  <ol class="flow">
+                    <li><b>Aplicación</b>Sin red, guarda la orden como pendiente.</li>
+                    <li><b>Cliente</b>Ve «Transferencia pendiente», en cola.</li>
+                    <li><b>Aplicación</b>Al volver la red, pide al servidor que la procese.</li>
+                    <li><b>Servidor</b>La procesa una sola vez, aunque llegue repetida.</li>
+                    <li><b>Aplicación</b>Muestra el resultado y los movimientos.</li>
+                  </ol>
+                </div>
+                <div>
+                  <h3>Publicar configuración</h3>
+                  <ol class="flow">
+                    <li><b>Administrador</b>Edita un segmento en la consola y publica.</li>
+                    <li><b>Servidor</b>Valida contra el contrato y comprueba la versión.</li>
+                    <li><b>Servidor</b>Guarda la configuración con una versión nueva.</li>
+                    <li><b>Aplicación</b>La recibe en tiempo real y la valida.</li>
+                    <li><b>Aplicación</b>Recompone el inicio sin reiniciarse.</li>
+                  </ol>
+                </div>
+                <div>
+                  <h3>Notificación con bandeja</h3>
+                  <ol class="flow">
+                    <li><b>Administrador</b>Escribe el aviso y elige a quién va.</li>
+                    <li><b>Servidor</b>Lo guarda en la bandeja de cada destinatario.</li>
+                    <li><b>Servidor</b>Envía la notificación al teléfono.</li>
+                    <li><b>Cliente</b>La toca y la aplicación abre su destino.</li>
+                    <li><b>Aplicación</b>La marca como leída.</li>
+                  </ol>
+                </div>
+                <div>
+                  <h3>Mini aplicación de un aliado</h3>
+                  <ol class="flow">
+                    <li><b>Cliente</b>Elige un servicio de un aliado.</li>
+                    <li><b>Aplicación</b>Comprueba que el servicio está disponible.</li>
+                    <li><b>Aplicación</b>Carga la página del aliado en un contenedor propio.</li>
+                    <li><b>Aplicación</b>Le pasa solo el idioma y el segmento.</li>
+                    <li><b>Aliado</b>Avisa cuando el cliente termina, con una referencia.</li>
+                  </ol>
+                </div>
+              </div>
+            </section>
+
+            <section class="section" id="consola" aria-labelledby="consola-t">
+              <h2 id="consola-t">Guía de la consola</h2>
+              <div class="prose measure">
+                <p>La consola edita un borrador de la configuración y lo publica. El borrador es uno solo aunque cambies de sección, y arriba siempre ves cuántos cambios faltan por publicar.</p>
+              </div>
+              <figure class="wide">
+                <a href="assets/img/consola-cambios.webp"><img src="assets/img/consola-cambios.webp" width="1440" height="900" loading="lazy" alt="Sección Inicio de la consola con dos cambios sin publicar, marcas en el menú y la vista previa del teléfono."></a>
+                <figcaption>Dos cambios sin publicar: el menú marca las secciones que los contienen.</figcaption>
+              </figure>
+
+              <h3>Lo que conviene saber antes de tocar nada</h3>
+              <div class="prose measure">
+                <ul>
+                  <li><strong>Los cambios se aplican al segmento seleccionado.</strong> El cliente de demostración está en «Estoy empezando».</li>
+                  <li><strong>Nada llega al teléfono hasta que publicas.</strong> «Descartar» vuelve a lo publicado.</li>
+                  <li><strong>Si otra persona publica antes que tú,</strong> la consola rechaza tu publicación y pide recargar. No se pierde nada de lo publicado.</li>
+                  <li><strong>Si sales con cambios sin publicar,</strong> el navegador pide confirmación.</li>
+                </ul>
+              </div>
+
+              <figure class="wide">
+                <a href="assets/img/consola-publicado.webp"><img src="assets/img/consola-publicado.webp" width="1440" height="900" loading="lazy" alt="Consola después de publicar: sin cambios pendientes y con el número de versión de la configuración aumentado."></a>
+                <figcaption>Después de publicar: sin cambios pendientes y una versión nueva de la configuración.</figcaption>
+              </figure>
+
+              <h3>Acceso</h3>
+              <p class="measure">Solo entran los administradores autorizados. Usa las credenciales de administrador que recibiste por correo.</p>
+              <figure class="wide">
+                <a href="assets/img/consola-login.webp"><img src="assets/img/consola-login.webp" width="1440" height="900" loading="lazy" alt="Pantalla de acceso de la consola con los campos de correo y contraseña vacíos."></a>
+                <figcaption>Acceso a la consola.</figcaption>
+              </figure>
+
+              <h3>Inicio</h3>
+              <p class="measure">Orden y visibilidad de los módulos del inicio, y el texto y destino del banner. La vista previa refleja el borrador.</p>
+              <figure class="wide">
+                <a href="assets/img/consola-inicio.webp"><img src="assets/img/consola-inicio.webp" width="1440" height="900" loading="lazy" alt="Sección Inicio: lista de módulos con flechas e interruptores, editor del banner y vista previa."></a>
+                <figcaption>Sección «Inicio».</figcaption>
+              </figure>
+
+              <h3>Funcionalidades</h3>
+              <p class="measure">Enciende o apaga las transferencias y los servicios de aliados. Al apagar una, sus accesos desaparecen de la aplicación.</p>
+              <figure class="wide">
+                <a href="assets/img/consola-funcionalidades.webp"><img src="assets/img/consola-funcionalidades.webp" width="1440" height="900" loading="lazy" alt="Sección Funcionalidades con los interruptores de Transferencias y Servicios de aliados."></a>
+                <figcaption>Sección «Funcionalidades».</figcaption>
+              </figure>
+
+              <h3>Resiliencia</h3>
+              <p class="measure">Simula latencia y la caída de un servicio para ver cómo responde la aplicación. Solo existe en este entorno de demostración, y la aplicación solo lo obedece porque se compiló con esa opción.</p>
+              <figure class="wide">
+                <a href="assets/img/consola-resiliencia.webp"><img src="assets/img/consola-resiliencia.webp" width="1440" height="900" loading="lazy" alt="Sección Resiliencia con el control de latencia simulada y dos interruptores de servicios no disponibles."></a>
+                <figcaption>Sección «Resiliencia».</figcaption>
+              </figure>
+
+              <h3>Notificaciones</h3>
+              <p class="measure">Envía un aviso a un segmento o a un cliente y revisa el historial. No incluyas montos ni datos personales en el texto: puede verse con el teléfono bloqueado.</p>
+              <figure class="wide">
+                <a href="assets/img/consola-notificaciones.webp"><img src="assets/img/consola-notificaciones.webp" width="1440" height="900" loading="lazy" alt="Sección Notificaciones con el formulario de envío y el historial."></a>
+                <figcaption>Sección «Notificaciones».</figcaption>
+              </figure>
+            </section>
+
+            <section class="section" id="codigo" aria-labelledby="codigo-t">
+              <h2 id="codigo-t">Qué mirar en el código</h2>
+              <p class="measure">El repositorio es público. Estos son los puntos de entrada más útiles.</p>
+              <ul class="links measure">
+                <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi#readme">README</a><span>Cómo configurar, ejecutar y probar todo en local, sin acceso a mi proyecto.</span></li>
+                <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/alcance-y-riesgos.md">Alcance y riesgos</a><span>Requisito por requisito: qué se hizo, cómo se verificó y qué quedó fuera.</span></li>
+                <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/README.md">Índice de decisiones de arquitectura</a><span>Cada decisión con su problema, alternativas, opción elegida, costos e impacto.</span></li>
+                <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/demo/guion.md">Guion de la demostración</a><span>El recorrido en vivo y los cambios que se pueden pedir durante la demostración.</span></li>
+                <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/contracts/home-config.schema.json">Contrato de configuración</a><span>El esquema que comparten la consola y la aplicación.</span></li>
+                <li><a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/firebase/firestore.rules">Reglas de Firestore</a><span>Qué puede leer y escribir un cliente. El dinero solo lo mueve el servidor.</span></li>
+              </ul>
+            </section>
+
+            <section class="section" id="alcance" aria-labelledby="alcance-t">
+              <h2 id="alcance-t">Alcance y límites</h2>
+              <p class="measure">Un resumen honesto. La tabla completa, con la evidencia de cada punto, está en <a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/alcance-y-riesgos.md">alcance y riesgos</a>.</p>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th scope="col">Qué</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Registro, ingreso, cuentas, movimientos y transferencias</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android, contra el servidor desplegado.</td></tr>
+                    <tr><td>Inicio según la configuración y el segmento</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Incluido el cambio publicado desde la consola desplegada.</td></tr>
+                    <tr><td>Sin conexión, conexión lenta y caída parcial</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Datos guardados, cola de transferencias y recuperación.</td></tr>
+                    <tr><td>Notificaciones y bandeja</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Falta comprobar un envío real desde el servidor desplegado.</td></tr>
+                    <tr><td>Servicios de aliados</td><td><span class="state state--part">Simulado</span></td><td>Los dos aliados son de demostración y comparten servidor con la consola.</td></tr>
+                    <tr><td>Prueba de extremo a extremo</td><td><span class="state state--part">Parcial</span></td><td>Pasó en un teléfono en su primera versión; la actual, de ida y vuelta, no tiene una ejecución válida registrada y no corre en la integración continua.</td></tr>
+                    <tr><td>iOS</td><td><span class="state state--no">No construido</span></td><td>El código es Flutter, pero nunca se compiló para iOS.</td></tr>
+                    <tr><td>Asistente o recomendaciones por comportamiento</td><td><span class="state state--no">No construido</span></td><td>La personalización es por segmento, intereses y configuración.</td></tr>
+                    <tr><td>Controles de producción</td><td><span class="state state--no">No construido</span></td><td>Sin verificación de correo, límites de frecuencia ni comprobación de la aplicación. El registro es abierto y crea dinero de demostración.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot__in">
+        <p>Sitio creado solo para un proceso de selección. No es un producto ni un sitio oficial de ninguna entidad financiera, y todos los datos son ficticios. <a href="avisos.html">Leer los avisos</a>.</p>
+        <p class="foot__meta">Hector Veitia, <a href="https://github.com/hveitia">GitHub</a></p>
+      </div>
+    </footer>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/site.js"></script>
+  </body>
+</html>

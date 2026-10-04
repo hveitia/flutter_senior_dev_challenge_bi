@@ -88,6 +88,7 @@ $markers"
 selected=()
 run_firebase=false
 run_console=false
+run_showroom=false
 
 is_selected() {
   local chosen
@@ -126,6 +127,7 @@ depends_on() {
 if [ "$mode" = all ]; then
   selected=("${members[@]}")
   run_console=$with_console
+  run_showroom=true
   # Checked before the tests, which take the longest: a run that cannot
   # verify the console should say so at once.
   if $run_console && [ ! -d apps/backoffice/node_modules ]; then
@@ -147,11 +149,14 @@ else
       firebase/*) run_firebase=true ;;
       # The console validates what it publishes against the contract file.
       apps/backoffice/* | contracts/* | packages/design_system/tokens/*) run_console=true ;;
+      # The delivery site, and the hosting rules it is served with.
+      apps/showroom/* | firebase.json) run_showroom=true ;;
     esac
   done <<< "$staged"
 
   if [ -n "$affects_all" ]; then
     run_console=true
+    run_showroom=true
     for dir in "${members[@]}"; do
       pick "$dir" "$affects_all configures every package"
     done
@@ -160,6 +165,8 @@ else
       case "$path" in
         # Not a Dart package: its own lint, type check and tests cover it.
         apps/backoffice/*) continue ;;
+        # A static site, checked by its own step below.
+        apps/showroom/*) continue ;;
         # The platform package parses the published contract in its tests.
         contracts/*) pick packages/app_platform "reads $path" ;;
       esac
@@ -212,6 +219,23 @@ if $run_console; then
     echo "    The console was NOT verified by this commit hook; its CI workflow verifies it."
   else
     (cd apps/backoffice && npm run --silent verify)
+  fi
+fi
+
+# --- Delivery site ------------------------------------------------------------
+# A static site with no dependencies: its check needs only Node, and fails on
+# a broken link, a missing image, a page without its notices or anything that
+# looks like a credential.
+
+if $run_showroom; then
+  echo "==> Delivery site"
+  if ! command -v node > /dev/null; then
+    if [ "$mode" = all ]; then
+      fail "node is missing: the delivery site cannot be checked."
+    fi
+    echo "    node is missing: the delivery site was NOT checked by this commit hook; CI checks it."
+  else
+    node --test apps/showroom/test/site.test.mjs
   fi
 fi
 

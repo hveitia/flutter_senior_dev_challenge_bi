@@ -96,6 +96,15 @@ final class LoadState<T> extends Equatable {
     ),
   };
 
+  /// How a refresh ended when its answer no longer matches what is being
+  /// followed, as when the page grew while it was in flight. Its data is
+  /// discarded; whether the backend answered still counts.
+  LoadState<T> withOutdatedRefresh(Result<DataSnapshot<T>> result) =>
+      switch (result) {
+        Success() => LoadState(data: data, origin: origin, syncedAt: syncedAt),
+        Failed() => withRefresh(result),
+      };
+
   @override
   List<Object?> get props => [data, origin, syncedAt, failure, isLoading];
 }

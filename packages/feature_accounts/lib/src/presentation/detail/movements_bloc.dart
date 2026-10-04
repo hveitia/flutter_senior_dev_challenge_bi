@@ -178,13 +178,15 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
   Future<void> _refresh(Emitter<MovementsState> emit) async {
     emit(_with(movements: state.movements.startLoading()));
 
-    final result = await _repository.refreshMovements(
-      accountId,
-      limit: state.limit,
-    );
+    final limit = state.limit;
+    final result = await _repository.refreshMovements(accountId, limit: limit);
     if (isClosed) return;
 
-    final movements = state.movements.withRefresh(result);
+    // The customer may have asked for more while the backend was answering.
+    // The answer is then for a shorter page and would cut the list.
+    final movements = limit == state.limit
+        ? state.movements.withRefresh(result)
+        : state.movements.withOutdatedRefresh(result);
     _traceOutcome(movements);
     emit(_with(movements: movements));
   }

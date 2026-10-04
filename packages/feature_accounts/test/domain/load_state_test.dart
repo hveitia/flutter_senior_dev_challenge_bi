@@ -99,6 +99,32 @@ void main() {
     expect(state.isLoading, isFalse);
   });
 
+  test('an outdated answer ends the loading without replacing the data', () {
+    final state = const LoadState<List<Account>>()
+        .withSnapshot(snapshot(DataOrigin.cache, at: syncedAt))
+        .startLoading()
+        .withOutdatedRefresh(
+          Success(snapshot(DataOrigin.server, value: [checking], at: now)),
+        );
+
+    expect(state.data, [savings]);
+    expect(state.origin, DataOrigin.cache);
+    expect(state.syncedAt, syncedAt);
+    expect(state.isLoading, isFalse);
+    expect(state.failure, isNull);
+  });
+
+  test('an outdated answer that failed is still a failure', () {
+    final state = const LoadState<List<Account>>()
+        .withSnapshot(snapshot(DataOrigin.cache, at: syncedAt))
+        .startLoading()
+        .withOutdatedRefresh(failed);
+
+    expect(state.data, [savings]);
+    expect(state.failure, LoadFailure.timeout);
+    expect(state.isLoading, isFalse);
+  });
+
   test('fresh data from the listener clears an earlier failure', () {
     final state = const LoadState<List<Account>>()
         .withSnapshot(snapshot(DataOrigin.cache, at: syncedAt))

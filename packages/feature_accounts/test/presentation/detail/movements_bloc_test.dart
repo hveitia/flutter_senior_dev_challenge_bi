@@ -208,6 +208,42 @@ void main() {
       expect(bloc.state.isLoadingMore, isFalse);
     });
 
+    test('a refresh answered after the page grew does not shrink it', () async {
+      final refresh = Completer<Result<_Snapshot>>();
+      final bloc = await started(onRefresh: () => refresh.future);
+      await deliver(page([salary, groceries]));
+
+      bloc.add(const MovementsMoreRequested());
+      await pumpEventQueue();
+      await deliver(page(movements));
+
+      // The answer to the refresh of the first, shorter page.
+      refresh.complete(page([salary, groceries]).ok);
+      await pumpEventQueue();
+
+      expect(bloc.state.visible, movements);
+      expect(bloc.state.hasMore, isTrue);
+      expect(bloc.state.movements.isLoading, isFalse);
+      expect(bloc.state.movements.failure, isNull);
+    });
+
+    test('a refresh that fails after the page grew is still a failure, and '
+        'keeps the longer page', () async {
+      final refresh = Completer<Result<_Snapshot>>();
+      final bloc = await started(onRefresh: () => refresh.future);
+      await deliver(page([salary, groceries], origin: DataOrigin.cache));
+
+      bloc.add(const MovementsMoreRequested());
+      await pumpEventQueue();
+      await deliver(page(movements, origin: DataOrigin.cache));
+
+      refresh.complete(const Failed(TimeoutFailure()));
+      await pumpEventQueue();
+
+      expect(bloc.state.visible, movements);
+      expect(bloc.state.movements.failure, LoadFailure.timeout);
+    });
+
     test('does not skip a page when asked twice in a row', () async {
       final bloc = await started();
       await deliver(page([salary, groceries]));

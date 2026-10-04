@@ -10,6 +10,7 @@ import {
 const savings: AccountBalance = {
   id: "savings",
   name: "Cuenta de ahorros",
+  kind: "savings",
   availableCents: 357_035,
   ledgerCents: 357_035,
   currency: "USD",
@@ -17,6 +18,7 @@ const savings: AccountBalance = {
 const checking: AccountBalance = {
   id: "checking",
   name: "Cuenta corriente",
+  kind: "checking",
   availableCents: 125_000,
   ledgerCents: 125_000,
   currency: "USD",
@@ -171,5 +173,60 @@ describe("decideTransfer", () => {
     decideTransfer(order(15_010), savings, checking);
 
     expect(savings).toEqual(before);
+  });
+});
+
+describe("decideTransfer, accounts that cannot move money", () => {
+  const fund: AccountBalance = {
+    id: "fund",
+    name: "Fondo de inversión",
+    kind: "investment",
+    availableCents: 2_460_000,
+    ledgerCents: 2_460_000,
+    currency: "USD",
+  };
+
+  it("does not take money out of an investment", () => {
+    expect(
+      decideTransfer(order(100, { fromAccountId: "fund" }), fund, checking),
+    ).toEqual({ kind: "rejected", reason: "account-not-eligible" });
+  });
+
+  it("does not put money into an investment", () => {
+    expect(
+      decideTransfer(order(100, { toAccountId: "fund" }), savings, fund),
+    ).toEqual({ kind: "rejected", reason: "account-not-eligible" });
+  });
+
+  it("does not move money through an account of a kind it does not know", () => {
+    const unknown = { ...checking, kind: "loan" };
+
+    expect(decideTransfer(order(100), savings, unknown)).toEqual({
+      kind: "rejected",
+      reason: "account-not-eligible",
+    });
+  });
+
+  it("does not leave the ledger balance below zero", () => {
+    // Available is ahead of the ledger: $1,000.00 against $50.00.
+    const ahead = { ...savings, availableCents: 100_000, ledgerCents: 5_000 };
+
+    expect(decideTransfer(order(10_000), ahead, checking)).toEqual({
+      kind: "rejected",
+      reason: "insufficient-funds",
+    });
+  });
+
+  it("does not credit an account past what a number holds exactly", () => {
+    const full = {
+      ...checking,
+      availableCents: Number.MAX_SAFE_INTEGER,
+      ledgerCents: Number.MAX_SAFE_INTEGER,
+    };
+
+    expect(decideTransfer(order(100), savings, full)).toEqual({
+      kind: "rejected",
+      reason: "invalid-amount",
+    });
   });
 });

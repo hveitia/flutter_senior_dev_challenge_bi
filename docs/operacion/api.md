@@ -115,6 +115,7 @@ Motivos de rechazo (`reason`):
 |---|---|
 | `insufficient-funds` | El saldo disponible de la cuenta de origen no cubre el importe |
 | `unknown-account` | El cliente no tiene una de las dos cuentas |
+| `account-not-eligible` | Una de las cuentas no es de ahorros ni corriente (por ejemplo, una inversión) |
 | `currency-mismatch` | Las cuentas están en monedas distintas |
 | `same-account` | Origen y destino son la misma cuenta |
 | `invalid-amount` | El importe no es un entero positivo dentro del máximo |

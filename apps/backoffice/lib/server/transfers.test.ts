@@ -11,6 +11,7 @@ const later = new Date("2026-10-03T14:05:00Z");
 const savings: AccountBalance = {
   id: "savings",
   name: "Cuenta de ahorros",
+  kind: "savings",
   availableCents: 357_035,
   ledgerCents: 357_035,
   currency: "USD",
@@ -18,6 +19,7 @@ const savings: AccountBalance = {
 const checking: AccountBalance = {
   id: "checking",
   name: "Cuenta corriente",
+  kind: "checking",
   availableCents: 125_000,
   ledgerCents: 125_000,
   currency: "USD",

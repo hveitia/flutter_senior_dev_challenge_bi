@@ -16,8 +16,15 @@ export type TransferRejection =
   | "invalid-amount"
   | "same-account"
   | "unknown-account"
+  | "account-not-eligible"
   | "currency-mismatch"
   | "insufficient-funds";
+
+/**
+ * The kinds of account money can be moved between. An investment is not
+ * spendable money: it is bought and sold, not transferred.
+ */
+export const TRANSFERABLE_KINDS: readonly string[] = ["savings", "checking"];
 
 export interface TransferOrder {
   fromAccountId: string;
@@ -30,6 +37,8 @@ export interface TransferOrder {
 export interface AccountBalance {
   id: string;
   name: string;
+  /** As stored; an account without a kind cannot move money. */
+  kind: string;
   availableCents: number;
   ledgerCents: number;
   currency: string;
@@ -56,6 +65,10 @@ function rejected(reason: TransferRejection): TransferDecision {
   return { kind: "rejected", reason };
 }
 
+function canMoveMoney(account: AccountBalance): boolean {
+  return TRANSFERABLE_KINDS.includes(account.kind);
+}
+
 function moved(account: AccountBalance, cents: number): AccountBalance {
   return {
     ...account,
@@ -80,14 +93,22 @@ export function decideTransfer(
   if (!isTransferAmount(order.amountCents)) return rejected("invalid-amount");
   if (order.fromAccountId === order.toAccountId) return rejected("same-account");
   if (!from || !to) return rejected("unknown-account");
+  if (!canMoveMoney(from) || !canMoveMoney(to)) {
+    return rejected("account-not-eligible");
+  }
   if (from.currency !== to.currency) return rejected("currency-mismatch");
-  if (from.availableCents < order.amountCents) {
+  // Both balances of the source must cover the amount: neither ends below zero.
+  if (Math.min(from.availableCents, from.ledgerCents) < order.amountCents) {
     return rejected("insufficient-funds");
   }
 
-  return {
-    kind: "completed",
-    from: moved(from, -order.amountCents),
-    to: moved(to, order.amountCents),
-  };
+  const debited = moved(from, -order.amountCents);
+  const credited = moved(to, order.amountCents);
+  // A sum past what a number holds exactly would store a wrong balance.
+  const exact = [debited, credited].every(
+    (account) => isWholeCents(account.availableCents) && isWholeCents(account.ledgerCents),
+  );
+  if (!exact) return rejected("invalid-amount");
+
+  return { kind: "completed", from: debited, to: credited };
 }

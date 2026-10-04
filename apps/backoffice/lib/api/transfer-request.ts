@@ -113,8 +113,11 @@ export function orderFromStored(data: unknown): TransferOrder | null {
   >;
   if (!isAccountId(fromAccountId) || !isAccountId(toAccountId)) return null;
   if (typeof amountCents !== "number") return null;
-  if (concept !== undefined && typeof concept !== "string") return null;
-  if ((concept ?? "").length > MAX_CONCEPT_LENGTH) return null;
+  // The same reading as a request body, so an order queued on the phone and
+  // the same order sent online are one order, and what reaches a movement
+  // has no control characters.
+  const note = conceptFrom(concept);
+  if (note === null) return null;
 
-  return { fromAccountId, toAccountId, amountCents, concept: concept ?? "" };
+  return { fromAccountId, toAccountId, amountCents, concept: note };
 }

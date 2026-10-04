@@ -104,4 +104,25 @@ describe("readServerSettings", () => {
     expect(read).toThrow(SettingsError);
     expect(read).not.toThrow(/secret/);
   });
+
+  it.each(["FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST"])(
+    "refuses to start in production with %s set, since an emulator accepts unsigned tokens",
+    (variable) => {
+      const read = () =>
+        readServerSettings({ ...valid, NODE_ENV: "production", [variable]: "localhost:9099" });
+
+      expect(read).toThrow(SettingsError);
+    },
+  );
+
+  it("accepts an emulator outside production", () => {
+    const read = () =>
+      readServerSettings({
+        ...valid,
+        NODE_ENV: "test",
+        FIRESTORE_EMULATOR_HOST: "localhost:8080",
+      });
+
+    expect(read).not.toThrow();
+  });
 });

@@ -155,7 +155,14 @@ describe("orderFromStored", () => {
       "a concept longer than the limit",
       { ...stored, concept: "a".repeat(MAX_CONCEPT_LENGTH + 1) },
     ],
+    ["a concept with a line break", { ...stored, concept: "Arriendo\noctubre" }],
   ])("cannot read %s", (_name, data) => {
     expect(orderFromStored(data)).toBeNull();
+  });
+
+  it("reads the concept the way a request body is read, without the spaces around it", () => {
+    expect(orderFromStored({ ...stored, concept: "  Arriendo  " })).toMatchObject({
+      concept: "Arriendo",
+    });
   });
 });

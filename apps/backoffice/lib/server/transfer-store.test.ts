@@ -189,6 +189,7 @@ describe("firestoreTransferLedger", () => {
   it("reads an account without a ledger balance or a currency as the app does", async () => {
     db.documents.set(`users/${UID}/accounts/checking`, {
       name: "Cuenta corriente",
+      kind: "checking",
       availableCents: 125_000,
     });
 

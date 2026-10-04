@@ -34,7 +34,7 @@ export function accountBalanceFrom(
   id: string,
   data: FirebaseFirestore.DocumentData,
 ): AccountBalance {
-  const { name, availableCents, ledgerCents, currency } = data;
+  const { name, kind, availableCents, ledgerCents, currency } = data;
   if (typeof name !== "string" || !isWholeCents(availableCents)) {
     throw new LedgerCorruptionError("account without a name or a whole-cent balance");
   }
@@ -44,6 +44,8 @@ export function accountBalanceFrom(
   return {
     id,
     name,
+    // Unknown rather than assumed: the decision refuses a kind it does not list.
+    kind: typeof kind === "string" ? kind : "",
     availableCents,
     // Same fallbacks as the app's reader, so both see the same account.
     ledgerCents: ledgerCents ?? availableCents,
@@ -83,6 +85,7 @@ export function firestoreTransferLedger(db: Firestore): TransferLedger {
             transaction.set(transfer, { ...request, ...record }, { merge: true });
 
             for (const balance of balances) {
+              // Only the balances: the rest of the account is not this write's.
               transaction.update(accounts.doc(balance.id), {
                 availableCents: balance.availableCents,
                 ledgerCents: balance.ledgerCents,

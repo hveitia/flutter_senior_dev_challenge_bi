@@ -11,6 +11,7 @@ export const TRANSFER_ID = "4f1c2a9e-7b3d-4e21-9c55-0a1b2c3d4e5f";
 export const savings: AccountBalance = {
   id: "savings",
   name: "Cuenta de ahorros",
+  kind: "savings",
   availableCents: 357_035,
   ledgerCents: 357_035,
   currency: "USD",
@@ -18,6 +19,7 @@ export const savings: AccountBalance = {
 export const checking: AccountBalance = {
   id: "checking",
   name: "Cuenta corriente",
+  kind: "checking",
   availableCents: 125_000,
   ledgerCents: 125_000,
   currency: "USD",

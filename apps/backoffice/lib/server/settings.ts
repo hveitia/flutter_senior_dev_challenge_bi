@@ -75,7 +75,23 @@ function readServiceAccount(env: Environment): Record<string, unknown> | null {
   throw new SettingsError("FIREBASE_SERVICE_ACCOUNT is not a JSON object");
 }
 
+/** Variables that point the admin SDK at a local emulator. */
+const EMULATOR_VARIABLES = ["FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST"];
+
+/**
+ * An emulator accepts tokens nobody signed. Left set in a deployment, anyone
+ * could present themselves as any customer, so the server does not start.
+ */
+function refuseEmulatorsInProduction(env: Environment): void {
+  if (env.NODE_ENV !== "production") return;
+  const set = EMULATOR_VARIABLES.filter((variable) => env[variable]);
+  if (set.length > 0) {
+    throw new SettingsError(`${set.join(", ")} must not be set in production`);
+  }
+}
+
 export function readServerSettings(env: Environment): ServerSettings {
+  refuseEmulatorsInProduction(env);
   return {
     projectId: readProjectId(env),
     adminEmails: readAdminEmails(env),

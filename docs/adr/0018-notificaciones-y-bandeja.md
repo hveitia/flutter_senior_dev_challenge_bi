@@ -62,9 +62,20 @@ sequenceDiagram
 
 **Invitación antes del permiso.** La primera vez que un cliente inicia sesión en un dispositivo donde el sistema aún no preguntó, la aplicación muestra su invitación sobre el inicio. Solo si acepta aparece el aviso del sistema. «Ahora no» se recuerda en el dispositivo y la aplicación no vuelve a invitar por su cuenta; la bandeja ofrece activarlas cuando el cliente quiera. Si el permiso está denegado en el sistema, la bandeja lo dice y lleva a los ajustes.
 
-**Cierre de sesión.** Antes de cerrar la sesión, la aplicación deja el tema, borra el documento del dispositivo y elimina la dirección local. El orden importa: borrar el documento exige una sesión. La espera está acotada a 5 segundos: un cliente no queda con la sesión abierta porque la red no responde. Después corre la limpieza ya existente (escucha de configuración detenida, base local borrada).
+**Cierre de sesión.** Hay dos caminos y los dos limpian el dispositivo.
 
-**Al tocar una notificación.** El destino se resuelve con el mismo resolvedor que usan las acciones del inicio. Un destino que esta versión no puede abrir lleva a la bandeja. Con la aplicación abierta el sistema no muestra nada, así que la aplicación muestra un aviso propio; la bandeja se actualiza por su escucha.
+- **El cliente pulsa «Cerrar sesión».** Antes de cerrar, la aplicación deja el tema, borra el documento del dispositivo y elimina la dirección local. El orden importa: borrar el documento exige una sesión. La orden tiene efecto inmediato (una operación de registro que estuviera a medias no escribe nada al terminar) y la espera está acotada a 5 segundos: un cliente no queda con la sesión abierta porque la red no responde.
+- **La sesión termina por otra vía** (revocada, caducada, biometría eliminada del dispositivo, pantalla de sesión no disponible). La aplicación reacciona al estado «sin sesión», venga de donde venga, y hace lo que todavía es posible sin credenciales: deja el tema y elimina la dirección local. El documento del dispositivo ya no se puede borrar; queda apuntando a una dirección que dejó de existir, la consola lo marca como no registrado en el siguiente envío y el mismo cliente lo reemplaza al volver a entrar.
+
+**Teléfono compartido.** El dispositivo recuerda, fuera de cualquier sesión, para quién quedó registrado y qué temas sigue. Antes de registrar a un cliente, si ese recuerdo nombra a otro, se dejan sus temas y se elimina su dirección; si la dirección anterior no se puede eliminar, el cliente nuevo no se registra hasta que se pueda. Lo mismo se comprueba al arrancar sin sesión, lo que cubre una sesión que terminó con la aplicación cerrada. El recuerdo guarda un identificador y nombres de temas, nada del cliente.
+
+**Un solo tema por dispositivo.** Al cambiar de segmento se deja el tema anterior antes de seguir el nuevo. Si no se puede dejar, se reemplaza la dirección, que nace sin suscripciones; si tampoco se puede, el dispositivo se queda solo en el tema anterior y lo reintenta, nunca en dos.
+
+**Permiso retirado.** Al volver a primer plano se vuelve a leer el permiso. Si el cliente lo desactivó en los ajustes del sistema, se retira el registro y el tema.
+
+**Al tocar una notificación.** El destino se resuelve con el mismo resolvedor que usan las acciones del inicio. Un destino que esta versión no puede abrir lleva a la bandeja. Con la aplicación abierta el sistema no muestra nada, así que la aplicación muestra un aviso propio; la bandeja se actualiza por su escucha. Una notificación tocada sin sesión o con la sesión bloqueada no se pierde ni salta el bloqueo: queda en espera, fuera de la sesión, y se abre cuando el cliente ya está dentro. La que inició la aplicación se entrega una sola vez por proceso.
+
+**Privacidad en la pantalla bloqueada.** El canal de Android se crea con visibilidad privada: con el teléfono bloqueado el sistema indica que llegó un aviso sin mostrar su texto. Aun así, la regla de redacción es que el título y el texto de un push no llevan montos, números de cuenta ni datos personales: el detalle vive en la bandeja, detrás de la sesión. Los ejemplos del diseño con montos en el título son contenido de la bandeja, no texto recomendado para un push.
 
 ## Trade-offs
 
@@ -74,13 +85,16 @@ sequenceDiagram
 - **Se paga, la entrega del push no está garantizada.** FCM entrega «en lo posible». El servidor no sabe si un push a un tema llegó a alguien. Por eso la bandeja es la fuente de verdad y no al revés.
 - **Se paga, tocar el aviso del sistema no marca la notificación como leída.** El push no lleva el identificador de la bandeja; se marca al tocarla en la bandeja.
 - **Se paga, el tipo se deduce del destino.** Un beneficio que lleve a las cuentas se dibuja como movimiento. Un campo de tipo en la consola lo resolvería.
-- **Límite conocido, cierre de sesión por otra vía.** El dispositivo se olvida cuando el cliente pulsa «Cerrar sesión». Una sesión que termina de otro modo (revocada o caducada) no pasa por ahí: la dirección queda registrada hasta que la consola la marque o el cliente vuelva a entrar. La bandeja sigue protegida por las reglas; lo que podría llegar es el texto de un push.
+- **Corregido tras la revisión, sesión que termina por otra vía y teléfono compartido.** La primera versión solo olvidaba el dispositivo al pulsar «Cerrar sesión». Una sesión revocada o caducada dejaba la dirección registrada y el tema suscrito, y el siguiente cliente en ese teléfono habría recibido avisos del anterior. Ahora se limpia en toda vía de cierre y antes de registrar a otro cliente, como se describe arriba.
+- **Límite que queda, el documento del dispositivo tras un cierre sin sesión.** No se puede borrar desde el cliente. No entrega nada, porque su dirección ya no existe, pero permanece hasta que el cliente vuelve a entrar o un proceso del servidor lo elimina. Producción añadiría esa limpieza en el servidor, al revocar una sesión.
+- **Límite que queda, ventana sin red.** Dejar un tema y eliminar la dirección requieren conexión. Si la sesión termina sin red, lo pendiente queda anotado en el dispositivo y se completa en el siguiente arranque o registro; hasta entonces un push al tema anterior podría llegar. Por eso los textos de un push no llevan datos sensibles.
+- **Límite conocido, bandeja truncada o no escrita.** El registro del envío guarda `inboxTruncated` e `inboxError`, pero la tabla del historial de la consola todavía no los muestra.
 - **Límite conocido, Android no distingue «aún no preguntado» de «denegado».** La aplicación recuerda en el dispositivo si ya mostró el aviso del sistema. Si esa memoria se borra, un permiso denegado se toma por no preguntado y la invitación vuelve a aparecer una vez.
 - **Límite conocido, abrir los ajustes del sistema está implementado solo en Android**, por un canal propio en `MainActivity`. En iOS la llamada se informa a telemetría y no hace nada.
 
 ### Qué no está verificado
 
-Nada de esto corrió en un teléfono ni contra FCM. En particular: la recepción real de un push, el aviso de permiso de Android 13, el registro de la dirección y del tema, la apertura desde un aviso con la aplicación cerrada, el canal de notificaciones de Android y todo lo de iOS (capacidad de notificaciones, APNs y `UIBackgroundModes`, añadido pero sin compilar). Las reglas nuevas tienen pruebas contra el emulador y no están desplegadas. Queda una verificación en dispositivo pendiente para la integración.
+Nada de esto corrió en un teléfono ni contra FCM. Tampoco se comprobó en un dispositivo que eliminar la dirección cancele las suscripciones a temas, que es lo que el servicio documenta y en lo que se apoya la limpieza. En particular: la recepción real de un push, el aviso de permiso de Android 13, el registro de la dirección y del tema, la apertura desde un aviso con la aplicación cerrada, el canal de notificaciones de Android y todo lo de iOS (capacidad de notificaciones, APNs y `UIBackgroundModes`, añadido pero sin compilar). Las reglas nuevas tienen pruebas contra el emulador y no están desplegadas. Queda una verificación en dispositivo pendiente para la integración.
 
 ## Impacto a largo plazo
 

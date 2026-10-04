@@ -28,6 +28,9 @@ void main() {
   const patience = Duration(seconds: 40);
   const step = Duration(milliseconds: 250);
 
+  /// How long the keyboard takes to slide away.
+  const keyboardTime = Duration(seconds: 1);
+
   /// Pumps until [finder] finds something. `pumpAndSettle` cannot be used:
   /// a loading indicator never settles.
   Future<void> waitFor(WidgetTester tester, Finder finder) async {
@@ -95,7 +98,10 @@ void main() {
     await waitFor(tester, field('Monto'));
     await tester.enterText(field('Monto'), '100');
     await tester.enterText(field('Concepto (opcional)'), concept);
-    await tester.pump(step);
+    // On a real device the keyboard covers the button below; it is put
+    // away as a customer would, and the layout given time to settle.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump(keyboardTime);
     await tap(tester, find.widgetWithText(AppButton, 'Continuar'));
     await tap(
       tester,

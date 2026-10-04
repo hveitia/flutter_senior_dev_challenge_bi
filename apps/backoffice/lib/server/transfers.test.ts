@@ -229,6 +229,20 @@ describe("processTransfer, the same request again", () => {
     expect(ledger.commits).toBe(1);
   });
 
+  it.each([
+    ["completed", {}],
+    ["rejected", { amountCents: 400_000 }],
+  ])("answers a %s transfer again byte for byte, fields in the same order", async (_name, change) => {
+    ledger.putTransfer(UID, TRANSFER_ID, pending(change));
+    const first = await processTransfer(ledger, UID, TRANSFER_ID, now);
+
+    const second = await processTransfer(ledger, UID, TRANSFER_ID, later);
+
+    expect(first.kind === "settled" && JSON.stringify(first.transfer)).toBe(
+      second.kind === "settled" && JSON.stringify(second.transfer),
+    );
+  });
+
   it("returns the recorded reason of a rejected transfer, even if funds arrived since", async () => {
     ledger.putTransfer(UID, TRANSFER_ID, pending({ amountCents: 400_000 }));
     const first = await processTransfer(ledger, UID, TRANSFER_ID, now);

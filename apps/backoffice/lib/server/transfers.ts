@@ -235,10 +235,11 @@ export async function processTransfer(
     const newRequest = !stored && order ? { order, createdAt: now } : null;
     const settle = (settlement: Omit<Settlement, "newRequest">): ProcessResult => {
       transaction.write({ ...settlement, newRequest });
-      const { processedAt, ...outcome } = settlement.record;
       return {
         kind: "settled",
-        transfer: { id: transferId, ...outcome, processedAt: processedAt.toISOString() },
+        // Read back from what is being recorded, the way a replay will read
+        // it, so the first answer and every later one are the same bytes.
+        transfer: recordedOutcome(transferId, settlement.record),
         replayed: false,
       };
     };

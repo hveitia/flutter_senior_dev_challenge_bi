@@ -21,6 +21,7 @@ export 'src/components/skeleton_block.dart';
 export 'src/components/status_banner.dart';
 export 'src/components/status_chip.dart';
 export 'src/components/step_indicator.dart';
+export 'src/components/tab_root_app_bar.dart';
 export 'src/components/toggle_row.dart';
 export 'src/components/wordmark.dart';
 export 'src/formatting/amount_formatter.dart';

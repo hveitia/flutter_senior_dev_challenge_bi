@@ -649,6 +649,15 @@ void main() {
       expect(find.text('Inversiones'), findsOneWidget);
       expect(find.text('Fondo de inversión'), findsOneWidget);
       expect(find.text(r'$24,600.00', findRichText: true), findsWidgets);
+      // The total stands out; each product reads as a row under it.
+      expect(
+        tester
+            .widgetList<AmountText>(find.byType(AmountText))
+            .map(
+              (amount) => amount.size,
+            ),
+        [AmountTextSize.title, AmountTextSize.body],
+      );
       expect(
         host.statuses[AccountsModuleTypes.investmentSummary],
         HomeModuleStatus.ready,

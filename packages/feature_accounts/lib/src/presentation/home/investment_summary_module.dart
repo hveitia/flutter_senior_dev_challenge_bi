@@ -104,6 +104,7 @@ class _Investments extends StatelessWidget {
                   const SizedBox(width: AppSpacing.x3),
                   AmountText(
                     cents: investment.availableCents,
+                    size: AmountTextSize.body,
                     obscured: hidden,
                   ),
                 ],

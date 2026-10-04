@@ -6,7 +6,9 @@
 #                              pre-commit hook runs
 #
 # Both modes check the format and the analysis of the whole repository,
-# which are fast. They differ only in which tests run.
+# which are fast. They differ only in which tests run, and in whether the web
+# console is verified: always in the first, only when it or the contract
+# changed in the second.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -75,6 +77,7 @@ $markers"
 
 selected=()
 run_firebase=false
+run_console=false
 
 is_selected() {
   local chosen
@@ -112,6 +115,7 @@ depends_on() {
 
 if [ "$mode" = all ]; then
   selected=("${members[@]}")
+  run_console=true
 else
   echo "==> Affected by the staged changes"
   # The pre-commit hook passes the list it read from the commit's own index.
@@ -126,10 +130,13 @@ else
         affects_all=$path
         ;;
       firebase/*) run_firebase=true ;;
+      # The console validates what it publishes against the contract file.
+      apps/backoffice/* | contracts/*) run_console=true ;;
     esac
   done <<< "$staged"
 
   if [ -n "$affects_all" ]; then
+    run_console=true
     for dir in "${members[@]}"; do
       pick "$dir" "$affects_all configures every package"
     done
@@ -177,6 +184,20 @@ for dir in "${members[@]}"; do
   echo "--> $dir"
   (cd "$dir" && flutter test)
 done
+
+# --- Web console --------------------------------------------------------------
+# Not a Dart package: it has its own lint, type check, tests and build, and a
+# CI workflow of its own. Here it runs when its dependencies are installed.
+
+if $run_console; then
+  echo "==> Console"
+  if [ ! -d apps/backoffice/node_modules ]; then
+    echo "    apps/backoffice/node_modules is missing (run 'npm ci' in apps/backoffice/)."
+    echo "    The console was NOT verified here; its CI workflow verifies it."
+  else
+    (cd apps/backoffice && npm run --silent verify)
+  fi
+fi
 
 # --- Firebase rules and seed --------------------------------------------------
 # CI runs them in a job of their own on every push. Locally they run when

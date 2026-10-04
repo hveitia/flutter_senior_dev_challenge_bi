@@ -25,7 +25,10 @@ export interface PushMessage {
   destination: string;
 }
 
-/** Who a stored send was for. A customer is kept by uid, never by address. */
+/**
+ * Who a stored send was for. A customer is kept by uid, never by address,
+ * and with no uid at all when the send could not reach anyone.
+ */
 export type StoredAudience =
   | { kind: "segment"; segmentId: string }
   | { kind: "customer"; uid: string | null };
@@ -46,6 +49,14 @@ export interface StoredPush {
   retryClaimedAt?: Date;
 }
 
+/** Stored and shown when a send to one person could not reach anyone. */
+const UNREACHABLE = "customer-unreachable";
+
+/** Whether the record still says who to send to. */
+function isAddressable(audience: StoredAudience): boolean {
+  return audience.kind === "segment" || audience.uid !== null;
+}
+
 /**
  * How long a retry may stay claimed. A server that died between claiming and
  * recording the outcome would otherwise leave the record unretryable for good.
@@ -54,6 +65,7 @@ export const RETRY_CLAIM_TTL_MS = 2 * 60 * 1000;
 
 /** Whether a record can be claimed for a retry at `now`. */
 export function canClaimRetry(stored: StoredPush, now: Date): boolean {
+  if (!isAddressable(stored.audience)) return false;
   if (stored.status === "failed") return true;
   if (stored.status !== "retrying" || !stored.retryClaimedAt) return false;
   return now.getTime() - stored.retryClaimedAt.getTime() > RETRY_CLAIM_TTL_MS;
@@ -171,9 +183,9 @@ async function deliver(
       return delivered;
     }
 
-    if (!audience.uid) return failed("customer-not-found");
+    if (!audience.uid) return failed(UNREACHABLE);
     const tokens = await ports.customers.deviceTokens(audience.uid);
-    if (tokens.length === 0) return failed("no-registered-device");
+    if (tokens.length === 0) return failed(UNREACHABLE);
     const outcome = await ports.gateway.sendToTokens(
       tokens,
       message,
@@ -185,8 +197,22 @@ async function deliver(
   }
 }
 
-function recordOf(id: string, stored: StoredPush): PushRecord {
+/**
+ * The customer behind an address, only if a notification can reach them.
+ * An address that is not a customer and a customer without a device give the
+ * same answer, and so the same record: the history must not tell an
+ * administrator which addresses belong to customers.
+ */
+async function reachableUid(ports: PushPorts, email: string): Promise<string | null> {
+  const uid = await ports.customers.uidByEmail(email);
+  if (!uid) return null;
+  const tokens = await ports.customers.deviceTokens(uid);
+  return tokens.length > 0 ? uid : null;
+}
+
+export function pushRecordOf(id: string, stored: StoredPush): PushRecord {
   return {
+    retryable: stored.status === "failed" && isAddressable(stored.audience),
     id,
     createdAt: stored.createdAt.toISOString(),
     title: stored.title,
@@ -211,10 +237,7 @@ export async function sendPush(
   const audience: StoredAudience =
     draft.audience.kind === "segment"
       ? draft.audience
-      : {
-          kind: "customer",
-          uid: await ports.customers.uidByEmail(draft.audience.email),
-        };
+      : { kind: "customer", uid: await reachableUid(ports, draft.audience.email) };
   const message: PushMessage = {
     title: draft.title,
     body: draft.body,
@@ -232,7 +255,7 @@ export async function sendPush(
     sentBy: admin.email,
     dryRun: settings.pushDryRun,
   };
-  return recordOf(await ports.history.add(stored), stored);
+  return pushRecordOf(await ports.history.add(stored), stored);
 }
 
 /**
@@ -262,5 +285,5 @@ export async function retryPush(
     dryRun: settings.pushDryRun,
   };
   await ports.history.update(id, patch);
-  return recordOf(id, { ...stored, ...patch });
+  return pushRecordOf(id, { ...stored, ...patch });
 }

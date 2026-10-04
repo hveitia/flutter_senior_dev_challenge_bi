@@ -33,4 +33,6 @@ export interface PushRecord {
   audienceLabel: string;
   status: PushStatus;
   error: string | null;
+  /** Whether the server would accept a retry of this send. */
+  retryable: boolean;
 }

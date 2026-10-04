@@ -5,6 +5,7 @@ import type { Messaging } from "firebase-admin/messaging";
 import type { PushRecord } from "@/lib/push/types";
 import {
   canClaimRetry,
+  pushRecordOf,
   type PushMessage,
   type PushPorts,
   type StoredPush,
@@ -112,15 +113,7 @@ export async function latestPushes(
     .orderBy("createdAt", "desc")
     .limit(limit)
     .get();
-  return snapshot.docs.map((document) => {
-    const stored = storedFrom(document.data());
-    return {
-      id: document.id,
-      createdAt: stored.createdAt.toISOString(),
-      title: stored.title,
-      audienceLabel: stored.audienceLabel,
-      status: stored.status,
-      error: stored.error,
-    };
-  });
+  return snapshot.docs.map((document) =>
+    pushRecordOf(document.id, storedFrom(document.data())),
+  );
 }

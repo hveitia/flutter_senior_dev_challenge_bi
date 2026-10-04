@@ -230,7 +230,7 @@ export function PushCard({
                       {status.icon}
                       {status.label}
                     </span>
-                    {row.status === "failed" ? (
+                    {row.retryable ? (
                       <button
                         type="button"
                         onClick={() => retry(row.id)}

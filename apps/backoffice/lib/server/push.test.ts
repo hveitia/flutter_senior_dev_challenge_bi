@@ -179,6 +179,7 @@ describe("sendPush", () => {
       audienceLabel: "Familia",
       status: "sent",
       error: null,
+      retryable: false,
     });
     expect(p.records.get("push-1")).toMatchObject({
       status: "sent",
@@ -252,32 +253,63 @@ describe("sendPush", () => {
     expect(JSON.stringify(p.records.get("push-1"))).not.toContain("cliente@example.com");
   });
 
-  it("fails without calling the service when the customer does not exist", async () => {
-    const p = ports();
-    vi.mocked(p.customers.uidByEmail).mockResolvedValue(null);
-    const draft = draftOf({
-      ...toSegment,
-      audience: { kind: "customer", email: "nadie@example.com" },
+  describe("to an address that cannot be reached", () => {
+    const toCustomer = (email: string) =>
+      draftOf({ ...toSegment, audience: { kind: "customer", email } });
+
+    async function unknownAddress() {
+      const p = ports();
+      vi.mocked(p.customers.uidByEmail).mockResolvedValue(null);
+      const record = await sendPush(
+        p,
+        { pushDryRun: false },
+        admin,
+        now,
+        toCustomer("nadie@example.com"),
+        "Un cliente",
+      );
+      return { p, record };
+    }
+
+    async function customerWithoutDevice() {
+      const p = ports();
+      vi.mocked(p.customers.deviceTokens).mockResolvedValue([]);
+      const record = await sendPush(
+        p,
+        { pushDryRun: false },
+        admin,
+        now,
+        toCustomer("cliente@example.com"),
+        "Un cliente",
+      );
+      return { p, record };
+    }
+
+    it("fails without calling the service", async () => {
+      const unknown = await unknownAddress();
+      const withoutDevice = await customerWithoutDevice();
+
+      expect(unknown.record).toMatchObject({ status: "failed", retryable: false });
+      expect(unknown.p.gateway.sendToTokens).not.toHaveBeenCalled();
+      expect(withoutDevice.p.gateway.sendToTokens).not.toHaveBeenCalled();
     });
 
-    const record = await sendPush(p, { pushDryRun: false }, admin, now, draft, "Un cliente");
+    it("shows and stores the same outcome whether or not the address is a customer", async () => {
+      const unknown = await unknownAddress();
+      const withoutDevice = await customerWithoutDevice();
 
-    expect(record).toMatchObject({ status: "failed", error: "customer-not-found" });
-    expect(p.gateway.sendToTokens).not.toHaveBeenCalled();
-  });
-
-  it("fails when the customer has no registered device", async () => {
-    const p = ports();
-    vi.mocked(p.customers.deviceTokens).mockResolvedValue([]);
-    const draft = draftOf({
-      ...toSegment,
-      audience: { kind: "customer", email: "cliente@example.com" },
+      expect(unknown.record).toEqual(withoutDevice.record);
+      expect(unknown.p.records.get("push-1")).toEqual(
+        withoutDevice.p.records.get("push-1"),
+      );
+      expect(unknown.record.error).toBe("customer-unreachable");
     });
 
-    const record = await sendPush(p, { pushDryRun: false }, admin, now, draft, "Un cliente");
+    it("cannot be retried, since the record does not say who it was for", async () => {
+      const { p, record } = await customerWithoutDevice();
 
-    expect(record).toMatchObject({ status: "failed", error: "no-registered-device" });
-    expect(p.gateway.sendToTokens).not.toHaveBeenCalled();
+      expect(await retryPush(p, { pushDryRun: false }, record.id, later)).toBeNull();
+    });
   });
 
   it("fails when no device of the customer accepted the notification", async () => {

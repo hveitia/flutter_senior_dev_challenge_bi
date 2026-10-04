@@ -6,6 +6,7 @@
 /// the composition root wires.
 library;
 
+export 'src/accounts_telemetry.dart';
 export 'src/domain/account.dart';
 export 'src/domain/accounts_repository.dart';
 export 'src/domain/data_snapshot.dart';
@@ -13,6 +14,5 @@ export 'src/domain/load_state.dart';
 export 'src/domain/movement.dart';
 export 'src/domain/movement_filter.dart';
 export 'src/presentation/accounts/accounts_bloc.dart';
-export 'src/presentation/accounts/accounts_screen.dart';
-export 'src/presentation/detail/account_detail_screen.dart';
+export 'src/presentation/accounts_routes.dart';
 export 'src/presentation/detail/movements_bloc.dart';

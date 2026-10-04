@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:feature_accounts/feature_accounts.dart';
-import 'package:feature_accounts/src/accounts_telemetry.dart';
 import 'package:feature_accounts/src/data/default_accounts_repository.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:flutter_test/flutter_test.dart';

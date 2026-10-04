@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_platform/app_platform.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/feature_accounts.dart';
+import 'package:feature_accounts/src/presentation/accounts/accounts_screen.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 

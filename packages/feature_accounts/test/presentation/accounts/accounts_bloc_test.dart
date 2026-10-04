@@ -4,7 +4,6 @@ import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:feature_accounts/feature_accounts.dart';
-import 'package:feature_accounts/src/accounts_telemetry.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 

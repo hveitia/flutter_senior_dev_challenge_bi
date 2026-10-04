@@ -75,14 +75,18 @@ El peor caso de una lectura que nunca responde ronda los 25 s (tres intentos de 
 |---|---|---|
 | Los movimientos fallan y las cuentas responden, sin movimientos en pantalla | El saldo y las cuentas en pantalla; en el lugar de los movimientos, «No pudimos cargar tus movimientos» con «Reintentar» | Visto en un teléfono en el inicio, abriendo la aplicación con el servicio dado por caído; pruebas automáticas en el detalle de una cuenta |
 | Los movimientos fallan con movimientos ya en pantalla | Los movimientos se conservan, con el aviso «No pudimos actualizar tus movimientos. Mostramos los últimos datos guardados.» y «Reintentar» | Visto en un teléfono en el inicio |
-| El servicio de movimientos vuelve | «Reintentar» crea de nuevo la escucha, pregunta al servidor y el módulo se recupera | Visto en un teléfono: mientras el fallo seguía publicado el reintento volvió a fallar, y tras retirarlo se recuperó |
-| Ningún módulo del inicio tiene nada que mostrar | Un único mensaje para toda la pantalla, «No pudimos conectarnos», con un «Reintentar» que actualiza todos los módulos. El inicio vuelve en cuanto uno tiene datos | Pruebas automáticas |
+| El servicio de movimientos vuelve | El módulo se recupera solo, con lo último que la escucha recibió; «Reintentar» también crea de nuevo la escucha y pregunta al servidor | Visto en un teléfono: al retirar el fallo publicado, los movimientos volvieron sin tocar nada |
+| Los módulos con datos fallan y hay módulos sin datos (acciones rápidas, banner) | Los módulos sin datos siguen en pantalla y el que falló muestra su error con «Reintentar» | Visto en un teléfono, con un inicio de acciones rápidas, banner y movimientos y el servicio de movimientos caído |
+| Todo lo que dibujaría algo es un módulo con datos que falló | Un único mensaje para toda la pantalla, «No pudimos conectarnos», con un «Reintentar» que actualiza todos los módulos. El inicio vuelve en cuanto uno tiene datos | Pruebas automáticas |
+| Las cuentas fallan y el saldo no está publicado en ese inicio | El carrusel, o las inversiones, muestran su propio error con «Reintentar» en lugar de quedar en blanco | Pruebas automáticas |
+| Un módulo tarda en actualizarse más de 30 s, o falla al hacerlo | Los demás terminan, el indicador desaparece y la siguiente actualización funciona | Pruebas automáticas |
+| No se pueden leer los movimientos del periodo de la tendencia | El saldo se muestra sin la línea de tendencia | Pruebas automáticas |
 | La configuración publica un tipo de módulo que esta versión no conoce | Se omite y el resto del inicio se dibuja | Visto en un teléfono: el segmento del cliente de prueba publica un módulo de servicios recomendados que aún no existe |
 | Las cuentas fallan y nunca se vieron | Mensaje de error a pantalla completa con «Reintentar» | Pruebas automáticas |
 | Un documento con un formato que la aplicación no entiende | Ese elemento se omite; el resto se muestra | Pruebas automáticas |
 | Una categoría, un canal o un estado desconocidos | El movimiento se muestra como «Otros» o «Pendiente» | Pruebas automáticas |
 
-Cuentas y movimientos se identifican como servicios distintos (`accounts` y `movements`) ante la política de resiliencia, y en el inicio cada uno tiene su propio estado: el saldo y el carrusel leen las cuentas, y los últimos movimientos tienen un Bloc aparte.
+Cuentas y movimientos se identifican como servicios distintos (`accounts` y `movements`) ante la política de resiliencia, y en el inicio cada uno tiene su propio estado: el saldo, el carrusel y las inversiones leen las cuentas, y los últimos movimientos tienen un Bloc aparte. El inicio solo sustituye la pantalla por un error cuando todo lo que dibujaría algo es un módulo con datos que falló; basta un módulo sano para que siga en pantalla.
 
 ## Laboratorio de resiliencia
 
@@ -106,15 +110,17 @@ sequenceDiagram
 |---|---|---|
 | Latencia | Cada intento espera ese tiempo antes de consultar. La señal de lentitud y el tiempo límite cuentan esa espera, así que la latencia recorre el mismo camino que una red lenta real | Visto en un teléfono |
 | Movimientos no disponibles | Las consultas de movimientos responden «no disponible» y se reintentan como una caída real. La escucha en tiempo real de movimientos deja de entregar datos: una caída que siguiera actualizando la pantalla no sería una caída | Visto en un teléfono |
+| Se publica o se retira un fallo con la pantalla abierta | Lo que ya está escuchando reacciona en ese momento, sin esperar a que cambien los datos: falla al publicarse y se recupera al retirarse | Visto en un teléfono, en ambos sentidos, en menos de 5 s |
 | Los mismos fallos, en una compilación sin la opción | Ninguno. Los movimientos se mostraron y la actualización respondió sin demora | Visto en un teléfono |
-| Al cerrar sesión | Los fallos se retiran: fuera de una sesión no se lee la configuración | Pruebas automáticas |
+| Al cerrar sesión | Los fallos se retiran: fuera de una sesión no se lee la configuración. La aplicación deja de leer la configuración antes de cerrar la sesión, para que el permiso denegado que sigue no se informe como una falla | Pruebas automáticas |
 
-Los fallos no se aplican solos a lo que ya está en pantalla: surten efecto en la siguiente consulta, es decir, al deslizar para actualizar, al reintentar o al abrir una pantalla.
+Quien sigue la configuración avisa a la política cuando los fallos publicados cambian, y la política lo pasa a las escuchas en curso. Las consultas puntuales no necesitan aviso: leen los fallos en cada intento.
+
+Una observación sin explicar: en el primer arranque tras instalar la compilación de demostración, con un fallo de movimientos publicado mientras la aplicación estaba cerrada, el inicio mostró los movimientos sin el aviso durante al menos 14 segundos. No se reprodujo en dos intentos posteriores con los mismos pasos, en los que el aviso apareció en menos de 5 segundos.
 
 ## Qué no está hecho
 
-- **La consola que publica los fallos.** Hoy se publican con la herramienta de desarrollo `firebase/seed/publish-config.mjs`; la consola llega en la etapa 7.
-- **El inicio de un cliente de otro segmento en un dispositivo.** La recomposición por segmento está cubierta por pruebas automáticas. La aplicación no ofrece cambiar de segmento después del registro, así que no se pudo mostrar con el cliente de prueba.
+- **Publicar los fallos desde la consola, visto en un dispositivo.** La consola tiene el laboratorio de resiliencia y sus pruebas, pero en el teléfono los fallos se publicaron con la herramienta de desarrollo `firebase/seed/publish-config.mjs`. Desde la consola se comprobó en el teléfono un cambio de orden de módulos.
 - **El aviso de conexión como aviso flotante.** El diseño muestra «Conexión restablecida» como un aviso flotante; la aplicación lo muestra como un aviso bajo el encabezado.
 - **Transferencias sin conexión.** La cola con identificador de idempotencia llega con la etapa 8.
 - **Micro aplicativos de aliados no disponibles.** Etapa 10.

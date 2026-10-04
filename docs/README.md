@@ -21,16 +21,19 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0011](adr/0011-autenticacion-y-perfil.md) | Autenticación con Firebase Auth y perfil escrito por el cliente bajo reglas | Aceptada |
 | [0012](adr/0012-lectura-de-cuentas-y-movimientos.md) | Lectura de cuentas y movimientos en tiempo real, con la copia local de Firestore como caché | Aceptada |
 | [0013](adr/0013-registro-de-modulos-y-motor-del-inicio.md) | Registro de módulos y motor del inicio, con un estado por conjunto de datos | Aceptada |
+| [0014](adr/0014-consola-de-experiencia.md) | Consola de experiencia: validación desde el contrato y publicación con control de versión | Aceptada |
+| [0015](adr/0015-acceso-de-administradores.md) | Acceso de administradores y credenciales del servidor de la consola | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
 
 ## Arquitectura
 
-- [Componentes y dependencias](arquitectura/componentes.md): los paquetes de la aplicación móvil, de qué depende cada uno y qué aporta cada dominio al inicio.
-- [Flujo: publicar la configuración y recomponer el inicio](arquitectura/publicar-configuracion.md): la secuencia desde que se publica un documento hasta que cambia la pantalla.
+- [Componentes y dependencias](arquitectura/componentes.md): los paquetes de la aplicación móvil, de qué depende cada uno, qué aporta cada dominio al inicio y qué comparten la consola y la aplicación.
+- [Flujo: publicar la configuración y recomponer el inicio](arquitectura/publicar-configuracion.md): la secuencia desde que un administrador publica en la consola hasta que cambia la pantalla de un teléfono.
 
 ## Operación
 
+- [Consola de experiencia](operacion/backoffice.md): configuración, ejecución, pruebas y despliegue.
 - [Monitoreo en producción](operacion/monitoreo.md): cómo se detectarían problemas operativos y de experiencia, y qué está implementado hoy.
 - [Comportamiento con conectividad degradada](operacion/conectividad-degradada.md): qué hace la aplicación sin conexión, con alta latencia y con un servicio caído, separando lo visto en un dispositivo de lo cubierto solo por pruebas y de lo planificado.
 

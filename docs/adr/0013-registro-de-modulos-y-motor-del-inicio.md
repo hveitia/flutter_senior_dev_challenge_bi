@@ -2,13 +2,13 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** construida en la etapa 6. Paquetes `packages/module_kit` y `packages/feature_home`, módulos del dominio de cuentas en `packages/feature_accounts`, composición en `apps/mobile`. Lo que se comprobó en un teléfono y lo que solo está cubierto por pruebas se detalla en [conectividad degradada](../operacion/conectividad-degradada.md).
+- **Implementación:** construida en la etapa 6 y corregida tras su revisión. Paquetes `packages/module_kit` y `packages/feature_home`, módulos del dominio de cuentas en `packages/feature_accounts`, composición en `apps/mobile`. Lo que se comprobó en un teléfono y lo que solo está cubierto por pruebas se detalla en [conectividad degradada](../operacion/conectividad-degradada.md).
 
 Esta decisión concreta la [0005](0005-home-dirigido-por-configuracion.md), que eligió el enfoque. Aquí se decide cómo se reparte el código entre paquetes y qué se promete a cada equipo.
 
 ## Problema a resolver
 
-El inicio debe armarse en tiempo de ejecución a partir de la configuración publicada, por segmento, y cada parte debe poder fallar sin llevarse a las demás. Además, varios equipos aportan módulos: si el inicio importa a cada dominio, o los dominios se importan entre sí, el inicio se convierte en el punto donde todos editan el mismo código y un cambio en cuentas obliga a recompilar y revisar servicios.
+El inicio debe armarse en tiempo de ejecución a partir de la configuración publicada, por segmento, y cada parte debe poder fallar sin llevarse a las demás. Además, varios equipos aportan módulos: si el inicio importa a cada dominio, o los dominios se importan entre sí, el inicio se convierte en el punto donde todos editan el mismo código y un cambio en el dominio de cuentas obliga a volver a compilar y a probar también los demás dominios.
 
 Hay que decidir tres cosas: dónde vive el contrato entre el inicio y los dominios, quién es dueño del estado de cada módulo y cómo sabe el inicio que no hay nada que mostrar sin conocer los datos de nadie.
 
@@ -41,13 +41,15 @@ flowchart TB
   app --> accounts
   home --> kit
   accounts --> kit
-  kit --> platform
-  kit --> ds
+  home --> platform
+  home --> ds
+  accounts --> platform
+  accounts --> ds
 ```
 
-- **`module_kit`** contiene el contrato y nada más: `HomeModuleRegistry` (tipo de módulo → constructor), `HomeModuleContext` (identificador, propiedades publicadas, resolutor de destinos y anfitrión), `DestinationResolver` y `HomeModuleHost`. Una prueba de arquitectura impide que importe un dominio, Firebase o un plugin.
-- **`feature_home`** es el motor. `HomeCompositionCubit` escucha la configuración y produce la composición: los módulos visibles del segmento del cliente, en el orden publicado, descartando los tipos que nadie registró. `HomeScreen` dibuja esa composición pidiendo cada widget al registro. También aporta los dos módulos que no tienen datos propios, `quickActions` y `promoBanner`, que se dibujan solo con lo publicado.
-- **`feature_accounts`** registra `totalBalance`, `accountCarousel` y `recentMovements`. Los dos primeros leen el mismo `AccountsBloc`; el tercero tiene su propio `RecentMovementsBloc`, con el identificador de servicio `movements`, de modo que el laboratorio de resiliencia puede tumbarlo sin tocar las cuentas.
+- **`module_kit`** contiene el contrato y nada más: `HomeModuleRegistry` (tipo de módulo → constructor), `HomeModuleContext` (identificador, propiedades publicadas, tipos que comparten el inicio, resolutor de destinos y anfitrión), `DestinationResolver`, `HomeModuleHost` y `HomeModuleBinding`, el widget con el que un módulo informa su estado. Solo depende del framework: una prueba de arquitectura impide que importe un dominio, Firebase, un plugin, el sistema de diseño o el paquete de plataforma.
+- **`feature_home`** es el motor. `HomeCompositionCubit` escucha la configuración y produce la composición: los módulos visibles del segmento del cliente, en el orden publicado, descartando los tipos que nadie registró. `HomeHostController` es el lado del inicio en el contrato: guarda lo que informa cada módulo, decide si hay algo que mostrar y ejecuta las actualizaciones. `HomeScreen` solo dibuja lo que ambos dicen, pidiendo cada widget al registro. El paquete aporta además los dos módulos sin datos propios, `quickActions` y `promoBanner`, que se dibujan solo con lo publicado.
+- **`feature_accounts`** registra `totalBalance`, `accountCarousel`, `investmentSummary` y `recentMovements`. Los tres primeros leen el mismo `AccountsBloc`; el último tiene su propio `RecentMovementsBloc`, con el identificador de servicio `movements`, de modo que el laboratorio de resiliencia puede tumbarlo sin tocar las cuentas.
 - **`apps/mobile`** registra los módulos de cada dominio al componer la aplicación y aporta el único `DestinationResolver`, que traduce los destinos de la lista cerrada del contrato a rutas. Un destino sin pantalla, o cuya funcionalidad está apagada para el segmento, no se resuelve y el módulo no dibuja la acción: no hay botones que no llevan a ningún lado.
 
 ### Qué pasa con cada caso
@@ -55,13 +57,15 @@ flowchart TB
 | Situación | Comportamiento |
 |---|---|
 | Se publica un orden distinto o se oculta un módulo | El inicio se recompone sin reiniciar. Los módulos que permanecen conservan su estado, porque se identifican por su `id`. |
-| El perfil del cliente cambia de segmento | Se recompone con la lista de ese segmento. Un segmento desconocido usa el de reserva del contrato. |
-| La configuración nombra un tipo que esta versión no registra | Se omite y se informa una vez a telemetría, solo con el tipo. Hoy ocurre con `investmentSummary` y `serviceRecommendations`. |
+| El perfil del cliente cambia de segmento | Se recompone con la lista de ese segmento, sin iniciar sesión de nuevo. El cliente lo cambia en Perfil, en «Personalización». Un segmento desconocido usa el de reserva del contrato. |
+| La configuración nombra un tipo que esta versión no registra | Se omite y se informa una vez a telemetría, solo con el tipo. Hoy ocurre con `serviceRecommendations`. |
 | Un módulo con datos falla y no tiene nada guardado | Muestra su propio error con «Reintentar». Los demás siguen en pantalla. |
-| Todos los módulos con datos fallan sin nada guardado | El inicio muestra un único error para toda la pantalla y reintenta todos a la vez. Los módulos siguen montados y el inicio vuelve en cuanto uno tiene datos. |
-| El cliente desliza para actualizar | El inicio pide a cada módulo que se actualice y espera a todos. |
+| Dos módulos comparten datos y esos datos fallan | Lo dice uno solo. El saldo total habla por las cuentas y las inversiones cuando está publicado junto a ellas; publicados sin él, cada uno muestra su propio error. |
+| Todo lo que dibujaría algo es un módulo con datos que falló | El inicio muestra un único error para toda la pantalla y reintenta todos a la vez. Los módulos siguen montados y el inicio vuelve en cuanto uno tiene datos. Basta un módulo sano, con datos o sin ellos, para que el inicio siga en pantalla. |
+| Un módulo no tiene nada que dibujar | Lo informa y el inicio le quita también su separación. Ocurre con las acciones rápidas cuando ningún destino se puede abrir, con el banner sin título y con las inversiones de un cliente que no tiene. |
+| El cliente desliza para actualizar | El inicio pide a cada módulo que se actualice y espera a todos. Un módulo que falla al actualizarse, o que no responde en 30 segundos, no retiene a los demás ni bloquea la siguiente actualización. |
 
-El inicio distingue «falló un módulo» de «no hay nada que mostrar» sin conocer los datos: cada módulo con datos informa su estado (esperando, listo, falló) al anfitrión y registra cómo se actualiza.
+El inicio distingue «falló un módulo» de «no hay nada que mostrar» sin conocer los datos: cada módulo con datos informa su estado (esperando, listo, falló u oculto) al anfitrión y registra cómo se actualiza. Un módulo que solo dibuja lo publicado no informa nada y cuenta como mostrado.
 
 ### Cómo agrega un módulo un equipo nuevo
 
@@ -70,9 +74,14 @@ El inicio distingue «falló un módulo» de «no hay nada que mostrar» sin con
 3. En `apps/mobile`, añade la llamada a esa función en `composeHomeModules`. Es la única línea fuera de su paquete.
 4. Publica una configuración que incluya el tipo. Las versiones instaladas que no lo conocen lo omiten.
 
-### `investmentSummary` queda sin registrar
+### Lo que distingue al segmento Patrimonio, con datos reales
 
-No existe un modelo de inversiones ni datos reales que mostrar. Dibujar cifras inventadas dentro del widget sería peor que no dibujar nada, así que el tipo no se registra y el inicio lo omite. Es, además, una demostración en vivo de la regla de tolerancia: la configuración del segmento Patrimonio lo publica y la aplicación instalada sigue funcionando.
+La primera versión dejó sin construir los dos elementos propios de ese segmento, porque no había datos reales que mostrar y dibujar cifras inventadas habría sido peor que no dibujar nada. La corrección los construyó sobre datos:
+
+- **`investmentSummary`.** Las inversiones llegan con las cuentas, como cuentas de un tipo nuevo, de solo lectura para el cliente igual que las demás. El módulo muestra el total invertido y cada producto. Un cliente sin inversiones no ve nada, ni un hueco. El carrusel muestra solo las cuentas de las que se puede gastar, y el saldo total suma las inversiones únicamente cuando la configuración lo pide con `includesInvestments`.
+- **Tendencia del saldo (`trendDays`).** No se guarda el saldo de días pasados, así que se calcula: se parte del saldo actual y se deshacen los movimientos del periodo, día por día. La línea es, por tanto, tan cierta como el saldo y los movimientos. Cubre solo el dinero disponible, y lo dice en su leyenda, porque las inversiones no tienen movimientos con los que reconstruir nada. Si los movimientos no se pueden leer, el saldo se muestra igual y la línea no aparece.
+
+`serviceRecommendations` sigue sin registrarse hasta la etapa de servicios, y es la demostración en vivo de la regla de tolerancia: la configuración lo publica y la aplicación instalada sigue funcionando.
 
 ## Trade-offs
 
@@ -81,8 +90,10 @@ No existe un modelo de inversiones ni datos reales que mostrar. Dibujar cifras i
 - **Se paga:** hay un paquete más que mantener, y un cambio incompatible en él afecta a todos los dominios a la vez. Por eso se mantiene mínimo.
 - **Se paga:** las propiedades de cada módulo son un mapa sin tipos. Cada módulo las lee con tolerancia (lo que falta o tiene otro tipo equivale al valor por defecto), y un error de escritura en la consola no se detecta hasta validar contra el esquema.
 - **Límite conocido:** el inicio informa los tipos omitidos, pero no avisa al cliente de que falta algo. Es deliberado: una versión antigua no debe mostrar huecos por módulos que no conoce.
-- **Límite conocido:** `ConnectionBanner`, el aviso de conexión que comparten las secciones, vive en `module_kit` porque es lo único que todas las secciones ya importan. Si el paquete creciera con más widgets compartidos, convendría separarlos.
-- **Fuera de alcance:** la línea de tendencia de 30 días del saldo total que publica el segmento Patrimonio (`trendDays`). El módulo ignora esa propiedad; calcularla exige leer los movimientos del periodo y no se construyó.
+- **Se paga:** el aviso de conexión que comparten las secciones (`ConnectionBanner`) vive en el sistema de diseño y recibe el estado como parámetro, así que cada dominio escribe las pocas líneas que lo conectan con el estado de conexión. La primera versión lo puso en `module_kit` para evitar esa repetición, y con ello el contrato arrastraba dependencias que no eran suyas; la revisión lo señaló y se movió.
+- **Se paga:** los tipos de módulo y los nombres de los destinos son texto. Cada paquete define los suyos una sola vez como constantes, pero un error de escritura en un documento publicado solo se nota porque el módulo o la acción no aparece.
+- **Límite conocido:** la tendencia lee como máximo 200 movimientos del periodo. Con más, se dibuja solo para los días que esos movimientos cubren por completo, y con menos de dos días no se dibuja. El periodo se limita a 90 días.
+- **Límite conocido:** un módulo sabe qué tipos comparten el inicio con él para decidir quién dice un error común. Es conocimiento entre módulos del mismo dominio; entre dominios distintos no se usa.
 
 ## Impacto a largo plazo
 

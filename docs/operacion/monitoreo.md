@@ -30,6 +30,8 @@ Cada apartado separa lo **implementado** de lo **planificado**. La aplicación y
 | `auth_password_reset_requested` | Se pidió el correo de restablecimiento | Ninguno |
 | `auth_unlock_succeeded`, `auth_unlock_failed` | Resultado de la comprobación biométrica | Ninguno |
 | `auth_signed_out` | El cliente cerró la sesión | Ninguno |
+| `auth_preferences_updated` | El cliente cambió sus intereses o su segmento en «Personalización» | Ninguno: qué segmento o qué intereses no se informa |
+| `auth_preferences_update_failed` | El cambio no pudo guardarse | Clase de fallo |
 
 - **Trazas y eventos de cuentas y movimientos** ([ADR 0012](../adr/0012-lectura-de-cuentas-y-movimientos.md)), sin importes, números de cuenta, descripciones ni nombres:
 
@@ -55,7 +57,7 @@ Un valor distinto de cero en `accounts_data_documents_skipped` significa que alg
 |---|---|---|
 | `home_module_skipped` | La configuración publica como visible un tipo de módulo que esta versión no registra. Una vez por tipo y sesión | Tipo del módulo |
 | `home_refresh_requested` | El cliente desliza para actualizar el inicio, o reintenta desde el error de pantalla completa | Cantidad de módulos que se actualizan |
-| `home_nothing_to_show` | Todos los módulos con datos fallaron sin nada guardado | Ninguno |
+| `home_nothing_to_show` | Todo lo que el inicio dibujaría es un módulo con datos que falló. Se emite al entrar en ese estado, y de nuevo solo después de haberse recuperado | Ninguno |
 
 - **Señales de la configuración.** Desde la etapa 6 la aplicación escucha la configuración publicada mientras hay una sesión iniciada, así que emite las señales de la tabla siguiente. Los movimientos más recientes del inicio usan los mismos eventos y el mismo servicio (`movements`) que los del detalle de una cuenta.
 

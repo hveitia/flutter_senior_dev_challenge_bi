@@ -6,7 +6,10 @@ import 'package:feature_notifications/feature_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _MockMessaging extends Mock implements FirebaseMessaging {}
 
 void main() {
   group('decodeInboxItem', () {
@@ -100,6 +103,29 @@ void main() {
         const PushMessage(title: '', destination: ''),
       );
     });
+  });
+
+  test('hands over the notification that started the app once per process, '
+      'so mounting the screens again does not open it again', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = _MockMessaging();
+    when(service.getInitialMessage).thenAnswer(
+      (_) async => const RemoteMessage(
+        notification: RemoteNotification(title: 'Aviso'),
+        data: {'destination': 'accounts'},
+      ),
+    );
+    final messaging = FirebasePushMessaging(
+      service,
+      await SharedPreferences.getInstance(),
+    );
+
+    expect(
+      await messaging.initialMessage(),
+      const PushMessage(title: 'Aviso', destination: 'accounts'),
+    );
+    expect(await messaging.initialMessage(), isNull);
+    verify(service.getInitialMessage).called(1);
   });
 
   group('permissionOf', () {

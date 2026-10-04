@@ -47,6 +47,7 @@ final class FirebasePushMessaging implements PushMessaging {
 
   final FirebaseMessaging _messaging;
   final SharedPreferences _preferences;
+  bool _initialMessageRead = false;
 
   bool get _wasAsked => _preferences.getBool(_askedKey) ?? false;
 
@@ -88,6 +89,10 @@ final class FirebasePushMessaging implements PushMessaging {
 
   @override
   Future<PushMessage?> initialMessage() async {
+    // The service keeps answering with the same notification for as long as
+    // the process lives. It started the app once, so it is handed over once.
+    if (_initialMessageRead) return null;
+    _initialMessageRead = true;
     final message = await _messaging.getInitialMessage();
     return message == null ? null : _read(message);
   }

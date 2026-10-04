@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existen en `packages/app_platform` la interfaz `Telemetry`, el adaptador de Firebase (Crashlytics, Analytics y Performance), el doble en memoria para pruebas y el `AppBlocObserver`. La aplicación instala el observador y los manejadores globales de errores al arrancar. La compilación de Android con el plugin de Crashlytics está verificada. **No se ha comprobado que los informes lleguen a la consola de Firebase**, porque la aplicación no se ha ejecutado en un dispositivo en esta etapa. Las trazas y los eventos de cada funcionalidad se añaden en sus etapas.
+- **Implementación:** existen en `packages/app_platform` la interfaz `Telemetry`, el adaptador de Firebase (Crashlytics, Analytics y Performance), el doble en memoria para pruebas y el `AppBlocObserver`. La aplicación instala el observador y los manejadores globales de errores al arrancar. La compilación de Android con el plugin de Crashlytics está verificada. Cada funcionalidad añadió después sus trazas y eventos, listados en [monitoreo](../operacion/monitoreo.md). La aplicación se ejecutó en un teléfono Android contra el proyecto real, pero **no se ha comprobado que los informes lleguen a la consola de Firebase**.
 
 ## Problema a resolver
 

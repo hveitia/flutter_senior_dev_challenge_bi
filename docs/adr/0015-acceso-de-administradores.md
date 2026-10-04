@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existen en `apps/backoffice` el intercambio del token de identidad por una cookie de sesión, la lista de administradores, la comprobación de origen y la guarda de proyecto, con pruebas de los caminos denegados. Se comprobó en local contra el proyecto real con una cuenta de administrador de prueba. El servidor está desplegado en Firebase App Hosting con la identidad de servicio de la plataforma; el uso de una cuenta de servicio por variable de entorno está implementado pero no se ha ejecutado. En el servidor publicado se comprobaron los caminos denegados y la comprobación de origen; el inicio de sesión de un administrador solo puede comprobarlo quien tiene la cuenta.
+- **Implementación:** existen en `apps/backoffice` el intercambio del token de identidad por una cookie de sesión, la lista de administradores, la comprobación de origen y la guarda de proyecto, con pruebas de los caminos denegados. Se comprobó en local contra el proyecto real con una cuenta de administrador de prueba. El servidor está desplegado en Firebase App Hosting con la identidad de servicio de la plataforma; el uso de una cuenta de servicio por variable de entorno está implementado pero no se ha ejecutado. En el servidor publicado se comprobaron los caminos denegados, la comprobación de origen y, por el autor con su cuenta, el inicio de sesión de un administrador y una publicación.
 
 ## Problema a resolver
 

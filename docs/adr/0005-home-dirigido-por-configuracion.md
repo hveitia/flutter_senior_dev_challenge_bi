@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** construida. El contrato y su lectura llegaron en la etapa 3 ([ADR 0008](0008-contrato-de-configuracion.md)); el registro de módulos y el motor del inicio, en la etapa 6 ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md)). La consola web que publica la configuración es de la etapa 7; hasta entonces publica una herramienta de desarrollo.
+- **Implementación:** construida. El contrato y su lectura llegaron en la etapa 3 ([ADR 0008](0008-contrato-de-configuracion.md)); el registro de módulos y el motor del inicio, en la etapa 6 ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md)). La configuración la publica la consola web, construida en la etapa 7 ([ADR 0014](0014-consola-de-experiencia.md)); una herramienta de desarrollo (`firebase/seed/publish-config.mjs`) hace lo mismo desde la línea de comandos.
 
 ## Problema a resolver
 

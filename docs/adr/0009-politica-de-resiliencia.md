@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existen en `packages/app_platform` la política (`ResiliencePolicy`), los fallos tipados, el `ConnectivityCubit` y el adaptador de `connectivity_plus`, con pruebas sobre un reloj simulado. La opción de compilación `ALLOW_FAULT_INJECTION` está definida en la aplicación. **Ningún repositorio usa la política todavía**, así que la opción aún no se pasa a ninguna, y nada se ha ejecutado en un dispositivo: los repositorios de cuentas, movimientos y transferencias llegan en las etapas 5 y 8, y los estados visibles (banners, reintento, caché) en la etapa 6.
+- **Implementación:** existen en `packages/app_platform` la política (`ResiliencePolicy`), los fallos tipados, el `ConnectivityCubit` y el adaptador de `connectivity_plus`, con pruebas sobre un reloj simulado. La usan los repositorios de acceso, cuentas, movimientos, transferencias, notificaciones y mini aplicaciones, y la raíz de composición le pasa la opción de compilación `ALLOW_FAULT_INJECTION`. En un teléfono Android se vieron la falla parcial, la conexión lenta, el trabajo sin conexión con datos guardados y la recuperación, con fallos publicados desde la herramienta de desarrollo; publicarlos desde la consola desplegada no se ha comprobado. El detalle está en [conectividad degradada](../operacion/conectividad-degradada.md).
 
 ## Problema a resolver
 
@@ -77,7 +77,7 @@ stateDiagram-v2
 
 Es una capacidad de demostración y tiene candado en la aplicación:
 
-- **La política ignora el bloque salvo que se cree con `allowFaultInjection`.** La raíz de composición toma ese valor de la opción de compilación `ALLOW_FAULT_INJECTION` (`BuildFlags.allowFaultInjection`), apagada por defecto. Una compilación de producción no puede degradarse desde la consola, publique lo que publique.
+- **La política ignora el bloque salvo que se cree con `allowFaultInjection`.** La raíz de composición toma ese valor de la opción de compilación `ALLOW_FAULT_INJECTION` (`BuildFlags.allowFaultInjection`), apagada por defecto. El candado es la opción, no el modo de compilación: cualquier compilación hecha sin ella ignora los fallos publicados, y la compilación de la demostración se hace con ella a propósito, para que el laboratorio pueda usarse. Una compilación destinada a producción se hace sin la opción y no puede degradarse desde la consola, publique lo que publique.
 - Cuando está activa, la política emite una vez el evento `resilience_fault_injection_enabled`. No debe aparecer nunca en los informes de producción.
 - El analizador limita la latencia a 10 segundos.
 
@@ -95,13 +95,15 @@ Que la consola muestre el laboratorio solo en el entorno de demostración (etapa
 - **Se paga:** `connectivity_plus` informa de que hay una red, no de que haya acceso a internet. Una red sin salida se manifiesta como tiempos de espera agotados, no como «sin conexión».
 - **Se paga:** los umbrales (8 s, 3 s, 3 intentos) son valores razonables elegidos sin mediciones.
 
-**Límites conocidos, que no se construyen todavía**
+**Límites conocidos, que no se construyeron**
 
-| Límite | Consecuencia hoy | Cuándo hará falta |
+Las situaciones de la tercera columna ya existen en la aplicación; los límites se aceptaron para la demostración.
+
+| Límite | Consecuencia hoy | Qué lo hace necesario |
 |---|---|---|
-| No hay cancelación desde quien llama | Una operación idempotente que nunca responde tarda unos 25 segundos en fallar: tres intentos de 8 s más hasta 1,2 s de esperas. Con una sola ejecución, 8 s | Cuando una pantalla pueda abandonarse con una llamada en curso (etapas 5 y 6) |
-| No hay cortacircuitos ni presupuesto de reintentos por servicio | Varios módulos que fallan a la vez reintentan cada uno por su cuenta. La variación aleatoria de la espera solo los separa en parte | Cuando varios módulos consulten el mismo servicio en paralelo (etapa 6) o exista un backend con límites de uso |
-| La conexión solo se comprueba al empezar cada intento | Si la red vuelve durante una espera, la espera no se acorta; si se pierde durante un intento, se nota al agotarse el tiempo | Con la cola de operaciones sin conexión (etapa 8) |
+| No hay cancelación desde quien llama | Una operación idempotente que nunca responde tarda unos 25 segundos en fallar: tres intentos de 8 s más hasta 1,2 s de esperas. Con una sola ejecución, 8 s | Una pantalla que puede abandonarse con una llamada en curso, como las de cuentas y el inicio |
+| No hay cortacircuitos ni presupuesto de reintentos por servicio | Varios módulos que fallan a la vez reintentan cada uno por su cuenta. La variación aleatoria de la espera solo los separa en parte | Varios módulos del inicio que consultan el mismo servicio en paralelo, o un backend con límites de uso |
+| La conexión solo se comprueba al empezar cada intento | Si la red vuelve durante una espera, la espera no se acorta; si se pierde durante un intento, se nota al agotarse el tiempo | La cola de transferencias sin conexión, que hoy se apoya en el aviso de conectividad y no en la política para reaccionar al volver la red |
 
 Durante las pruebas apareció un defecto que conviene recordar: con una latencia inyectada mayor que el tiempo de espera, el intento se daba por agotado pero la operación se ejecutaba igualmente después. Ahora un intento abandonado no inicia la operación, y hay una prueba que lo fija.
 

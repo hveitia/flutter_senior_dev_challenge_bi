@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existen en `apps/backoffice` las rutas `POST /api/transfers`, `POST /api/transfers/{transferId}/process` y `POST /api/accounts/provision`, con la autenticación de clientes por token, la decisión de la transferencia como función pura y su liquidación en una transacción. Se comprobó en local contra el proyecto real con el cliente de prueba: una transferencia y su reverso, la repetición de la misma solicitud, dos envíos simultáneos y un sobregiro. La aplicación ya llama a estas rutas ([ADR 0017](0017-transferencias-en-la-aplicacion.md)) y la regla de Firestore que le permite crear la solicitud pendiente está en `firebase/firestore.rules`, con sus pruebas, y desplegada. El flujo en línea se comprobó de punta a punta en un teléfono; el camino en cola desde la aplicación sigue sin verse en un dispositivo.
+- **Implementación:** existen en `apps/backoffice` las rutas `POST /api/transfers`, `POST /api/transfers/{transferId}/process` y `POST /api/accounts/provision`, con la autenticación de clientes por token, la decisión de la transferencia como función pura y su liquidación en una transacción. Se comprobó en local contra el proyecto real con el cliente de prueba: una transferencia y su reverso, la repetición de la misma solicitud, dos envíos simultáneos y un sobregiro. La aplicación ya llama a estas rutas ([ADR 0017](0017-transferencias-en-la-aplicacion.md)) y la regla de Firestore que le permite crear la solicitud pendiente está en `firebase/firestore.rules`, con sus pruebas, y desplegada. El servidor está desplegado en Firebase App Hosting y ahí se repitió la comprobación con un token real de cliente. En un teléfono se vieron de punta a punta el flujo en línea y el camino en cola: una orden hecha en modo avión, conservada tras reiniciar la aplicación y liquidada sola al reconectar.
 
 ## Problema a resolver
 
@@ -95,7 +95,7 @@ El mismo identificador con una orden distinta se rechaza (`409`), en lugar de re
 - **Límite:** no hay límite diario por cliente ni límite de frecuencia; solo el máximo por transferencia.
 - **Límite:** solo entre cuentas propias. No hay terceros, ni otros bancos, ni retención de fondos.
 - **Límite:** el alta de cuentas es un grifo de saldo ficticio para quien se registre muchas veces. Es aceptable solo porque el dinero es de demostración.
-- **Sin verificar:** el camino en cola de punta a punta en un dispositivo. La liquidación de una solicitud pendiente se comprobó contra el proyecto real con un documento creado por la herramienta de verificación; la aplicación ya puede crearlo, pero la cola no se ha visto funcionar en un teléfono.
+- **Sin verificar:** dos teléfonos del mismo cliente procesando la misma solicitud en cola a la vez. La simultaneidad se comprobó con dos llamadas directas a la API, no desde dos dispositivos.
 
 ## Impacto a largo plazo
 

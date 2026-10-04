@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existe el paquete `packages/design_system` con tokens, tema, diez componentes base y sus pruebas. La aplicación lo usa en la pantalla de inicio de carga y en una galería de revisión. Los componentes con forma de dominio (tarjeta de cuenta, fila de movimiento, banner promocional, navegación inferior) están planificados en sus etapas.
+- **Implementación:** existe el paquete `packages/design_system` con tokens, tema, 26 componentes y sus pruebas. Empezó con diez componentes base; los que tienen forma de dominio (tarjeta de cuenta, fila de movimiento, navegación inferior, aviso de conexión, línea de tendencia, entre otros) se añadieron en las etapas que los necesitaron, siempre recibiendo datos primitivos y no tipos de un dominio. Todas las pantallas de la aplicación se construyen con ellos, y una galería de revisión los muestra juntos.
 
 ## Problema a resolver
 

@@ -28,16 +28,24 @@ La opción 4, apoyada en tres mecanismos:
 Reglas de trabajo:
 
 - Commits pequeños y atómicos, con mensajes en formato Conventional Commits.
-- La prueba se escribe antes que el código que verifica.
+- La prueba se escribe antes que el código que verifica. La regla no se cumplió siempre: en la primera versión de varias etapas las pruebas se escribieron junto con el código, y se cumplió de forma estricta en las correcciones, donde cada defecto se reprodujo con una prueba que fallaba antes de arreglarlo ([alcance y riesgos](../alcance-y-riesgos.md)).
 - El trabajo incompleto se integra desactivado mediante la configuración remota ([ADR 0005](0005-home-dirigido-por-configuracion.md)), no en una rama.
 - Si `main` se rompe, repararlo o revertir es lo primero.
-- Las versiones se marcan con etiquetas sobre `main`.
+- La versión entregada se marca con una etiqueta sobre `main`. Durante el desarrollo no se creó ninguna.
+
+**Cómo se ve el historial y por qué.** Son más de 280 commits en dos días, de un solo autor y sin commits de fusión.
+
+- **Cadencia.** Cada commit se verificó en local con el hook. Los commits se subieron por lotes, uno por etapa o por corrección, después de una revisión independiente; la integración continua corrió en cada subida, no en cada commit.
+- **Ejecuciones canceladas.** Cuando una subida llegó mientras la anterior seguía en verificación, la integración continua canceló la anterior. Esas ejecuciones aparecen como canceladas, no como fallidas, y la siguiente incluye sus commits.
+- **Etapas en paralelo.** Algunas etapas se construyeron a la vez en copias de trabajo aisladas (`git worktree`) y se integraron reubicando sus commits sobre `main` y avanzando sin fusión, de modo que el historial sigue siendo lineal.
+- **Commits grandes.** Los mayores son archivos generados (los archivos de bloqueo de dependencias de npm y de Dart). Otros reúnen un paquete entero o varios puntos de una revisión, porque el hook exige que el directorio de trabajo coincida con el commit y dividir un cambio ya escrito obligaba a apartar archivos. Es un costo de esa regla, descrito más abajo.
+- **Reparaciones antes de publicar.** Dos veces un lote local tuvo commits intermedios defectuosos: uno que no compilaba por sí solo (etapa 5) y varios que dejaban una prueba en rojo tras reubicar una etapa construida en paralelo. En ambos casos se corrigieron esos commits antes de subirlos, cuando aún eran historial local, comprobando que el contenido final no cambiaba.
 
 ## Trade-offs
 
 - **Se gana:** integración continua real, sin conflictos de fusión y con un historial lineal que muestra cómo se construyó la solución.
 - **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con una revisión independiente asistida por IA de cada etapa antes de subirla al repositorio remoto. Las correcciones que salieron de cada revisión están en el historial de `main`, y el método se resume en el [uso de IA en el desarrollo](../ia/registro-uso-ia.md).
-- **Se paga:** el hook añade tiempo a cada commit. Con el modo acotado, un commit de documentación tarda unos 4 s, uno en un paquete de dominio unos 16 s, y uno en el sistema de diseño o en la configuración común más de 30 s, porque ejecuta casi todo (medido en la máquina de desarrollo con unas 1000 pruebas).
+- **Se paga:** el hook añade tiempo a cada commit. Con el modo acotado y las pruebas actuales, un commit de documentación tarda unos 7 s y uno en un paquete del que dependen otros cinco, unos 47 s, porque ejecuta también los dependientes (medido en una copia limpia del repositorio).
 - **Se paga:** la selección de pruebas es código que puede equivocarse. Si omite un paquete afectado, el error llega a `main` en local y lo detecta la integración continua en el push, no el hook.
 - **Se paga:** no se puede preparar solo una parte de un archivo. El script verifica el directorio de trabajo, y durante la etapa 5 eso dejó pasar un commit cuyo contenido no compilaba por sí solo, porque el archivo que le faltaba ya existía en disco sin estar preparado. El hook exige ahora que ambos coincidan; lo que no entra en el commit se aparta con `git stash`.
 - **Se paga:** exigir que el directorio de trabajo coincida con el commit también impide dividir en varios commits un cambio que ya está escrito en varios paquetes, salvo apartando archivos. En la corrección de la etapa 6 eso produjo algún commit que reúne varios puntos de la revisión; se listan en su mensaje.

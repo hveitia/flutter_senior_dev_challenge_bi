@@ -12,6 +12,13 @@ abstract final class AccountsStrings {
   static const String copyAccountNumber = 'Copiar número de cuenta';
   static const String accountNumberCopied = 'Número de cuenta copiado';
 
+  static const String balanceCaption = 'Todo tu dinero, en un solo lugar';
+  static const String balanceFailed = 'No pudimos cargar tu saldo';
+  static const String hideAmounts = 'Ocultar montos';
+  static const String showAmounts = 'Mostrar montos';
+  static const String recentMovementsTitle = 'Últimos movimientos';
+  static const String seeAll = 'Ver todos';
+
   static const String searchLabel = 'Buscar movimientos';
   static const String searchHint = 'Nombre o descripción';
   static const String more = 'Ver más';

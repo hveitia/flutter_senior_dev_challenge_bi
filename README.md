@@ -4,7 +4,7 @@ Plataforma financiera digital sin atención física. Una aplicación móvil en F
 
 Este repositorio es la solución a la prueba técnica de Front-End Senior. Los datos son de demostración: no se ejecutan operaciones bancarias reales y los saldos de apertura no tienen valor.
 
-- **Sitio de entrega:** el punto de entrada para quien evalúa, con los pasos para probar la demostración, capturas, flujos y la guía de la consola. Su código está en `apps/showroom/`. La dirección se añade aquí cuando se publique.
+- **Sitio de entrega:** el punto de entrada para quien evalúa, con los pasos para probar la demostración, capturas, flujos y la guía de la consola. Su código está en `apps/showroom/`. Está publicado en <https://flutter-challenge-bi.web.app>.
 - **Qué se pidió y qué hay, requisito por requisito:** [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md)
 - **Decisiones de arquitectura (19):** [docs/adr/](docs/adr/)
 - **Guion de la demostración:** [docs/demo/guion.md](docs/demo/guion.md)

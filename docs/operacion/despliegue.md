@@ -104,7 +104,7 @@ La configuración publicada es la primera palanca de reversión: apagar una func
 `apps/showroom/public` es un sitio estático, sin paso de compilación: el punto de entrada que recibe quien evalúa, con los pasos para probar la demostración, capturas, flujos, la guía de la consola y los avisos. No contiene credenciales; estas se envían por correo.
 
 - **Dónde.** Firebase Hosting, en el mismo proyecto. La configuración está en el bloque `hosting` de `firebase.json`: cabeceras de seguridad, una política de contenido que solo admite recursos del propio sitio, `noindex` y la página de error.
-- **Cómo.** `firebase deploy --only hosting`, después de `tool/verify.sh`, que comprueba enlaces, imágenes, avisos y que no haya nada con aspecto de credencial. A la fecha de este documento no se ha desplegado.
+- **Cómo.** `firebase deploy --only hosting`, después de `tool/verify.sh`, que comprueba enlaces, imágenes, avisos y que no haya nada con aspecto de credencial. Está publicado en <https://flutter-challenge-bi.web.app>, y responde igual en <https://flutter-challenge-bi.firebaseapp.com>; se comprobó que las páginas, la página de error y las cabeceras servidas coinciden con `firebase.json`.
 - **Instalador de la aplicación.** Su dirección se indica en un único archivo, `apps/showroom/public/assets/js/config.js`. Mientras esté vacío, el sitio dice que el instalador lo entrega el autor junto con las credenciales.
 - **Retirada.** El sitio, el servidor desplegado, las cuentas de demostración y sus datos se eliminan cuando termine el proceso de selección: `firebase hosting:disable` para el sitio, y la eliminación del backend y de los datos desde la consola de Firebase.
 

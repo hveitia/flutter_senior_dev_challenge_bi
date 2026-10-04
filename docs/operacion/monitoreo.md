@@ -37,9 +37,13 @@ Cada apartado separa lo **implementado** de lo **planificado**. La aplicación y
 |---|---|---|---|
 | `accounts_first_load` | Traza | Desde que la sesión empieza a seguir las cuentas hasta que hay algo que mostrar | Origen (`server` o `cache`) y cantidad de cuentas; o resultado `failed` si terminó sin datos |
 | `movements_first_load` | Traza | Desde que se abre una cuenta hasta que hay movimientos que mostrar | Igual que la anterior |
-| `accounts_data_load_failed` | Evento | Una actualización no pudo completarse | Servicio (`accounts` o `movements`) y clase de fallo (`offline`, `timeout`, `unavailable`, `unexpected`) |
+| `accounts_data_load_failed` | Evento | Una actualización no pudo completarse, o la escucha en tiempo real terminó con un error | Servicio (`accounts` o `movements`) y clase de fallo (`offline`, `timeout`, `unavailable`, `unexpected`; una escucha rota es `unexpected`) |
 | `accounts_data_retry_requested` | Evento | El cliente toca «Reintentar» | Servicio |
 | `accounts_data_served_from_cache` | Evento | Un conjunto de datos se mostró desde la copia del dispositivo, una vez por escucha | Servicio y cantidad de elementos |
+| `accounts_data_documents_skipped` | Evento | Una entrega trajo documentos que la aplicación no pudo leer y dejó fuera; se emite cuando esa cantidad cambia | Servicio y cantidad de documentos, nunca cuáles |
+| `saved_customer_data_clear_failed` | Evento y error | Al terminar la sesión, un paso de la limpieza del dispositivo falló | Paso (`database` o `sync_times`); el error viaja solo con su tipo |
+
+Un valor distinto de cero en `accounts_data_documents_skipped` significa que algún cliente ve menos de lo que tiene, y en el caso de las cuentas que no ve su saldo total: merece una alerta. `saved_customer_data_clear_failed` indica datos de un cliente que quedaron en un dispositivo después de cerrar sesión; la limpieza se repite al abrir la aplicación sin sesión.
 
 - **Errores inesperados de cuentas y movimientos**, con el motivo `accounts_unexpected` y solo el tipo del error.
 - **Eventos de la política de resiliencia** (`resilience_timeout`, `resilience_retry`, `resilience_attempts_exhausted`) para los servicios `auth`, `profile`, `accounts` y `movements`, que ya la usan.

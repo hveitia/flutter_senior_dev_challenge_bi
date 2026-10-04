@@ -122,6 +122,8 @@ Sin conexión no se añade el aviso de «no pudimos actualizar»: el aviso gener
   - **La antigüedad se mide con el reloj del dispositivo.** La hora de sincronización es la del teléfono en el momento en que el servidor confirmó los datos, no una hora del servidor. Si el cliente cambia el reloj, la antigüedad mostrada cambia con él; una hora de sincronización posterior a la actual se muestra como «hace un momento», nunca como un valor negativo. El texto se reescribe solo cada minuto, y el saldo del detalle de una cuenta lleva su propia antigüedad, separada de la de los movimientos.
   - **Un índice que mantener.** La consulta de movimientos falla si el índice no está desplegado.
   - **«Intento 2 de 3» no se muestra.** El diseño lo incluye; la pantalla solo indica el progreso del reintento y, al agotarse, cuántos intentos hubo.
+  - **Lo copiado queda en el portapapeles.** El número de cuenta y la referencia de un movimiento se copian al portapapeles del sistema sin marcarlos como contenido sensible y sin borrarlos después: otra aplicación puede leerlos y algunos teclados los muestran. En producción se marcaría el contenido como sensible (Android 13 o posterior), se limpiaría pasado un minuto y se valoraría compartir mediante la hoja del sistema en lugar de copiar.
+  - **Una escucha que termina con error no se reanuda sola.** La aplicación crea una nueva cuando el cliente reintenta o desliza para actualizar; hasta entonces no llegan cambios en tiempo real.
   - **Una lectura puntual además de la escucha.** `refresh` lee del servidor lo que la escucha también traerá. Es el precio de saber, con tiempo límite, si el servidor responde.
 
 ## Impacto a largo plazo

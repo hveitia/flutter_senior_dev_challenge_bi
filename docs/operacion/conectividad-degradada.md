@@ -36,7 +36,7 @@ flowchart TB
 | Cuentas o movimientos ya vistos antes | Aviso «Sin conexión. Mostrando datos guardados», los datos y «Actualizado hace N min» | Visto en un teléfono, también tras cerrar y abrir la aplicación en modo avión |
 | Cuentas o movimientos nunca vistos en este dispositivo | Aviso «Sin conexión», el mensaje «No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.» y «Reintentar» | Pruebas automáticas |
 | Sesión ya iniciada, al abrir la aplicación | La sesión se restaura y el cliente entra | Visto en un teléfono |
-| Después de cerrar sesión | No queda nada guardado del cliente: la copia local y las horas de sincronización se borran al terminar la sesión. Iniciar sesión exige conexión | Pruebas automáticas |
+| Después de cerrar sesión | No queda nada guardado del cliente: la copia local y las horas de sincronización se borran al terminar la sesión. Iniciar sesión exige conexión | Visto en un teléfono: tras cerrar sesión no quedan archivos de la base local ni horas de sincronización, y volver a iniciar sesión carga los datos del servidor |
 | Formularios de inicio de sesión y registro | Aviso «Sin conexión. Revisa tu red e intenta de nuevo» en el formulario | Visto en un emulador (etapa 4) |
 | Filtrar y buscar movimientos | Funcionan: trabajan sobre lo ya cargado | Pruebas automáticas |
 | Pedir más movimientos | Se muestran los que el dispositivo tenga guardados | Sin verificar |
@@ -51,7 +51,10 @@ Sin conexión no se intenta la llamada: la política responde de inmediato con u
 | El cliente toca «Reintentar» | El error permanece en pantalla con indicación de progreso hasta que hay respuesta | Pruebas automáticas |
 | El cliente desliza hacia abajo | Se vuelve a preguntar al servidor por cuentas y movimientos | Pruebas automáticas |
 
-La recuperación no depende de que el cliente haga algo: la escucha de Firestore vuelve a conectarse por su cuenta, y un dato confirmado borra la falla anterior.
+Hay dos casos distintos:
+
+- **Se pierde la red y vuelve.** La recuperación no depende de que el cliente haga algo: la escucha de Firestore vuelve a conectarse por su cuenta, y un dato confirmado borra la falla anterior.
+- **La escucha termina con un error** (un permiso denegado, por ejemplo). Firestore no la reanuda: deja de entregar cambios. La pantalla muestra la falla, se emite `accounts_data_load_failed`, y cuando el cliente toca «Reintentar» o desliza para actualizar la aplicación crea una escucha nueva antes de preguntar al servidor. Sin ese paso los datos se actualizarían una vez y quedarían congelados. Está cubierto por pruebas automáticas; no se ha provocado en un dispositivo.
 
 ## Alta latencia
 

@@ -8,12 +8,17 @@ class HomeHeader extends StatelessWidget {
     required this.productName,
     required this.greeting,
     required this.initials,
+    this.action,
     super.key,
   });
 
   final String productName;
   final String greeting;
   final String initials;
+
+  /// Drawn at the end of the header, after the greeting. Whoever mounts the
+  /// home decides what it is.
+  final Widget? action;
 
   static const double _avatar = 40;
 
@@ -78,6 +83,10 @@ class HomeHeader extends StatelessWidget {
                   ],
                 ),
               ),
+              if (action case final action?) ...[
+                const SizedBox(width: AppSpacing.x2),
+                action,
+              ],
             ],
           ),
         ),

@@ -25,6 +25,7 @@ class HomeScreen extends StatelessWidget {
     required this.productName,
     required this.firstName,
     required this.fullName,
+    this.headerAction,
     super.key,
   });
 
@@ -37,6 +38,10 @@ class HomeScreen extends StatelessWidget {
 
   /// Where the avatar's initials come from.
   final String fullName;
+
+  /// What the app places at the end of the header, such as the way into
+  /// the customer's notifications. The home does not know what it is.
+  final Widget? headerAction;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +59,7 @@ class HomeScreen extends StatelessWidget {
               productName: productName,
               greeting: HomeStrings.greeting(firstName),
               initials: initialsOf(fullName),
+              action: headerAction,
             ),
             Expanded(
               child: _HomeBody(registry: registry, destinations: destinations),

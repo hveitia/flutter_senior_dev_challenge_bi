@@ -12,3 +12,4 @@ export 'src/domain/data_snapshot.dart';
 export 'src/domain/load_state.dart';
 export 'src/domain/movement.dart';
 export 'src/domain/movement_filter.dart';
+export 'src/presentation/accounts/accounts_bloc.dart';

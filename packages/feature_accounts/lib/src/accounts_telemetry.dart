@@ -36,3 +36,35 @@ abstract final class AccountsTelemetry {
   static const String accountsService = 'accounts';
   static const String movementsService = ServiceIds.movements;
 }
+
+/// Times how long a data set takes to have something to show.
+///
+/// It ends once: with the origin and the number of items when data is
+/// shown, as failed when loading ends without data, or with no outcome when
+/// the customer leaves first.
+final class FirstLoadTrace {
+  FirstLoadTrace(Telemetry telemetry, String name)
+    : _trace = telemetry.startTrace(name);
+
+  TelemetryTrace? _trace;
+
+  void dataShown({required String origin, required int count}) {
+    _trace
+      ?..setAttribute(AccountsTelemetry.originKey, origin)
+      ..setAttribute(AccountsTelemetry.countKey, '$count');
+    end();
+  }
+
+  void failed() {
+    _trace?.setAttribute(
+      AccountsTelemetry.outcomeKey,
+      AccountsTelemetry.failedOutcome,
+    );
+    end();
+  }
+
+  void end() {
+    _trace?.stop();
+    _trace = null;
+  }
+}

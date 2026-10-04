@@ -8,6 +8,7 @@ import 'package:feature_accounts/src/domain/account.dart';
 import 'package:feature_accounts/src/domain/accounts_repository.dart';
 import 'package:feature_accounts/src/domain/data_snapshot.dart';
 import 'package:feature_accounts/src/domain/load_state.dart';
+import 'package:feature_accounts/src/presentation/listener_failure.dart';
 
 sealed class AccountsEvent {
   const AccountsEvent();
@@ -167,22 +168,13 @@ final class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     Emitter<AccountsState> emit,
   ) {
     _listenerBroke = true;
-    _telemetry
-      ..event(
-        AccountsTelemetry.loadFailed,
-        parameters: {
-          AccountsTelemetry.serviceKey: AccountsTelemetry.accountsService,
-          AccountsTelemetry.reasonKey: LoadFailure.unexpected.name,
-        },
-      )
-      ..recordError(
-        RedactedError(event.error.runtimeType),
-        event.stackTrace,
-        reason: AccountsTelemetry.unexpectedError,
-      );
-    final accounts = state.accounts.withRefresh(
-      Failed(UnexpectedFailure(event.error, event.stackTrace)),
+    final failure = reportListenerFailure(
+      _telemetry,
+      service: AccountsTelemetry.accountsService,
+      error: event.error,
+      stackTrace: event.stackTrace,
     );
+    final accounts = state.accounts.withRefresh(Failed(failure));
     _traceOutcome(accounts);
     emit(AccountsState(accounts: accounts));
   }

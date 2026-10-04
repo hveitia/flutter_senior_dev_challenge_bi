@@ -16,3 +16,4 @@ export 'src/domain/movement_filter.dart';
 export 'src/presentation/accounts/accounts_bloc.dart';
 export 'src/presentation/accounts_routes.dart';
 export 'src/presentation/detail/movements_bloc.dart';
+export 'src/presentation/home/recent_movements_bloc.dart';

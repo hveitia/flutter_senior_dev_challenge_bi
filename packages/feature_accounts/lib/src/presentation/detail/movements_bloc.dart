@@ -9,6 +9,7 @@ import 'package:feature_accounts/src/domain/data_snapshot.dart';
 import 'package:feature_accounts/src/domain/load_state.dart';
 import 'package:feature_accounts/src/domain/movement.dart';
 import 'package:feature_accounts/src/domain/movement_filter.dart';
+import 'package:feature_accounts/src/presentation/listener_failure.dart';
 
 sealed class MovementsEvent {
   const MovementsEvent();
@@ -230,22 +231,13 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
     Emitter<MovementsState> emit,
   ) {
     _listenerBroke = true;
-    _telemetry
-      ..event(
-        AccountsTelemetry.loadFailed,
-        parameters: {
-          AccountsTelemetry.serviceKey: AccountsTelemetry.movementsService,
-          AccountsTelemetry.reasonKey: LoadFailure.unexpected.name,
-        },
-      )
-      ..recordError(
-        RedactedError(event.error.runtimeType),
-        event.stackTrace,
-        reason: AccountsTelemetry.unexpectedError,
-      );
-    final movements = state.movements.withRefresh(
-      Failed(UnexpectedFailure(event.error, event.stackTrace)),
+    final failure = reportListenerFailure(
+      _telemetry,
+      service: AccountsTelemetry.movementsService,
+      error: event.error,
+      stackTrace: event.stackTrace,
     );
+    final movements = state.movements.withRefresh(Failed(failure));
     _traceOutcome(movements);
     emit(_with(movements: movements, isLoadingMore: false));
   }

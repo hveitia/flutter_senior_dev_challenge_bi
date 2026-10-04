@@ -305,6 +305,18 @@ void main() {
       });
     });
 
+    test('a service taken down is shown as unavailable, not as an '
+        'unexpected error', () async {
+      final bloc = await started(onRefresh: () async => page([salary]).ok);
+      repository.movements.addError(
+        const ServiceUnavailableFailure(ServiceIds.movements),
+      );
+      await pumpEventQueue();
+
+      expect(bloc.state.movements.failure, LoadFailure.unavailable);
+      expect(telemetry.errors, isEmpty);
+    });
+
     test(
       'a retry follows the account again, so changes keep arriving',
       () async {

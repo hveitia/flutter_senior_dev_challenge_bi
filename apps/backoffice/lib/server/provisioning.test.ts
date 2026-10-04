@@ -202,6 +202,33 @@ describe("provisionAccounts", () => {
     expect(db.writes).toEqual([]);
   });
 
+  it("lists existing accounts in the order it opens them, whatever order they are stored in", async () => {
+    registerProfile();
+    const stored = { number: "22000000", availableCents: 100, currency: "USD" };
+    // The database returns documents by id: checking, investment, savings.
+    db.documents.set(`users/${UID}/accounts/checking`, {
+      ...stored,
+      name: "Cuenta corriente",
+      kind: "checking",
+    });
+    db.documents.set(`users/${UID}/accounts/investment`, {
+      ...stored,
+      name: "Inversiones",
+      kind: "investment",
+    });
+    db.documents.set(`users/${UID}/accounts/savings`, {
+      ...stored,
+      name: "Cuenta de ahorros",
+      kind: "savings",
+    });
+
+    const result = await provisionAccounts(store(), UID, now);
+
+    expect(
+      result.kind === "provisioned" && result.accounts.map((account) => account.id),
+    ).toEqual(["savings", "checking", "investment"]);
+  });
+
   it("does not open accounts over one it cannot read, and leaves it out of the answer", async () => {
     registerProfile();
     db.documents.set(`users/${UID}/accounts/savings`, {

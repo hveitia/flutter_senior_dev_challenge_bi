@@ -75,6 +75,22 @@ function accountViewFrom(id: string, data: Record<string, unknown>): AccountView
   };
 }
 
+/** The kinds this server opens, in the order it opens and lists them. */
+const KIND_ORDER: readonly string[] = ["savings", "checking"];
+
+/**
+ * The answer lists accounts the same way whether they were just opened or
+ * read back: known kinds first, in opening order, then anything else by id.
+ * The database returns them by id, which would put checking before savings.
+ */
+function byOpeningOrder(one: AccountView, other: AccountView): number {
+  const rank = (account: AccountView) => {
+    const position = KIND_ORDER.indexOf(account.kind);
+    return position === -1 ? KIND_ORDER.length : position;
+  };
+  return rank(one) - rank(other) || one.id.localeCompare(other.id);
+}
+
 /**
  * Opens the default accounts of a customer who has none. A customer who has
  * any account, whatever it holds, is left exactly as they are and gets back
@@ -95,7 +111,9 @@ export async function provisionAccounts(
       return {
         kind: "provisioned",
         created: false,
-        accounts: existing.flatMap(({ id, data }) => accountViewFrom(id, data) ?? []),
+        accounts: existing
+          .flatMap(({ id, data }) => accountViewFrom(id, data) ?? [])
+          .sort(byOpeningOrder),
       };
     }
 

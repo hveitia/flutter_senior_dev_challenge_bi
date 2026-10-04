@@ -33,7 +33,25 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0018](adr/0018-notificaciones-y-bandeja.md) | Notificaciones push y bandeja del cliente escrita por el servidor | Aceptada |
 | [0019](adr/0019-mini-aplicaciones-de-aliados.md) | Servicios y mini aplicaciones de aliados en un contenedor con origen permitido | Aceptada |
 
-"Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
+"Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y cómo se comprobó.
+
+### Etapas de construcción
+
+Los documentos citan las etapas por su número. El trabajo se hizo en once, cada una vertical y publicada al cerrarse:
+
+| Etapa | Qué entregó | Decisiones |
+|---|---|---|
+| 1. Cimientos | Repositorio, workspace, Firebase, integración continua y hook | 0001 a 0006 |
+| 2. Sistema de diseño | Tokens, tema y componentes base, con pruebas de accesibilidad | 0007 |
+| 3. Plataforma | Contrato de configuración, política de resiliencia, conectividad y telemetría | 0008 a 0010 |
+| 4. Acceso | Registro, inicio de sesión, perfil y sus reglas | 0011 |
+| 5. Cuentas y movimientos | Lectura en tiempo real con caché y estados degradados | 0012 |
+| 6. Inicio dinámico | Registro de módulos y motor del inicio por segmento | 0013 |
+| 7. Consola de experiencia | Consola web, publicación de configuración y envío de notificaciones | 0014, 0015 |
+| 8. Transferencias | API de clientes, flujo en la aplicación y cola sin conexión | 0016, 0017 |
+| 9. Notificaciones | Push, bandeja y registro del dispositivo | 0018 |
+| 10. Servicios | Catálogo y mini aplicaciones de aliados | 0019 |
+| 11. Cierre | Modo local con emuladores, despliegue de la demostración y documentación final | |
 
 ## Arquitectura
 
@@ -43,17 +61,17 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 
 ## Operación
 
-- [Estrategia de despliegue y operación](operacion/despliegue.md): entornos, publicación de la aplicación desde `main`, servidor, reglas, reversión por componente, guía ante incidentes y lo que falta para producción. Describe una estrategia; nada está desplegado.
+- [Estrategia de despliegue y operación](operacion/despliegue.md): entornos, publicación de la aplicación desde `main`, servidor, reglas, reversión por componente, guía ante incidentes y lo que falta para producción. El servidor está desplegado como demostración; el resto es estrategia.
 - [Consola de experiencia](operacion/backoffice.md): configuración, ejecución, pruebas y despliegue.
-- [API de clientes](operacion/api.md): rutas, contrato, códigos de error y cómo llega la aplicación a ella en desarrollo y en un despliegue.
+- [API de clientes](operacion/api.md): rutas, contrato, códigos de error y cómo llega la aplicación a ella en desarrollo y en el servidor desplegado.
 - [Monitoreo en producción](operacion/monitoreo.md): cómo se detectarían problemas operativos y de experiencia, y qué está implementado hoy.
-- [Comportamiento con conectividad degradada](operacion/conectividad-degradada.md): qué hace la aplicación sin conexión, con alta latencia y con un servicio caído, separando lo visto en un dispositivo de lo cubierto solo por pruebas y de lo planificado.
+- [Comportamiento con conectividad degradada](operacion/conectividad-degradada.md): qué hace la aplicación sin conexión, con alta latencia y con un servicio caído, separando lo visto en un dispositivo de lo cubierto solo por pruebas y de lo no hecho.
 
 ## Uso de inteligencia artificial
 
-- [Registro de uso de IA](ia/registro-uso-ia.md): qué se delegó, qué decidió o corrigió el autor y qué impacto tuvo.
+- [Uso de IA en el desarrollo](ia/registro-uso-ia.md): herramientas, método de trabajo, decisiones del autor e impacto.
 
 ## Lo que la documentación no cubre
 
-- No hay documentación de un despliegue real ni de la publicación en tiendas, porque no se hicieron: [la estrategia](operacion/despliegue.md) describe cómo serían.
+- El servidor está desplegado como demostración y [su despliegue está documentado](operacion/backoffice.md#despliegue-en-firebase-app-hosting). No hay un entorno de producción ni publicación en tiendas, porque no se hicieron: [la estrategia](operacion/despliegue.md) describe cómo serían.
 - iOS no se compiló ni se probó; ningún documento lo da por verificado.

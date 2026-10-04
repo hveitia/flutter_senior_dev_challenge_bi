@@ -6,6 +6,7 @@ import {
   retryPush,
   segmentTopic,
   sendPush,
+  unregisteredAmong,
   validatePushDraft,
   type PushPorts,
   type StoredPush,
@@ -39,11 +40,14 @@ function ports(overrides: Partial<PushPorts> = {}): PushPorts & {
     records,
     gateway: {
       sendToTopic: vi.fn().mockResolvedValue(undefined),
-      sendToTokens: vi.fn().mockResolvedValue({ delivered: 1, failed: 0 }),
+      sendToTokens: vi
+        .fn()
+        .mockResolvedValue({ delivered: 1, failed: 0, unregistered: [] }),
     },
     customers: {
       uidByEmail: vi.fn().mockResolvedValue("uid-customer"),
       deviceTokens: vi.fn().mockResolvedValue(["token-1"]),
+      flagUnregistered: vi.fn().mockResolvedValue(undefined),
     },
     history: {
       add: vi.fn(async (record: StoredPush) => {
@@ -179,6 +183,8 @@ describe("sendPush", () => {
       audienceLabel: "Familia",
       status: "sent",
       error: null,
+      deliveredCount: null,
+      failedCount: null,
       retryable: false,
     });
     expect(p.records.get("push-1")).toMatchObject({
@@ -312,9 +318,99 @@ describe("sendPush", () => {
     });
   });
 
+  describe("to a customer with several devices", () => {
+    const toCustomer = () =>
+      draftOf({
+        ...toSegment,
+        audience: { kind: "customer", email: "cliente@example.com" },
+      });
+
+    function twoDevices(outcome: {
+      delivered: number;
+      failed: number;
+      unregistered: string[];
+    }) {
+      const p = ports();
+      vi.mocked(p.customers.deviceTokens).mockResolvedValue(["t1", "t2"]);
+      vi.mocked(p.gateway.sendToTokens).mockResolvedValue(outcome);
+      return p;
+    }
+
+    it("counts the devices reached when all of them were", async () => {
+      const p = twoDevices({ delivered: 2, failed: 0, unregistered: [] });
+
+      const record = await sendPush(p, { pushDryRun: false }, admin, now, toCustomer(), "Un cliente");
+
+      expect(record).toMatchObject({ status: "sent", deliveredCount: 2, failedCount: 0 });
+    });
+
+    it("is partial, not sent, when only some devices were reached", async () => {
+      const p = twoDevices({ delivered: 1, failed: 1, unregistered: [] });
+
+      const record = await sendPush(p, { pushDryRun: false }, admin, now, toCustomer(), "Un cliente");
+
+      expect(record).toMatchObject({
+        status: "partial",
+        deliveredCount: 1,
+        failedCount: 1,
+        retryable: false,
+      });
+      expect(p.records.get("push-1")).toMatchObject({
+        status: "partial",
+        deliveredCount: 1,
+        failedCount: 1,
+      });
+    });
+
+    it("flags the devices the service reports as unregistered, without removing them", async () => {
+      const p = twoDevices({ delivered: 1, failed: 1, unregistered: ["t2"] });
+
+      await sendPush(p, { pushDryRun: false }, admin, now, toCustomer(), "Un cliente");
+
+      expect(p.customers.flagUnregistered).toHaveBeenCalledWith("uid-customer", ["t2"], now);
+    });
+
+    it("flags nothing when every device is still registered", async () => {
+      const p = twoDevices({ delivered: 2, failed: 0, unregistered: [] });
+
+      await sendPush(p, { pushDryRun: false }, admin, now, toCustomer(), "Un cliente");
+
+      expect(p.customers.flagUnregistered).not.toHaveBeenCalled();
+    });
+
+    it("still records the send when flagging a device fails", async () => {
+      const p = twoDevices({ delivered: 1, failed: 1, unregistered: ["t2"] });
+      vi.mocked(p.customers.flagUnregistered).mockRejectedValue(new Error("down"));
+
+      const record = await sendPush(p, { pushDryRun: false }, admin, now, toCustomer(), "Un cliente");
+
+      expect(record.status).toBe("partial");
+    });
+
+    it("stays validated in a dry run, with the counts the service gave", async () => {
+      const p = twoDevices({ delivered: 1, failed: 1, unregistered: [] });
+
+      const record = await sendPush(p, { pushDryRun: true }, admin, now, toCustomer(), "Un cliente");
+
+      expect(record).toMatchObject({ status: "validated", deliveredCount: 1, failedCount: 1 });
+    });
+
+    it("has no device counts for a send to a segment", async () => {
+      const p = ports();
+
+      const record = await sendPush(p, { pushDryRun: false }, admin, now, draftOf(toSegment), "Familia");
+
+      expect(record).toMatchObject({ deliveredCount: null, failedCount: null });
+    });
+  });
+
   it("fails when no device of the customer accepted the notification", async () => {
     const p = ports();
-    vi.mocked(p.gateway.sendToTokens).mockResolvedValue({ delivered: 0, failed: 1 });
+    vi.mocked(p.gateway.sendToTokens).mockResolvedValue({
+      delivered: 0,
+      failed: 1,
+      unregistered: [],
+    });
     const draft = draftOf({
       ...toSegment,
       audience: { kind: "customer", email: "cliente@example.com" },
@@ -400,6 +496,25 @@ describe("retryPush", () => {
 
     expect(retried).toMatchObject({ status: "sent" });
     expect(p.records.get(failed.id)?.attempts).toBe(3);
+  });
+});
+
+describe("unregisteredAmong", () => {
+  it("picks the tokens the service no longer knows, by position", () => {
+    const unregistered = unregisteredAmong(
+      ["t1", "t2", "t3"],
+      [
+        undefined,
+        "messaging/registration-token-not-registered",
+        "messaging/internal-error",
+      ],
+    );
+
+    expect(unregistered).toEqual(["t2"]);
+  });
+
+  it("picks nothing when every send succeeded", () => {
+    expect(unregisteredAmong(["t1"], [undefined])).toEqual([]);
   });
 });
 

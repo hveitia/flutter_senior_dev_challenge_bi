@@ -6,6 +6,7 @@ import type { PushRecord } from "@/lib/push/types";
 import {
   canClaimRetry,
   pushRecordOf,
+  unregisteredAmong,
   type PushMessage,
   type PushPorts,
   type StoredPush,
@@ -15,6 +16,10 @@ import {
 export const PUSH_HISTORY_COLLECTION = "pushHistory";
 /** `users/{uid}/devices/{id}` with a `token` field, written by the mobile app. */
 export const DEVICES_SUBCOLLECTION = "devices";
+
+const TOKEN_FIELD = "token";
+/** Set by the console on a device the messaging service no longer knows. */
+const UNREGISTERED_FIELD = "unregistered";
 
 const USER_NOT_FOUND = "auth/user-not-found";
 
@@ -57,7 +62,14 @@ export function firebasePushPorts(
           { tokens, ...payload(message) },
           dryRun,
         );
-        return { delivered: response.successCount, failed: response.failureCount };
+        return {
+          delivered: response.successCount,
+          failed: response.failureCount,
+          unregistered: unregisteredAmong(
+            tokens,
+            response.responses.map((each) => each.error?.code),
+          ),
+        };
       },
     },
     customers: {
@@ -76,8 +88,28 @@ export function firebasePushPorts(
           .collection(DEVICES_SUBCOLLECTION)
           .get();
         return devices.docs
-          .map((device) => device.get("token") as unknown)
+          .filter((device) => device.get(UNREGISTERED_FIELD) !== true)
+          .map((device) => device.get(TOKEN_FIELD) as unknown)
           .filter((token): token is string => typeof token === "string");
+      },
+      async flagUnregistered(uid, tokens, now) {
+        const devices = await db
+          .collection("users")
+          .doc(uid)
+          .collection(DEVICES_SUBCOLLECTION)
+          .get();
+        const batch = db.batch();
+        for (const device of devices.docs) {
+          if (tokens.includes(device.get(TOKEN_FIELD) as string)) {
+            // Flagged, not deleted: removing a device document is the app's
+            // decision, or a clean-up job's.
+            batch.update(device.ref, {
+              [UNREGISTERED_FIELD]: true,
+              unregisteredAt: now,
+            });
+          }
+        }
+        await batch.commit();
       },
     },
     history: {

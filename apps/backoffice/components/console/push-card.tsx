@@ -34,6 +34,8 @@ const FIELD_ERRORS: Record<PushField, string> = {
 
 const STATUS: Record<PushStatus, { label: string; tone: string; icon: React.ReactNode }> = {
   sent: { label: "Enviado", tone: "text-success-500", icon: <CheckIcon /> },
+  // Some of the customer's devices got it and some did not: never "Enviado".
+  partial: { label: "Entrega parcial", tone: "text-warning-500", icon: <AlertIcon /> },
   // A dry run the service accepted. It was not delivered and is not shown as sent.
   validated: { label: "Validado", tone: "text-info-500", icon: <InfoIcon /> },
   failed: { label: "Fallido", tone: "text-danger-500", icon: <AlertIcon /> },
@@ -230,6 +232,12 @@ export function PushCard({
                       {status.icon}
                       {status.label}
                     </span>
+                    {row.deliveredCount !== null && row.failedCount !== null ? (
+                      <span className="block text-secondary">
+                        {row.deliveredCount} de {row.deliveredCount + row.failedCount}{" "}
+                        dispositivos
+                      </span>
+                    ) : null}
                     {row.retryable ? (
                       <button
                         type="button"

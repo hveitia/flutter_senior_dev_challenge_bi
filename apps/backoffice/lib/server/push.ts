@@ -42,6 +42,9 @@ export interface StoredPush {
   audienceLabel: string;
   status: PushStatus;
   error: string | null;
+  /** Devices reached and not reached; null for a send to a segment. */
+  deliveredCount?: number | null;
+  failedCount?: number | null;
   attempts: number;
   sentBy: string;
   dryRun: boolean;
@@ -78,11 +81,19 @@ export interface PushPorts {
       tokens: string[],
       message: PushMessage,
       dryRun: boolean,
-    ): Promise<{ delivered: number; failed: number }>;
+    ): Promise<{
+      delivered: number;
+      failed: number;
+      /** Tokens the service says belong to no installed app any more. */
+      unregistered: string[];
+    }>;
   };
   customers: {
     uidByEmail(email: string): Promise<string | null>;
+    /** Tokens of the customer's devices, leaving out the flagged ones. */
     deviceTokens(uid: string): Promise<string[]>;
+    /** Marks devices as unregistered. It never deletes them. */
+    flagUnregistered(uid: string, tokens: string[], now: Date): Promise<void>;
   };
   history: {
     add(record: StoredPush): Promise<string>;
@@ -151,6 +162,19 @@ export function validatePushDraft(
   return { ok: false, fields };
 }
 
+const TOKEN_NOT_REGISTERED = "messaging/registration-token-not-registered";
+
+/**
+ * The tokens whose send failed because the app is no longer installed, given
+ * the per-token error codes in the order the tokens were sent.
+ */
+export function unregisteredAmong(
+  tokens: string[],
+  errorCodes: (string | undefined)[],
+): string[] {
+  return tokens.filter((_, index) => errorCodes[index] === TOKEN_NOT_REGISTERED);
+}
+
 function errorCode(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code;
   return typeof code === "string" ? code : "unknown";
@@ -159,6 +183,9 @@ function errorCode(error: unknown): string {
 interface Attempt {
   status: PushStatus;
   error: string | null;
+  /** Devices reached and not reached; null when the send was not per device. */
+  deliveredCount: number | null;
+  failedCount: number | null;
 }
 
 async function deliver(
@@ -166,12 +193,15 @@ async function deliver(
   settings: PushSettings,
   audience: StoredAudience,
   message: PushMessage,
+  now: Date,
 ): Promise<Attempt> {
-  const delivered: Attempt = {
-    status: settings.pushDryRun ? "validated" : "sent",
-    error: null,
-  };
-  const failed = (error: string): Attempt => ({ status: "failed", error });
+  const accepted: PushStatus = settings.pushDryRun ? "validated" : "sent";
+  const failed = (error: string): Attempt => ({
+    status: "failed",
+    error,
+    deliveredCount: null,
+    failedCount: null,
+  });
 
   try {
     if (audience.kind === "segment") {
@@ -180,7 +210,8 @@ async function deliver(
         message,
         settings.pushDryRun,
       );
-      return delivered;
+      // A topic send says nothing about how many devices it reached.
+      return { status: accepted, error: null, deliveredCount: null, failedCount: null };
     }
 
     if (!audience.uid) return failed(UNREACHABLE);
@@ -191,9 +222,38 @@ async function deliver(
       message,
       settings.pushDryRun,
     );
-    return outcome.delivered > 0 ? delivered : failed("no-device-accepted");
+    await flagUnregistered(ports, audience.uid, outcome.unregistered, now);
+
+    const counts = { deliveredCount: outcome.delivered, failedCount: outcome.failed };
+    if (outcome.delivered === 0) {
+      return { status: "failed", error: "no-device-accepted", ...counts };
+    }
+    // Reaching some devices is not the same as reaching the customer's
+    // devices, and the history must not read as if it were. In a dry run
+    // nothing was delivered either way, so the counts carry the detail.
+    const partial = outcome.failed > 0 && !settings.pushDryRun;
+    return { status: partial ? "partial" : accepted, error: null, ...counts };
   } catch (error) {
     return failed(errorCode(error));
+  }
+}
+
+/**
+ * Marks the devices the service no longer knows, so the app or a clean-up job
+ * can remove them. Best effort: the send already happened, and failing to
+ * flag a device must not turn it into a failed send.
+ */
+async function flagUnregistered(
+  ports: PushPorts,
+  uid: string,
+  tokens: string[],
+  now: Date,
+): Promise<void> {
+  if (tokens.length === 0) return;
+  try {
+    await ports.customers.flagUnregistered(uid, tokens, now);
+  } catch {
+    // The same tokens are reported again on the next send to this customer.
   }
 }
 
@@ -219,6 +279,8 @@ export function pushRecordOf(id: string, stored: StoredPush): PushRecord {
     audienceLabel: stored.audienceLabel,
     status: stored.status,
     error: stored.error,
+    deliveredCount: stored.deliveredCount ?? null,
+    failedCount: stored.failedCount ?? null,
   };
 }
 
@@ -244,7 +306,7 @@ export async function sendPush(
     destination: draft.destination,
   };
 
-  const attempt = await deliver(ports, settings, audience, message);
+  const attempt = await deliver(ports, settings, audience, message, now);
   const stored: StoredPush = {
     createdAt: now,
     ...message,
@@ -274,11 +336,13 @@ export async function retryPush(
   const stored = await ports.history.claimRetry(id, now);
   if (!stored) return null;
 
-  const attempt = await deliver(ports, settings, stored.audience, {
-    title: stored.title,
-    body: stored.body,
-    destination: stored.destination,
-  });
+  const attempt = await deliver(
+    ports,
+    settings,
+    stored.audience,
+    { title: stored.title, body: stored.body, destination: stored.destination },
+    now,
+  );
   const patch = {
     ...attempt,
     attempts: stored.attempts + 1,

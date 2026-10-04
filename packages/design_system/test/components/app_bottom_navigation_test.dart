@@ -77,4 +77,17 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('a destination can be chosen with a screen reader', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final selected = <int>[];
+    await pumpNavigation(tester, onSelected: selected.add);
+
+    tester.semantics.tap(find.semantics.byLabel('Cuentas'));
+
+    expect(selected, [1]);
+    handle.dispose();
+  });
 }

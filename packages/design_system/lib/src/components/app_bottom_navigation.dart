@@ -94,6 +94,9 @@ class _Destination extends StatelessWidget {
       button: true,
       selected: selected,
       label: item.label,
+      // The item below is excluded so icon and label are read as one; the
+      // action has to be offered here or a screen reader could not use it.
+      onTap: onTap,
       child: ExcludeSemantics(
         child: InkWell(
           onTap: onTap,

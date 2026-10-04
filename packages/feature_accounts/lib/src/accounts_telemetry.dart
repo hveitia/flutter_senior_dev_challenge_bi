@@ -19,6 +19,10 @@ abstract final class AccountsTelemetry {
   /// Event: a data set was shown from the device's own copy.
   static const String servedFromCache = 'accounts_data_served_from_cache';
 
+  /// Event: some documents of a data set could not be read and were left
+  /// out. It carries how many, never which.
+  static const String documentsSkipped = 'accounts_data_documents_skipped';
+
   static const String serviceKey = 'service';
   static const String reasonKey = 'reason';
   static const String countKey = 'count';

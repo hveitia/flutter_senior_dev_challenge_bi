@@ -99,6 +99,59 @@ void main() {
     expect(state.isLoading, isFalse);
   });
 
+  group('items that could not be read', () {
+    DataSnapshot<List<Account>> partial(DataOrigin origin, {int skipped = 1}) =>
+        DataSnapshot(
+          value: const [savings],
+          origin: origin,
+          syncedAt: now,
+          skipped: skipped,
+        );
+
+    test('make what the listener delivered incomplete', () {
+      final state = const LoadState<List<Account>>().withSnapshot(
+        partial(DataOrigin.server),
+      );
+
+      expect(state.skipped, 1);
+      expect(state.isIncomplete, isTrue);
+    });
+
+    test('make what a refresh answered incomplete', () {
+      final state = const LoadState<List<Account>>().withRefresh(
+        Success(partial(DataOrigin.server, skipped: 2)),
+      );
+
+      expect(state.skipped, 2);
+    });
+
+    test('stay counted while loading and after a failed refresh, because '
+        'the data on screen is the same', () {
+      final state = const LoadState<List<Account>>()
+          .withSnapshot(partial(DataOrigin.cache))
+          .startLoading()
+          .withRefresh(failed);
+
+      expect(state.isIncomplete, isTrue);
+    });
+
+    test('are forgotten once a complete answer arrives', () {
+      final state = const LoadState<List<Account>>()
+          .withSnapshot(partial(DataOrigin.cache))
+          .withSnapshot(snapshot(DataOrigin.server, at: now));
+
+      expect(state.isIncomplete, isFalse);
+    });
+
+    test('stay counted when an outdated answer is discarded', () {
+      final state = const LoadState<List<Account>>()
+          .withSnapshot(partial(DataOrigin.cache))
+          .withOutdatedRefresh(Success(snapshot(DataOrigin.server, at: now)));
+
+      expect(state.isIncomplete, isTrue);
+    });
+  });
+
   test('an outdated answer ends the loading without replacing the data', () {
     final state = const LoadState<List<Account>>()
         .withSnapshot(snapshot(DataOrigin.cache, at: syncedAt))

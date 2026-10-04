@@ -53,6 +53,30 @@ void main() {
     expect(find.textContaining('Actualizado'), findsNothing);
   });
 
+  testWidgets('when an account could not be read, says so and does not show '
+      'a total that would leave it out', (tester) async {
+    backendAnswers(
+      Success(
+        AccountsSnapshot(
+          value: const [savings],
+          origin: DataOrigin.server,
+          syncedAt: now,
+          skipped: 1,
+        ),
+      ),
+    );
+
+    await harness.pump(tester, screen());
+    await tester.pump();
+
+    expect(
+      find.textContaining('No pudimos mostrar todas tus cuentas'),
+      findsOneWidget,
+    );
+    expect(find.text('SALDO TOTAL'), findsNothing);
+    expect(find.byType(AccountCard), findsOneWidget);
+  });
+
   testWidgets('pulling down asks the backend again', (tester) async {
     backendAnswers(Success(accountsSnapshot(const [savings, checking])));
     await harness.pump(tester, screen());

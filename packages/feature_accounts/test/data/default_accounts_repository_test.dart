@@ -170,6 +170,78 @@ void main() {
     });
   });
 
+  group('documents the source could not read', () {
+    test('the listener says how many are missing from what it '
+        'delivers', () async {
+      final received = await emitted(
+        repository().watchAccounts(),
+        () => source.accounts.add(
+          const SourceSnapshot([savings], fromCache: false, skipped: 1),
+        ),
+      );
+
+      expect(received.single.value, [savings]);
+      expect(received.single.skipped, 1);
+    });
+
+    test('a refresh says it too', () async {
+      source
+        ..onFetchAccounts = (() async => [savings])
+        ..skippedOnFetch = 2;
+
+      final result = await repository().refreshAccounts();
+
+      expect((result as Success<DataSnapshot<List<Account>>>).value.skipped, 2);
+    });
+
+    test('are reported with the service and the count only, once per '
+        'change', () async {
+      await emitted(repository().watchAccounts(), () {
+        source.accounts
+          ..add(const SourceSnapshot([savings], fromCache: true, skipped: 1))
+          ..add(const SourceSnapshot([savings], fromCache: false, skipped: 1))
+          ..add(const SourceSnapshot([savings], fromCache: false, skipped: 2))
+          ..add(const SourceSnapshot([savings], fromCache: false));
+      });
+
+      final events = eventsNamed(AccountsTelemetry.documentsSkipped);
+      expect(events.map((event) => event.parameters), [
+        {
+          AccountsTelemetry.serviceKey: AccountsTelemetry.accountsService,
+          AccountsTelemetry.countKey: 1,
+        },
+        {
+          AccountsTelemetry.serviceKey: AccountsTelemetry.accountsService,
+          AccountsTelemetry.countKey: 2,
+        },
+      ]);
+    });
+
+    test('a refresh reports them against its own service', () async {
+      source
+        ..onFetchMovements = (() async => [salary])
+        ..skippedOnFetch = 3;
+
+      await repository().refreshMovements('savings', limit: 20);
+
+      expect(
+        eventsNamed(AccountsTelemetry.documentsSkipped).single.parameters,
+        {
+          AccountsTelemetry.serviceKey: AccountsTelemetry.movementsService,
+          AccountsTelemetry.countKey: 3,
+        },
+      );
+    });
+
+    test('nothing is reported when everything was read', () async {
+      source.onFetchAccounts = () async => [savings];
+
+      await repository().refreshAccounts();
+
+      expect(eventsNamed(AccountsTelemetry.documentsSkipped), isEmpty);
+    });
+  });
+
   group('refreshAccounts', () {
     test(
       'returns what the backend has and records the synchronization',

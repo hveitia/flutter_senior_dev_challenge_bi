@@ -220,6 +220,13 @@ class _AccountContent extends StatelessWidget {
             onRetry: retry,
           ),
         ),
+      if (movements.isIncomplete)
+        box(
+          const InlineAlert(
+            message: AccountsStrings.movementsIncomplete,
+            tone: AppTone.warning,
+          ),
+        ),
       if (showsAge)
         box(
           Padding(

@@ -180,6 +180,32 @@ void main() {
     );
   });
 
+  testWidgets('when some movements could not be read, says so above the '
+      'ones it shows', (tester) async {
+    await open(
+      tester,
+      movementsAnswer: Success(
+        MovementsSnapshot(
+          value: [salary, groceries],
+          origin: DataOrigin.server,
+          syncedAt: now,
+          skipped: 1,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.text(
+        'No pudimos mostrar algunos movimientos de esta cuenta.',
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    await scrollTo(tester, find.text('Nómina de septiembre'));
+    expect(rows(), findsWidgets);
+  });
+
   testWidgets('an account without movements says so, not that the search '
       'found nothing', (tester) async {
     await open(tester, movementsAnswer: Success(movementsSnapshot(const [])));

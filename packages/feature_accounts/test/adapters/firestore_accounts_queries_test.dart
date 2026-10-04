@@ -112,7 +112,7 @@ void main() {
 
       final fetched = await source.fetchMovements('savings', limit: pageSize);
 
-      expect(fetched.map((movement) => movement.id), ['m1']);
+      expect(fetched.items.map((movement) => movement.id), ['m1']);
       verify(() => movements.where('accountId', isEqualTo: 'savings'));
       verify(() => ofAccount.orderBy('postedAt', descending: true));
       verify(() => newestFirst.limit(pageSize));
@@ -147,7 +147,8 @@ void main() {
 
       final fetched = await source.fetchAccounts();
 
-      expect(fetched.single.id, 'savings');
+      expect(fetched.items.single.id, 'savings');
+      expect(fetched.fromCache, isFalse);
       final options = verify(() => accounts.get(captureAny())).captured.single;
       expect((options as GetOptions).source, Source.server);
       verify(() => firestore.collection('users'));
@@ -164,6 +165,49 @@ void main() {
 
       expect(delivery.fromCache, isTrue);
       expect(delivery.items.single.number, '22004821');
+    });
+  });
+
+  group('documents it cannot read', () {
+    Map<String, dynamic> withoutBalance() =>
+        accountDocument()..remove(AccountFields.availableCents);
+
+    test('a fetch leaves them out and says how many there were', () async {
+      final answer = snapshot([
+        ('savings', accountDocument()),
+        ('broken', withoutBalance()),
+      ]);
+      when(() => accounts.get(any())).thenAnswer((_) async => answer);
+
+      final fetched = await source.fetchAccounts();
+
+      expect(fetched.items.map((account) => account.id), ['savings']);
+      expect(fetched.skipped, 1);
+    });
+
+    test('the listener counts them in every delivery', () async {
+      final delivered = snapshot([
+        ('m1', movementDocument()),
+        ('m2', movementDocument()..[MovementFields.amountCents] = 12.5),
+        ('m3', <String, dynamic>{}),
+      ]);
+      when(
+        () => page.snapshots(includeMetadataChanges: true),
+      ).thenAnswer((_) => Stream.value(delivered));
+
+      final delivery = await source
+          .watchMovements('savings', limit: pageSize)
+          .first;
+
+      expect(delivery.items.map((movement) => movement.id), ['m1']);
+      expect(delivery.skipped, 2);
+    });
+
+    test('nothing is counted when every document is readable', () async {
+      final answer = snapshot([('savings', accountDocument())]);
+      when(() => accounts.get(any())).thenAnswer((_) async => answer);
+
+      expect((await source.fetchAccounts()).skipped, 0);
     });
   });
 

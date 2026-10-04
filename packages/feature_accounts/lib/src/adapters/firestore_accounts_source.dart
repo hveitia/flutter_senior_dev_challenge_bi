@@ -73,9 +73,9 @@ final class FirestoreAccountsSource implements AccountsSource {
       .map((snapshot) => _delivery(snapshot, decodeAccount));
 
   @override
-  Future<List<Account>> fetchAccounts() => _translating(
+  Future<SourceSnapshot<Account>> fetchAccounts() => _translating(
     AccountsTelemetry.accountsService,
-    () async => _decoded(await _accounts.get(_fromServer), decodeAccount),
+    () async => _delivery(await _accounts.get(_fromServer), decodeAccount),
   );
 
   @override
@@ -87,12 +87,12 @@ final class FirestoreAccountsSource implements AccountsSource {
       .map((snapshot) => _delivery(snapshot, decodeMovement));
 
   @override
-  Future<List<Movement>> fetchMovements(
+  Future<SourceSnapshot<Movement>> fetchMovements(
     String accountId, {
     required int limit,
   }) => _translating(
     AccountsTelemetry.movementsService,
-    () async => _decoded(
+    () async => _delivery(
       await _movementsOf(accountId, limit).get(_fromServer),
       decodeMovement,
     ),
@@ -154,20 +154,23 @@ final class FirestoreAccountsSource implements AccountsSource {
     );
   }
 
+  /// What a query returned, with the documents that could not be read left
+  /// out and counted: whoever shows the rest must know it is not everything.
   static SourceSnapshot<T> _delivery<T>(
     QuerySnapshot<Map<String, dynamic>> snapshot,
     T? Function(String id, Map<String, Object?> data) decode,
-  ) => SourceSnapshot(
-    _decoded(snapshot, decode),
-    fromCache: snapshot.metadata.isFromCache,
-  );
+  ) {
+    final documents = snapshot.docs;
+    final items = [
+      for (final document in documents) ?decode(document.id, document.data()),
+    ];
 
-  static List<T> _decoded<T>(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
-    T? Function(String id, Map<String, Object?> data) decode,
-  ) => [
-    for (final document in snapshot.docs) ?decode(document.id, document.data()),
-  ];
+    return SourceSnapshot(
+      items,
+      fromCache: snapshot.metadata.isFromCache,
+      skipped: documents.length - items.length,
+    );
+  }
 
   Future<T> _translating<T>(String service, Future<T> Function() call) async {
     try {

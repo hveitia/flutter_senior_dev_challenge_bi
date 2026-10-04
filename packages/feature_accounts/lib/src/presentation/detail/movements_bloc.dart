@@ -81,8 +81,10 @@ final class MovementsState extends Equatable {
   final List<Movement> visible;
   final bool isLoadingMore;
 
-  /// Whether there may be older movements than the ones loaded.
-  bool get hasMore => (movements.data?.length ?? 0) >= limit;
+  /// Whether there may be older movements than the ones loaded. A movement
+  /// that could not be read still took its place in the page.
+  bool get hasMore =>
+      (movements.data?.length ?? 0) + movements.skipped >= limit;
 
   /// Whether the customer narrowed the list.
   bool get isNarrowed =>

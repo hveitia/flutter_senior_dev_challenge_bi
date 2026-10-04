@@ -21,6 +21,9 @@ final class FakeAccountsSource implements AccountsSource {
   /// How `fetchMovements` ends.
   Future<List<Movement>> Function() onFetchMovements = () async => const [];
 
+  /// How many documents each fetch reports as unreadable.
+  int skippedOnFetch = 0;
+
   int accountFetches = 0;
   int movementFetches = 0;
 
@@ -31,10 +34,13 @@ final class FakeAccountsSource implements AccountsSource {
   Stream<SourceSnapshot<Account>> watchAccounts() => accounts.stream;
 
   @override
-  Future<List<Account>> fetchAccounts() {
+  Future<SourceSnapshot<Account>> fetchAccounts() async {
     accountFetches++;
-    return onFetchAccounts();
+    return _fetched(await onFetchAccounts());
   }
+
+  SourceSnapshot<T> _fetched<T>(List<T> items) =>
+      SourceSnapshot(items, fromCache: false, skipped: skippedOnFetch);
 
   @override
   Stream<SourceSnapshot<Movement>> watchMovements(
@@ -46,13 +52,13 @@ final class FakeAccountsSource implements AccountsSource {
   }
 
   @override
-  Future<List<Movement>> fetchMovements(
+  Future<SourceSnapshot<Movement>> fetchMovements(
     String accountId, {
     required int limit,
-  }) {
+  }) async {
     movementFetches++;
     movementRequests.add((accountId, limit));
-    return onFetchMovements();
+    return _fetched(await onFetchMovements());
   }
 }
 

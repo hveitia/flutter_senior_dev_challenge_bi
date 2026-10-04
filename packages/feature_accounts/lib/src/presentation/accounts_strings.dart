@@ -48,6 +48,12 @@ abstract final class AccountsStrings {
       'No pudimos actualizar tus movimientos. Mostramos los últimos datos '
       'guardados.';
 
+  static const String accountsIncomplete =
+      'No pudimos mostrar todas tus cuentas, por eso no calculamos el saldo '
+      'total.';
+  static const String movementsIncomplete =
+      'No pudimos mostrar algunos movimientos de esta cuenta.';
+
   static const String movementDetailTitle = 'Detalle del movimiento';
   static const String close = 'Cerrar';
   static const String dateAndTime = 'Fecha y hora';

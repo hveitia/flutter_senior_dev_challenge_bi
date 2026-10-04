@@ -167,6 +167,22 @@ void main() {
       expect(bloc.state.hasMore, isTrue);
     });
 
+    test('a page that is short only because some movements could not be '
+        'read still means there may be more', () async {
+      final bloc = await started();
+      await deliver(
+        _Snapshot(
+          value: [salary],
+          origin: DataOrigin.server,
+          syncedAt: now,
+          skipped: 1,
+        ),
+      );
+
+      expect(bloc.state.hasMore, isTrue);
+      expect(bloc.state.movements.isIncomplete, isTrue);
+    });
+
     test('a short page means there are no more', () async {
       final bloc = await started();
       await deliver(page([salary]));

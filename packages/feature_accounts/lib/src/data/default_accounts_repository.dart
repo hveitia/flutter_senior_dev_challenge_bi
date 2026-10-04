@@ -81,10 +81,18 @@ final class DefaultAccountsRepository implements AccountsRepository {
     List<T> Function(Iterable<T> items)? arrange,
   }) {
     var reportedCache = false;
+    // A listener delivers the same documents again on every change, so the
+    // unreadable ones are reported when their number changes, not each time.
+    var reportedSkipped = 0;
 
     return deliveries.expand((delivery) {
       final items = arrange?.call(delivery.items) ?? delivery.items;
-      if (!delivery.fromCache) return [_fresh(items, dataSet)];
+      final skipped = delivery.skipped;
+      if (skipped != reportedSkipped) {
+        reportedSkipped = skipped;
+        _reportSkipped(skipped, service);
+      }
+      if (!delivery.fromCache) return [_fresh(items, dataSet, skipped)];
 
       final syncedAt = _syncTimes.lastSync(dataSet);
       // A device that never synchronized has an empty copy whatever the
@@ -106,13 +114,14 @@ final class DefaultAccountsRepository implements AccountsRepository {
           value: items,
           origin: DataOrigin.cache,
           syncedAt: syncedAt,
+          skipped: skipped,
         ),
       ];
     });
   }
 
   Future<Result<DataSnapshot<List<T>>>> _refresh<T>(
-    Future<List<T>> Function() fetch, {
+    Future<SourceSnapshot<T>> Function() fetch, {
     required String dataSet,
     required String service,
     List<T> Function(Iterable<T> items)? arrange,
@@ -125,8 +134,12 @@ final class DefaultAccountsRepository implements AccountsRepository {
     );
 
     switch (result) {
-      case Success(value: final items):
-        return Success(_fresh(arrange?.call(items) ?? items, dataSet));
+      case Success(value: final fetched):
+        final items = fetched.items;
+        _reportSkipped(fetched.skipped, service);
+        return Success(
+          _fresh(arrange?.call(items) ?? items, dataSet, fetched.skipped),
+        );
       case Failed(:final failure):
         _reportFailure(failure, service);
         return Failed(failure);
@@ -135,10 +148,28 @@ final class DefaultAccountsRepository implements AccountsRepository {
 
   /// A snapshot the backend just confirmed. The moment is remembered so the
   /// saved copy can later say how old it is.
-  DataSnapshot<List<T>> _fresh<T>(List<T> items, String dataSet) {
+  DataSnapshot<List<T>> _fresh<T>(List<T> items, String dataSet, int skipped) {
     final at = _now();
     unawaited(_remember(dataSet, at));
-    return DataSnapshot(value: items, origin: DataOrigin.server, syncedAt: at);
+    return DataSnapshot(
+      value: items,
+      origin: DataOrigin.server,
+      syncedAt: at,
+      skipped: skipped,
+    );
+  }
+
+  /// Documents left out are a defect in the data or a version of it this
+  /// app does not know. Only how many is reported, never which.
+  void _reportSkipped(int skipped, String service) {
+    if (skipped == 0) return;
+    _telemetry.event(
+      AccountsTelemetry.documentsSkipped,
+      parameters: {
+        AccountsTelemetry.serviceKey: service,
+        AccountsTelemetry.countKey: skipped,
+      },
+    );
   }
 
   /// Losing a synchronization time only makes the saved copy say less about

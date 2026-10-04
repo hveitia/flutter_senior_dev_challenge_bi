@@ -16,6 +16,7 @@ final class DataSnapshot<T> extends Equatable {
     required this.value,
     required this.origin,
     required this.syncedAt,
+    this.skipped = 0,
   });
 
   final T value;
@@ -24,6 +25,11 @@ final class DataSnapshot<T> extends Equatable {
   /// Null when the device does not know when it last synchronized.
   final DateTime? syncedAt;
 
+  /// How many items of the data set exist but could not be read, so they
+  /// are missing from [value]. Anything computed from [value], such as a
+  /// total, is incomplete while this is not zero.
+  final int skipped;
+
   @override
-  List<Object?> get props => [value, origin, syncedAt];
+  List<Object?> get props => [value, origin, syncedAt, skipped];
 }

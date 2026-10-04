@@ -99,12 +99,21 @@ class AccountsScreen extends StatelessWidget {
             ),
             SizedBox(height: context.metrics.componentGap),
           ],
-          const GroupHeader(label: AccountsStrings.totalBalance),
-          const SizedBox(height: AppSpacing.x1),
-          AmountText(
-            cents: totalAvailableCents(data),
-            size: AmountTextSize.display,
-          ),
+          // A total that leaves an account out would be a wrong number, so
+          // it gives way to saying what happened.
+          if (accounts.isIncomplete)
+            const InlineAlert(
+              message: AccountsStrings.accountsIncomplete,
+              tone: AppTone.warning,
+            )
+          else ...[
+            const GroupHeader(label: AccountsStrings.totalBalance),
+            const SizedBox(height: AppSpacing.x1),
+            AmountText(
+              cents: totalAvailableCents(data),
+              size: AmountTextSize.display,
+            ),
+          ],
           if (showsAge) ...[
             const SizedBox(height: AppSpacing.x1),
             FreshnessCaption(

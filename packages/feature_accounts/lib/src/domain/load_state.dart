@@ -36,6 +36,7 @@ final class LoadState<T> extends Equatable {
     this.syncedAt,
     this.failure,
     this.isLoading = false,
+    this.skipped = 0,
   });
 
   final T? data;
@@ -44,7 +45,15 @@ final class LoadState<T> extends Equatable {
   final LoadFailure? failure;
   final bool isLoading;
 
+  /// How many items exist but could not be read and are missing from
+  /// [data].
+  final int skipped;
+
   bool get hasData => data != null;
+
+  /// What is shown leaves something out, so nothing may be added up from it
+  /// as if it were everything.
+  bool get isIncomplete => skipped > 0;
 
   /// Nothing to show yet and nothing has failed: draw the skeleton.
   bool get isWaiting => !hasData && failure == null;
@@ -69,6 +78,7 @@ final class LoadState<T> extends Equatable {
     syncedAt: syncedAt,
     failure: failure,
     isLoading: true,
+    skipped: skipped,
   );
 
   /// What the listener delivered. Fresh data proves the backend is
@@ -79,6 +89,7 @@ final class LoadState<T> extends Equatable {
     syncedAt: snapshot.syncedAt ?? syncedAt,
     failure: snapshot.origin == DataOrigin.server ? null : failure,
     isLoading: isLoading,
+    skipped: snapshot.skipped,
   );
 
   /// How the refresh ended.
@@ -87,12 +98,14 @@ final class LoadState<T> extends Equatable {
       data: snapshot.value,
       origin: snapshot.origin,
       syncedAt: snapshot.syncedAt ?? syncedAt,
+      skipped: snapshot.skipped,
     ),
     Failed(failure: final cause) => LoadState(
       data: data,
       origin: origin,
       syncedAt: syncedAt,
       failure: LoadFailure.of(cause),
+      skipped: skipped,
     ),
   };
 
@@ -101,10 +114,22 @@ final class LoadState<T> extends Equatable {
   /// discarded; whether the backend answered still counts.
   LoadState<T> withOutdatedRefresh(Result<DataSnapshot<T>> result) =>
       switch (result) {
-        Success() => LoadState(data: data, origin: origin, syncedAt: syncedAt),
+        Success() => LoadState(
+          data: data,
+          origin: origin,
+          syncedAt: syncedAt,
+          skipped: skipped,
+        ),
         Failed() => withRefresh(result),
       };
 
   @override
-  List<Object?> get props => [data, origin, syncedAt, failure, isLoading];
+  List<Object?> get props => [
+    data,
+    origin,
+    syncedAt,
+    failure,
+    isLoading,
+    skipped,
+  ];
 }

@@ -94,6 +94,8 @@ Sin conexión no se añade el aviso de «no pudimos actualizar»: el aviso gener
 
 **Dinero en centavos enteros.** Todos los importes son enteros. El adaptador descarta una cuenta o un movimiento cuyo importe no sea un entero en lugar de redondearlo.
 
+**Lo que no se puede leer se cuenta y se dice.** Cada entrega indica cuántos documentos quedaron fuera. Si falta una cuenta, la pantalla lo avisa y no muestra el saldo total, porque sumaría menos de lo que el cliente tiene. Si faltan movimientos, un aviso lo dice sobre la lista. El repositorio emite el evento `accounts_data_documents_skipped` con el servicio y la cantidad, sin identificar los documentos, y solo cuando esa cantidad cambia.
+
 **Lectura tolerante.** Los campos desconocidos se ignoran. Una categoría o un canal desconocidos se muestran como «Otros». Un estado desconocido se muestra como pendiente: afirmar «completado» sin saberlo sería el peor error.
 
 **Cliente sin cuentas.** El registro no abre cuentas; lo hará la API de servidor ([ADR 0004](0004-backoffice-y-api-en-nextjs.md)). Hasta entonces un cliente nuevo ve «Estamos preparando tu cuenta». Para desarrollo existe `firebase/seed`, que carga dos cuentas y sus movimientos con las credenciales del propio desarrollador.

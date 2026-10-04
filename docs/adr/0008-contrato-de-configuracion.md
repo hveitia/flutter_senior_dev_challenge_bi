@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existen el esquema y el ejemplo en `contracts/`, y en `packages/app_platform` el modelo, el analizador, el repositorio, el `RemoteConfigCubit` y los adaptadores de Firestore, almacenamiento local y recurso incluido. Todo está cubierto por pruebas unitarias. **No está conectado todavía a la aplicación** ni se ha ejecutado contra el Firestore real: el documento `config/home` aún no existe y lo publicará la consola web (etapa 7). El registro de módulos que interpreta cada tipo llega en la etapa 6.
+- **Implementación:** existen el esquema y el ejemplo en `contracts/`, y en `packages/app_platform` el modelo, el analizador, el repositorio, el `RemoteConfigCubit` y los adaptadores de Firestore, almacenamiento local y recurso incluido. Todo está cubierto por pruebas unitarias. Está conectado a la aplicación y se vio en un teléfono contra el Firestore real: la consola publica `config/home`, la aplicación lo escucha durante la sesión y el inicio se recompone ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md), [arquitectura/publicar-configuracion.md](../arquitectura/publicar-configuracion.md)).
 
 ## Problema a resolver
 

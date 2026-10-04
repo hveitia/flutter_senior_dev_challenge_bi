@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existe el workspace raíz con `apps/mobile` y el análisis estático compartido. Los paquetes de dominio y la consola web están planificados y se crean en sus etapas.
+- **Implementación:** completa. El workspace raíz tiene `apps/mobile`, ocho paquetes en `packages/` y el análisis estático compartido; `apps/backoffice` (Next.js) vive en el mismo repositorio, fuera del workspace de Dart. El mapa actual está en [arquitectura/componentes.md](../arquitectura/componentes.md).
 
 ## Problema a resolver
 

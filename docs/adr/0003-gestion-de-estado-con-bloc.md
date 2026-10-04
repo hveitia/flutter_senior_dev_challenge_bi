@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** planificada. Todavía no hay estado de aplicación; se introduce con el primer paquete de dominio.
+- **Implementación:** completa. Todos los paquetes de dominio usan Bloc o Cubit, con un estado por conjunto de datos ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md)) y un observador que informa a telemetría sin el contenido de los estados ([ADR 0010](0010-observabilidad.md)).
 
 ## Problema a resolver
 

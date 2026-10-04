@@ -200,6 +200,14 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
   - Encontró dos defectos que ninguna prueba cubría, corregidos con una prueba que falló primero y comprobados de nuevo en el teléfono: el aviso de un push recibido con la aplicación abierta no se retiraba solo, porque un aviso con acción permanece hasta que se descarta, y seguía visible sobre pantallas sin relación; y un aviso tocado con la aplicación cerrada caía en la bandeja aunque su destino existiera, porque se abría antes de leerse la configuración.
   - Sin verificar: la prueba de extremo a extremo de ida y vuelta (se intentó una vez y el teléfono se bloqueó durante la ejecución, así que el fallo no es concluyente); el texto oculto en la pantalla bloqueada, que solo se comprobó por la visibilidad con la que llega el aviso; el aviso tocado con el bloqueo biométrico activo; la sesión revocada desde la consola de Firebase; la intercepción de marcos y formularios hacia otros sitios en la vista web; el efecto del borrado de la vista web al cerrar sesión; el servidor del aliado detenido; e iOS.
   - Quedan en Firebase los datos de la comprobación: un segundo cliente de prueba con sus dos cuentas, transferencias de un dólar en el primero, avisos en las bandejas y registros en el historial de envíos.
+- **Etapa 11 (cierre).** El asistente añadió un modo local sobre los emuladores de Firebase, endureció el borrado de datos del dispositivo a partir de una revisión de la comprobación en el teléfono, y redactó la documentación de cierre: estrategia de despliegue y operación, flujos, alcance y riesgos, guion de la demostración y la reescritura del README.
+  - **Por qué el modo local.** Al revisar las instrucciones como alguien ajeno al proyecto quedó a la vista que nadie sin acceso al proyecto de Firebase podía arrancar el servidor, y por tanto ni transferir ni usar la consola. `tool/local-stack.sh` levanta los emuladores y el servidor, y una carga crea un administrador, un cliente y la configuración.
+  - **Cómo se comprobó.** Con un directorio de usuario vacío, para imitar un equipo sin credenciales: emuladores y servidor, la carga dos veces, inicio de sesión en el emulador, una transferencia con su repetición y un sobregiro, el aviso en la bandeja, la sesión de la consola, un envío validado y las páginas de los aliados. La aplicación se compiló con la opción nueva, pero no se ejecutó en un dispositivo en este modo.
+  - **Un intento que no funcionó.** Para que el servidor no buscara credenciales reales se le dio una credencial propia de emulador; la transferencia falló con ella y se retiró. Quedó la configuración sin credencial, que funciona, y una variable que evita la búsqueda.
+  - **Borrado de datos.** La revisión señaló que un paso que agotaba su tiempo se abandonaba pero podía terminar después, ya con otro cliente en sesión. Ahora cada paso recibe una señal que consulta antes de actuar, el tiempo agotado se informa como datos que pueden seguir en el dispositivo y el borrado pendiente se completa antes de leer el perfil de la sesión siguiente. Cerrar la sesión ya no espera sin límite a la limpieza del dispositivo, y un aviso tocado durante una sesión se descarta cuando esa sesión termina.
+  - **Pruebas.** Se vio fallar primero la prueba del aviso descartado y las del servidor (cuatro). Las pruebas del modo de emuladores de la aplicación, las del borrado con señal y las del almacén de perfil se escribieron junto con el código y pasaron a la primera: fijan el comportamiento, no demostraron un defecto.
+  - **Documentación.** Al contrastar el diagrama de dependencias con los `pubspec.yaml` faltaban dos flechas de la aplicación y una frase daba por terminada una etapa anterior; se corrigieron. La tabla de requisitos distingue lo visto en un dispositivo de lo cubierto solo por pruebas.
+  - Sin verificar: la aplicación en un dispositivo contra el modo local, en particular que Firestore vuelva a apuntar al emulador tras cerrar sesión; la publicación desde la consola local más allá de cargarla con sesión; y todo lo que ya figuraba sin verificar en las etapas anteriores.
 
 ## Impacto por etapa
 
@@ -218,4 +226,47 @@ Valoración cualitativa. No se registran métricas cuantitativas porque no se mi
 | 8. Transferencias | API de clientes en paralelo con otra etapa; cliente, cola, pantallas y prueba de extremo a extremo en la aplicación | Tres revisiones independientes encontraron ocho defectos de seguridad del dinero y de transporte que las pruebas de la primera versión no cubrían. La ejecución contra el proyecto real encontró otro en el servidor | Dos decisiones de arquitectura, la guía del contrato y las filas de transferencias en conectividad degradada y monitoreo | La primera versión de la aplicación no se escribió con las pruebas primero; la corrección sí, con 48 pruebas vistas en rojo. La cola sin conexión sigue sin verse en un dispositivo |
 | 9. Notificaciones | Paquete, reglas, bandeja escrita por la consola y aviso de transferencia, en paralelo con otras dos etapas | Dos revisiones independientes encontraron siete defectos de ciclo de vida y un riesgo en teléfonos compartidos; todos corregidos con prueba | Decisión 0018, con el límite del cierre de sesión descrito tras la revisión | Las del paquete no se escribieron primero; las de la corrección, sí |
 | 10. Servicios | Paquete, contenedor de mini aplicaciones y dos aliados simulados, en paralelo con otras dos etapas | Dos revisiones independientes encontraron seis defectos, entre ellos cargas cruzadas y `http` aceptado en cualquier compilación; todos corregidos con prueba | Decisión 0019, que declara qué es simulado y qué queda por comprobar en un dispositivo | Parciales en la primera versión; 30 pruebas en rojo primero en la corrección |
-| 11. Cierre | | | | |
+| 11. Cierre | Modo local sobre emuladores, documentos de cierre y reescritura del README | Una revisión de la comprobación en el teléfono llevó a endurecer el borrado de datos; el modo local se probó sin credenciales | Estrategia de despliegue, flujos, alcance y riesgos, guion; el diagrama de dependencias se contrastó con los `pubspec.yaml` | Parciales: rojo primero en el servidor y en el aviso descartado; el resto fija comportamiento |
+
+## Balance: qué aportó la IA y qué costó
+
+Esta sección responde a lo que pide el enunciado: el impacto en productividad, calidad, documentación y pruebas. No hay métricas de tiempo porque no se midieron; lo que sigue se apoya en lo registrado arriba.
+
+### Productividad
+
+- La IA escribió casi todo el código, las pruebas y la documentación, bajo decisiones que tomó el autor. El alcance construido (aplicación con ocho paquetes, consola, API de clientes, reglas y documentación) no habría cabido en el plazo de otro modo.
+- Tres etapas se construyeron en paralelo en copias de trabajo aisladas y se integraron sin commits de fusión. El costo apareció al integrar: conflictos en los archivos compartidos de la aplicación, un primer intento abandonado por marcas de conflicto dentro de un commit y una prueba en rojo en commits intermedios, reparada antes de publicar.
+- El límite real no fue la velocidad de escritura sino la verificación: cada etapa necesitó revisiones, correcciones y, cuando hubo un teléfono disponible, una comprobación en él.
+
+### Calidad
+
+- **Lo que más defectos evitó fueron las revisiones independientes**, hechas por una instancia sin el contexto de quien escribió el código. Encontraron, entre otros: dos carreras en la sesión, datos del cliente que quedaban en el dispositivo tras cerrar sesión, una orden de transferencia que podía quedar en cola después de haberse enviado, un teléfono compartido que habría seguido recibiendo avisos del cliente anterior, y `http` aceptado en cualquier compilación para el contenido de aliados. Todos se reprodujeron con una prueba antes de corregirse.
+- **Una revisión no bastó para el código que mueve dinero.** La corrección de las transferencias pasó una revisión más antes de publicarse, y esa revisión encontró que el arreglo cubría un solo intento y no el reintento del cliente.
+- **Ejecutar en un dispositivo encontró lo que las pruebas no veían**: el campo de contraseña anunciado como botón, un aviso duplicado sin conexión, un aviso que no se retiraba solo y una notificación tocada con la aplicación cerrada que caía en la bandeja. Ninguno tenía una prueba que lo cubriera.
+- **La IA también se equivocó y hubo que corregirla.** Describió en el README el estado de las restricciones de las claves de Firebase antes de consultarlo, y hubo que precisarlo en un commit posterior; dio por bueno un commit que no compilaba aislado, que se reparó antes de publicar; y en la integración de tres etapas siguió adelante tras una sustitución de texto que no había encontrado coincidencia, lo que dejó marcas de conflicto en un commit y obligó a repetir el trabajo. Los tres casos se detectaron al verificar.
+
+### Documentación
+
+- Las decisiones se escribieron cuando se tomaban, con las alternativas descartadas, y no al final. Cada una separa lo implementado de lo planificado.
+- La regla que más trabajo dio fue no afirmar más de lo comprobado: cada documento distingue lo visto en un dispositivo, lo cubierto solo por pruebas y lo que no se verificó. Varias frases se corrigieron después de que una revisión señalara que decían más de lo que el código hacía.
+
+### Pruebas
+
+- El repositorio termina con 1839 pruebas de Dart, 538 del servidor y la consola y 110 de las reglas de Firestore, ejecutadas en cada push.
+- **La prueba primero no se siguió siempre, y se notó.** Donde las pruebas se escribieron junto con el código (los paquetes de notificaciones y de servicios, y la primera versión de las transferencias), las revisiones encontraron después más defectos de ciclo de vida, sin ninguna prueba que los cubriera. En las correcciones sí se escribió la prueba antes: 48 se vieron fallar por comportamiento en la corrección de las transferencias y 30 en la de servicios.
+- Cuando una prueba pasó a la primera, el registro lo dice: fija un comportamiento, no demuestra un defecto. En esos casos se validó alterando el código a propósito.
+
+### Decisiones del autor que cambiaron el rumbo
+
+- Next.js para la consola, frente a la propuesta de Flutter Web.
+- Mantener una consola propia en lugar de usar solo la de Firebase.
+- Bloc como gestión de estado.
+- No recortar el alcance cuando hubo un día más de plazo, y aceptar el trabajo en paralelo y la verificación acotada del hook para ganar tiempo sin tocar las revisiones.
+
+### Qué se haría distinto
+
+- Exigir la prueba primero desde la primera versión de cada etapa, no solo en las correcciones.
+- Llevar cada etapa a un dispositivo antes de darla por cerrada; las tres etapas construidas en paralelo llegaron al teléfono al final, juntas.
+- Tener el modo local con emuladores desde el principio: habría permitido correr el flujo de extremo a extremo en la integración continua, que hoy no lo ejecuta.
+- Compilar para iOS al menos una vez al inicio, para no descubrir sus diferencias al final.
+- Commits más pequeños en las etapas grandes: la regla de que el árbol de trabajo coincida con el commit obligó a agrupar cambios que habrían merecido ir separados.

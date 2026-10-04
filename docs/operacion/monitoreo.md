@@ -1,6 +1,6 @@
 # Monitoreo en producción
 
-Cómo se sabría que la aplicación falla o que la experiencia empeora, y con qué se diagnosticaría. Describe lo instalado hasta la etapa 6 y lo que se añadirá sobre ello.
+Cómo se sabría que la aplicación falla o que la experiencia empeora, y con qué se diagnosticaría. Describe lo que la aplicación y el servidor emiten hoy y lo que falta para operar con ello.
 
 Cada apartado separa lo **implementado** de lo **planificado**. La aplicación ya se ejecutó en un emulador y en un teléfono contra el proyecto real, incluidas las transferencias, las notificaciones con entrega real y las mini aplicaciones, pero **nada de lo descrito se ha observado todavía en la consola de Firebase**: no se comprobó que los eventos y los informes llegaran.
 
@@ -43,7 +43,7 @@ Cada apartado separa lo **implementado** de lo **planificado**. La aplicación y
 | `accounts_data_retry_requested` | Evento | El cliente toca «Reintentar» | Servicio |
 | `accounts_data_served_from_cache` | Evento | Un conjunto de datos se mostró desde la copia del dispositivo, una vez por escucha | Servicio y cantidad de elementos |
 | `accounts_data_documents_skipped` | Evento | Una entrega trajo documentos que la aplicación no pudo leer y dejó fuera; se emite cuando esa cantidad cambia | Servicio y cantidad de documentos, nunca cuáles |
-| `saved_customer_data_clear_failed` | Evento y error | Al terminar la sesión, un paso de la limpieza del dispositivo falló | Paso (`database` o `sync_times`); el error viaja solo con su tipo |
+| `saved_customer_data_clear_failed` | Evento y error | Al terminar la sesión, un paso de la limpieza del dispositivo falló | Paso (`database`, `sync_times` o `mini_app_data`) y causa: `error` si el paso falló, `timeout` si no terminó en 10 segundos y los datos pueden seguir en el dispositivo. El error viaja solo con su tipo. El borrado queda pendiente y se completa antes de la primera lectura de la siguiente sesión |
 
 Un valor distinto de cero en `accounts_data_documents_skipped` significa que algún cliente ve menos de lo que tiene, y en el caso de las cuentas que no ve su saldo total: merece una alerta. `saved_customer_data_clear_failed` indica datos de un cliente que quedaron en un dispositivo después de cerrar sesión; la limpieza se repite al abrir la aplicación sin sesión.
 
@@ -105,11 +105,11 @@ Un valor sostenido de `notifications_device_failed` con `step: delete_token` ind
 
 Al cerrar sesión, la escucha de la configuración se cancela. Como la sesión termina un instante antes, el servidor puede denegar la escucha y la aplicación emitir un `config_source_failed` de más; es un falso positivo conocido de ese momento.
 
-**Planificado**, en la etapa de cada funcionalidad:
+**No hecho:**
 
-- Trazas de rendimiento con nombre.
-- Eventos de producto.
-- Alertas configuradas en la consola de Firebase.
+- Alertas configuradas en la consola de Firebase: los eventos y las trazas de este documento se emiten, pero no hay umbrales ni avisos creados.
+- La comprobación de que esos datos llegan a la consola de Firebase.
+- Una traza propia para la carga del inicio; hoy la aproximan las de cuentas y movimientos.
 
 ## Detección de problemas operativos
 
@@ -150,7 +150,7 @@ Los eventos de transferencias llevan el motivo o la clase de fallo, nunca el imp
 | Eventos `accounts_data_retry_requested` | Clientes que insisten ante un error: mide la fricción que deja una falla | Evento de Analytics | La aplicación emite el evento |
 | Eventos `home_nothing_to_show` | Clientes que abrieron el inicio y no vieron nada: la peor experiencia posible del inicio | Evento de Analytics | La aplicación emite el evento |
 | Eventos `home_module_skipped`, por tipo | Cuántas aplicaciones instaladas no conocen un módulo ya publicado: mide cuándo conviene publicarlo | Evento de Analytics | La aplicación emite el evento |
-| Transferencias en cola y su tiempo hasta enviarse | Cuánto se usa la aplicación sin conexión | Evento de Analytics | Planificada, etapa 8 |
+| Transferencias en cola y su tiempo hasta enviarse | Cuánto se usa la aplicación sin conexión | Evento de Analytics | La aplicación emite `transfer_queued`; el tiempo hasta enviarse no se mide |
 | Abandono en el registro, por paso | Fricción en el alta: cuántos superan cada paso y cuántos omiten los intereses | Embudo de Analytics sobre `auth_sign_up_step_completed` y `auth_sign_up_succeeded` | La aplicación emite los eventos; el embudo no está configurado |
 | Proporción de `auth_sign_in_failed` por clase de fallo | Distingue credenciales rechazadas de problemas de red o del proveedor | Evento de Analytics | La aplicación emite el evento |
 | Eventos `auth_profile_save_failed` | Altas que quedan a medio crear. Un aumento señala un problema con Firestore o con las reglas | Evento de Analytics | La aplicación emite el evento |

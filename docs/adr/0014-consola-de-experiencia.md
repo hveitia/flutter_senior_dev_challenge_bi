@@ -135,8 +135,7 @@ Verificado de nuevo tras las correcciones de la revisión, del mismo modo:
 
 Sin verificar:
 
-- La entrega real de una notificación: la aplicación aún no registra dispositivos ni se suscribe a temas. Por lo mismo, la entrega parcial y el marcado de dispositivos dados de baja solo están cubiertos por pruebas.
-- Que la aplicación refleje una publicación: aún no escucha `config/home`.
+- La entrega parcial y el marcado de dispositivos dados de baja, que solo están cubiertos por pruebas. La entrega real a un cliente y a un segmento sí se vio después en un teléfono ([ADR 0018](0018-notificaciones-y-bandeja.md)), igual que el reflejo de una publicación en el inicio ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md)).
 - El reintento de un envío fallido contra el servicio real, incluida la reclamación en transacción, y el rechazo de fallos simulados fuera de demostración; están cubiertos solo por pruebas.
 - El arrastre con el puntero; en la verificación se usaron los botones.
 - El despliegue y el flujo de integración continua, que nunca se ha ejecutado.

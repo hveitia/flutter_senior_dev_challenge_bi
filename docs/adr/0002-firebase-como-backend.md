@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existe el proyecto `flutter-challenge-bi`, la base de datos Firestore en `us-east1`, las reglas de seguridad iniciales, el proveedor de correo y contraseña habilitado y la inicialización de Firebase en la aplicación. El uso de Auth, Firestore, Cloud Messaging y las herramientas de observabilidad desde la aplicación está planificado.
+- **Implementación:** existe el proyecto `flutter-challenge-bi`, la base de datos Firestore en `us-east1`, las reglas de seguridad iniciales, el proveedor de correo y contraseña habilitado y la inicialización de Firebase en la aplicación. La aplicación usa Auth, Firestore, Cloud Messaging, Crashlytics, Analytics y Performance; las decisiones posteriores describen cada uso. Existe además un modo local sobre los emuladores de Auth y Firestore (`tool/local-stack.sh`).
 
 ## Problema a resolver
 

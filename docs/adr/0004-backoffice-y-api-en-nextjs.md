@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** planificada. `apps/backoffice` todavía no existe.
+- **Implementación:** completa en `apps/backoffice`: la consola ([ADR 0014](0014-consola-de-experiencia.md), [0015](0015-acceso-de-administradores.md)), la API de clientes ([ADR 0016](0016-movimiento-de-dinero-en-el-servidor.md)) y las páginas de los aliados simulados ([ADR 0019](0019-mini-aplicaciones-de-aliados.md)). No está desplegada.
 
 ## Problema a resolver
 

@@ -50,7 +50,7 @@ flowchart LR
   tokens --> theme[Tema y extensiones]
   theme --> components[Componentes base]
   components --> app[apps/mobile]
-  components --> features[Paquetes de dominio, planificados]
+  components --> features[Paquetes de dominio]
   catalog[Catálogo de pruebas] -. accesibilidad .-> components
 ```
 

@@ -8,8 +8,9 @@
   },
   "scripts": {
     "test": "firebase emulators:exec --only firestore --project demo-banca-digital \"node --test test/firestore.rules.test.js\"",
-    "test:seed": "node --test seed/seed-data.test.mjs",
-    "seed": "node seed/seed.mjs"
+    "test:seed": "node --test seed/seed-data.test.mjs seed/config-document.test.mjs",
+    "seed": "node seed/seed.mjs",
+    "publish-config": "node seed/publish-config.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",

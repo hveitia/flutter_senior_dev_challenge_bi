@@ -105,7 +105,16 @@ Un fallo es visible. Una pantalla que tarda, un reintento constante o un módulo
 | Señal | Qué indica | Fuente | Estado |
 |---|---|---|---|
 | Duración de `home_load` | Cuánto tarda el inicio en ser útil, por origen de datos (red o caché) | Traza de Performance | No construida. Hoy lo aproximan `accounts_first_load` y los eventos de carga de movimientos |
-| Duración de `transfer_submit` | Latencia de la operación más sensible | Traza de Performance | Planificada, etapa 8 |
+| Duración de `transfer_settle` | Latencia de la operación más sensible: cuánto tarda el servidor en liquidar una orden | Traza de Performance | La aplicación la emite |
+| Proporción de `transfer_not_sent` frente a `transfer_confirmed`, por clase de fallo | Órdenes que quedan sin respuesta: el peor estado para el cliente | Evento de Analytics | La aplicación los emite |
+| `transfer_queued` y `transfer_queued_settled` por resultado | Cuánto se transfiere sin conexión y cómo termina | Evento de Analytics | La aplicación los emite |
+| `transfer_stopped` por motivo (`sessionExpired`, `orderChanged`, `notAccepted`) | Sesiones caducadas a mitad de una operación, o un cliente y un servidor que no se entienden | Evento de Analytics | La aplicación lo emite |
+| Error `transfer_queue_write_refused` | El banco no aceptó una orden que estaba en cola | Crashlytics, error no fatal | La aplicación lo emite |
+| `transfer_rejected` por motivo | Qué reglas del servidor frenan a los clientes | Evento de Analytics | La aplicación lo emite |
+| `accounts_provision_failed` por clase de fallo | Clientes nuevos que se quedan sin cuentas | Evento de Analytics | La aplicación lo emite |
+
+Los eventos de transferencias llevan el motivo o la clase de fallo, nunca el importe, las cuentas, el concepto ni el identificador de la orden.
+
 | Eventos `resilience_timeout`, `resilience_retry` y `resilience_attempts_exhausted`, por servicio | El servicio responde mal aunque no haya fallos | Evento de Analytics | La aplicación los emite para acceso, cuentas y movimientos |
 | Duración de `accounts_first_load` y `movements_first_load`, por origen | Cuánto tarda el cliente en ver su saldo y sus movimientos, y cuántas veces los ve desde la copia | Traza de Performance | La aplicación las emite |
 | Proporción de `accounts_data_load_failed` por servicio y clase de fallo | Indisponibilidad parcial: los movimientos fallan mientras las cuentas responden, o al revés | Evento de Analytics | La aplicación emite el evento |

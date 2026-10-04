@@ -88,6 +88,31 @@ El peor caso de una lectura que nunca responde ronda los 25 s (tres intentos de 
 
 Cuentas y movimientos se identifican como servicios distintos (`accounts` y `movements`) ante la política de resiliencia, y en el inicio cada uno tiene su propio estado: el saldo, el carrusel y las inversiones leen las cuentas, y los últimos movimientos tienen un Bloc aparte. El inicio solo sustituye la pantalla por un error cuando todo lo que dibujaría algo es un módulo con datos que falló; basta un módulo sano para que siga en pantalla.
 
+## Transferencias
+
+La regla que ordena todo: una orden solo se deja en cola cuando es seguro que no salió del teléfono. En cualquier otro caso, el cliente repite la misma orden con el mismo identificador, que el servidor liquida una sola vez ([ADR 0017](../adr/0017-transferencias-en-la-aplicacion.md)).
+
+| Situación | Qué ve el cliente | Estado |
+| --- | --- | --- |
+| Transferencia con conexión | «Transferencia realizada» con su referencia, y el movimiento en las dos cuentas | Visto en un teléfono, con la prueba de extremo a extremo |
+| Monto por encima del máximo por transferencia | El error bajo el monto y no se puede continuar | Visto en un teléfono |
+| Monto por encima del saldo disponible | «Saldo insuficiente. Disponible: …» bajo el monto | Pruebas automáticas |
+| Sin conexión al confirmar | «Transferencia pendiente», etiqueta «En cola», sin «Ver movimiento». La orden queda en el teléfono | Pruebas automáticas |
+| Vuelve la conexión con órdenes en cola | Se envían solas, de una en una. Cada movimiento aparece en su cuenta | Pruebas automáticas |
+| Se cierra y se abre la aplicación con órdenes en cola | Siguen en cola y se envían al haber conexión | Sin verificar: depende de la persistencia de Firestore en el dispositivo |
+| El servidor no contesta a tiempo, o la conexión se pierde con la petición ya enviada | «No pudimos enviar la transferencia» y «Reintentar», que repite la misma orden. Nunca «En cola» | Pruebas automáticas |
+| El cliente sale y vuelve a entrar a transferir con esa orden sin resolver | La pantalla se abre sobre esa orden, no sobre un formulario vacío | Pruebas automáticas |
+| La petición está en vuelo | No se puede salir de la pantalla: ni con el retroceso del sistema ni con el botón de cerrar | Pruebas automáticas |
+| El servidor rechaza la orden | El motivo, sin «Reintentar» | Pruebas automáticas |
+| La sesión ya no es válida | Se renueva el token una vez; si no basta, «Tu sesión venció…», sin reintento | Pruebas automáticas |
+| El banco no acepta una orden que estaba en cola | Aviso en Cuentas: el motivo del rechazo, o «Una transferencia en cola no se pudo enviar. Revisa tus movimientos antes de repetirla.» | Pruebas automáticas |
+| Cerrar sesión con órdenes que solo existen en el teléfono | Aviso de que se descartan; la sesión solo se cierra si el cliente lo confirma | Pruebas automáticas |
+| Cerrar sesión con órdenes que el banco ya recibió | Aviso de que no se descartan y se completarán al volver a iniciar sesión | Pruebas automáticas |
+| La API de clientes está caída | «No pudimos enviar la transferencia». No se encola: el teléfono tiene conexión y la orden esperaría a un servidor caído | Pruebas automáticas |
+| Cliente nuevo sin cuentas | «Estamos preparando tu cuenta» mientras se pide el alta; si falla, el aviso con «Reintentar» | Pruebas automáticas |
+
+Lo marcado como «Pruebas automáticas» no se ha visto en un dispositivo: el teléfono estaba bloqueado cuando se intentó.
+
 ## Laboratorio de resiliencia
 
 La configuración publicada lleva un bloque `resilience` con la latencia añadida y los servicios dados por caídos. La aplicación lo aplica en un único lugar, la política de resiliencia, y solo si se compiló con `--dart-define=ALLOW_FAULT_INJECTION=true`.

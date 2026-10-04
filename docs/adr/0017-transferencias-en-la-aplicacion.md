@@ -34,6 +34,26 @@ Además, un cliente recién registrado no tiene cuentas: solo el servidor puede 
 | El dispositivo está sin conexión, o la política lo detecta antes de enviar | Escribe la solicitud pendiente `users/{uid}/transfers/{id}`; no llama al servidor | «Transferencia pendiente», etiqueta «En cola», sin «Ver movimiento» |
 | El servidor responde | Muestra lo que respondió: completada con su referencia, o rechazada con su motivo | «Transferencia realizada» o el motivo del rechazo |
 | El servidor no contesta a tiempo o falla, tras los reintentos | No encola: no se sabe si se liquidó | «No pudimos enviar la transferencia» y «Reintentar», que repite la misma orden |
+| Un intento ya salió y, antes del siguiente, el dispositivo se queda sin conexión | No encola: la petición pudo llegar. La orden queda como «sin resolver» | Lo mismo que la fila anterior |
+| El servidor responde sobre la propia petición | No reintenta: daría la misma respuesta | Ver «Respuestas que el cliente puede atender» |
+
+**Una orden que pudo salir nunca entra en la cola.** El repositorio anota que una petición salió desde el primer intento. Si después la política informa de que no hay conexión, el resultado es «no se pudo enviar», no «en cola»: encolarla prometería un envío futuro de una orden que quizá ya está liquidada. La revisión encontró que la primera versión sí la encolaba.
+
+**La orden sin resolver bloquea una orden nueva.** Mientras una orden salió y no tiene respuesta final, el repositorio la conserva en memoria durante la sesión, y la pantalla de transferencia se abre sobre ella, con «Reintentar», en lugar de mostrar un formulario vacío. Lo único seguro que se puede enviar es esa misma orden, con su mismo identificador. Se descartó guardarla en disco: es un importe y dos cuentas, y nada del cliente queda en el dispositivo fuera de la sesión.
+
+**Sin salida mientras se envía.** Con la petición en vuelo, el retroceso del sistema y el botón de cerrar están desactivados.
+
+**Respuestas que el cliente puede atender** (`HttpTransfersApi` y `DefaultTransfersRepository`):
+
+| Respuesta | Qué hace la aplicación | Qué ve el cliente |
+|---|---|---|
+| `401` | Renueva el token una vez y repite la petición. Si vuelve a `401`, se detiene | «Tu sesión venció. Inicia sesión de nuevo para transferir. No se movió dinero.», sin reintento |
+| `409` (el identificador se usó para otra orden) | Se detiene y descarta el identificador | Se le pide revisar sus movimientos y «Empezar de nuevo», que vuelve al formulario con un identificador nuevo |
+| `400`, `413`, `415` | Se detiene | «El banco no pudo procesar esta solicitud. No se movió dinero.», sin reintento |
+| `422` | Muestra el motivo del rechazo | El motivo, por ejemplo «Una de las cuentas no admite transferencias.» |
+| `5xx` o sin respuesta | Reintenta la misma orden | «No pudimos enviar la transferencia» y «Reintentar» |
+
+**Una orden en cola que el banco no acepta se cuenta.** Si la escritura pendiente es rechazada al llegar al servidor, por las reglas o porque ese identificador ya está liquidado, Firestore la retira del dispositivo. El procesador de salida pregunta entonces al servidor qué fue de ella: si se realizó, no dice nada, porque el movimiento aparece; si fue rechazada, muestra el motivo; si el servidor no sabe nada de ella, avisa de que una transferencia en cola no se pudo enviar. Antes desaparecía sin explicación.
 
 **La cola es la escritura pendiente de Firestore.** Sin red, el documento queda en la persistencia local y Firestore lo entrega al reconectar. Las reglas permiten a la aplicación crear exactamente ese documento (seis campos, estado pendiente, hora del servidor) y nada más; solo el servidor lo liquida.
 
@@ -41,7 +61,7 @@ Además, un cliente recién registrado no tiene cuentas: solo el servidor puede 
 
 **El resultado de una orden en cola** llega por dos vías: los movimientos aparecen en las cuentas por la misma escucha que ya usan todas las pantallas, y un rechazo se muestra como aviso en la sección de cuentas hasta que el cliente lo descarta.
 
-**Cerrar sesión con órdenes sin enviar.** Cerrar sesión borra lo guardado en el dispositivo, y eso incluye las escrituras pendientes: esas órdenes no se enviarían nunca. La aplicación no cierra la sesión en silencio: avisa de que hay transferencias sin enviar y solo continúa si el cliente elige de forma explícita cerrar sesión y descartarlas. La acción por defecto es quedarse.
+**Cerrar sesión con órdenes sin enviar.** Cerrar sesión borra lo guardado en el dispositivo, y eso incluye las escrituras pendientes: esas órdenes no se enviarían nunca. La aplicación no cierra la sesión en silencio: avisa y solo continúa si el cliente lo confirma. La acción por defecto es quedarse. El aviso distingue dos casos, porque «descartar» solo es verdad para uno. Las órdenes que existen solo en el teléfono se descartan y no se enviarán. Las que el banco ya recibió no las puede retirar ningún cliente, porque las reglas no permiten borrar ni modificar una solicitud: el aviso dice que no se descartan y que se completarán cuando el cliente vuelva a iniciar sesión, que es cuando la aplicación pide su liquidación. Si solo hay órdenes de ese tipo, el botón dice «Cerrar sesión», sin «descartar».
 
 **Validación antes de enviar.** Una función pura comprueba cuentas distintas, monto mayor que cero, máximo por transferencia y saldo disponible, con los mismos límites que el servidor y que la regla. El servidor decide de todos modos: la validación local solo evita un viaje que se sabe inútil.
 
@@ -51,9 +71,9 @@ Además, un cliente recién registrado no tiene cuentas: solo el servidor puede 
 
 **Puntos de entrada detrás de la funcionalidad.** El destino `transfer` se resuelve solo si la configuración publicada tiene `transfers` activa para el segmento del cliente. Con ella apagada desaparecen en vivo la acción rápida, la acción del banner y el botón del detalle de cuenta.
 
-**Cliente de API** (`HttpTransfersApi`). La dirección base llega por `--dart-define=API_BASE_URL`. Cada petición lleva el token de identidad de la sesión. Un servidor que falla o no acepta la conexión es «servicio no disponible» y se reintenta; una respuesta sobre la propia petición (sesión no aceptada, identificador reutilizado) no se reintenta y se reporta solo por su código. En desarrollo, Android permite HTTP sin cifrar únicamente hacia la máquina del desarrollador, y solo en compilaciones de depuración y de perfil.
+**Cliente de API** (`HttpTransfersApi`). La dirección base llega por `--dart-define=API_BASE_URL`. Cada petición lleva el token de identidad de la sesión. Un servidor que falla o no acepta la conexión es «servicio no disponible» y se reintenta; una respuesta sobre la propia petición (sesión no aceptada, identificador reutilizado) no se reintenta y se reporta solo por su código. En desarrollo, Android permite HTTP sin cifrar únicamente hacia la máquina del desarrollador, y solo en compilaciones de depuración y de perfil. La regla también está en el código (`apps/mobile/lib/api_base_url.dart`): una compilación de publicación exige una dirección `https` y se niega a arrancar sin ella, en lugar de apuntar en silencio a `localhost` o enviar el token sin cifrar. El cliente no sigue redirecciones.
 
-**Prueba de extremo a extremo** (`apps/mobile/integration_test/transfer_flow_test.dart`). Conduce la aplicación real en un dispositivo: inicia sesión, transfiere entre las dos cuentas del cliente y comprueba que el movimiento que aparece en la cuenta lleva la referencia que devolvió el servidor. No usa dobles: corre contra el proyecto real y la API en local, con un cliente de prueba cuyas credenciales llegan por variables de compilación y no se guardan en el repositorio.
+**Prueba de extremo a extremo** (`apps/mobile/integration_test/transfer_flow_test.dart`). Conduce la aplicación real en un dispositivo: inicia sesión, transfiere un dólar de la cuenta de ahorros a la corriente y lo devuelve con una segunda orden, y comprueba en cada una que el movimiento que aparece en la cuenta lleva la referencia que devolvió el servidor. Los saldos terminan como empezaron, así que puede repetirse sin límite. No usa dobles: corre contra el proyecto real y la API en local, con un cliente de prueba cuyas credenciales llegan por variables de compilación y no se guardan en el repositorio.
 
 ## Trade-offs
 
@@ -61,10 +81,12 @@ Además, un cliente recién registrado no tiene cuentas: solo el servidor puede 
 - **Se gana:** la cola no añade almacenamiento propio ni código de sincronización.
 - **Se gana:** la aplicación nunca presenta como «en cola» una orden que el servidor quizá ya liquidó.
 - **Se paga:** la cola depende de que la aplicación esté abierta para pedir la liquidación. Con una función disparada por la escritura bastaría con que la solicitud llegara.
-- **Se paga:** una orden en cola se descarta si el cliente cierra sesión antes de recuperar la conexión. Se le avisa y lo decide él.
+- **Se paga:** una orden que solo existe en el teléfono se descarta si el cliente cierra sesión antes de recuperar la conexión. Se le avisa y lo decide él.
 - **Se paga:** la prueba de extremo a extremo necesita un dispositivo, la API en marcha y un cliente de prueba; no corre en la integración continua.
-- **Se paga:** cada ejecución de esa prueba mueve un dólar entre las cuentas del cliente de prueba.
-- **Límite:** tras «No pudimos enviar la transferencia», si el cliente abandona en lugar de reintentar, la aplicación no vuelve a preguntar por esa orden. Si el servidor la liquidó, el movimiento aparece igualmente en la cuenta.
+- **Se paga:** cada ejecución de esa prueba deja cuatro movimientos reales en el cliente de prueba, aunque los saldos no cambien.
+- **Se paga:** una orden sin resolver impide empezar otra hasta que el servidor responda. Es deliberado: la alternativa es arriesgar un segundo envío.
+- **Lo que no se puede garantizar:** si el sistema cierra la aplicación con una orden sin resolver, esa memoria se pierde. Al volver, el cliente ve un formulario vacío; si el servidor la liquidó, el movimiento aparece en la cuenta, pero nada le impide repetirla a mano. Cerrar ese hueco exige guardar la orden en el dispositivo o consultarla en el servidor al abrir, y no se hizo.
+- **Sin verificar en un dispositivo:** la cola sin conexión, su liquidación al reconectar, su supervivencia a un reinicio, el bloqueo de salida mientras se envía y la versión de la prueba de extremo a extremo con el viaje de vuelta. El teléfono estaba bloqueado durante esta revisión. Todo ello está cubierto por pruebas automáticas.
 - **Límite:** el aviso de rechazo de una orden en cola no dice de qué orden se trata cuando hay varias.
 - **Límite:** el saldo que valida el formulario es el que tiene el dispositivo, que sin conexión puede estar desactualizado. El servidor decide con el saldo real.
 - **Límite:** no hay comprobante para compartir ni transferencias a terceros.

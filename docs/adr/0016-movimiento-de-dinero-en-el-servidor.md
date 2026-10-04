@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existen en `apps/backoffice` las rutas `POST /api/transfers`, `POST /api/transfers/{transferId}/process` y `POST /api/accounts/provision`, con la autenticación de clientes por token, la decisión de la transferencia como función pura y su liquidación en una transacción. Se comprobó en local contra el proyecto real con el cliente de prueba: una transferencia y su reverso, la repetición de la misma solicitud, dos envíos simultáneos y un sobregiro. Falta lo que no pertenece al servidor: la aplicación todavía no llama a estas rutas, y la regla de Firestore que permite a la aplicación crear la solicitud pendiente está propuesta pero no desplegada.
+- **Implementación:** existen en `apps/backoffice` las rutas `POST /api/transfers`, `POST /api/transfers/{transferId}/process` y `POST /api/accounts/provision`, con la autenticación de clientes por token, la decisión de la transferencia como función pura y su liquidación en una transacción. Se comprobó en local contra el proyecto real con el cliente de prueba: una transferencia y su reverso, la repetición de la misma solicitud, dos envíos simultáneos y un sobregiro. La aplicación ya llama a estas rutas ([ADR 0017](0017-transferencias-en-la-aplicacion.md)) y la regla de Firestore que le permite crear la solicitud pendiente está en `firebase/firestore.rules`, con sus pruebas, y desplegada. El flujo en línea se comprobó de punta a punta en un teléfono; el camino en cola desde la aplicación sigue sin verse en un dispositivo.
 
 ## Problema a resolver
 
@@ -69,6 +69,14 @@ El mismo identificador con una orden distinta se rechaza (`409`), en lugar de re
 
 **Alta de cuentas.** `POST /api/accounts/provision` abre las dos cuentas iniciales de un cliente que no tiene ninguna, con su depósito de apertura como movimiento. Un cliente que ya tiene cuentas las recibe tal como están. El registro en la aplicación crea solo el perfil ([ADR 0011](0011-autenticacion-y-perfil.md)); esta ruta cierra ese hueco.
 
+**El depósito de apertura es dinero de demostración.** No tiene valor real: existe para que quien evalúe el reto pueda registrarse y transferir sin que nadie le cargue datos. El registro es abierto y el correo no se verifica, de modo que cada cuenta nueva crea 75 dólares de saldo ficticio y nada impide crear muchas. Se deja así a propósito: exigir correo verificado dejaría a la aplicación, que no tiene ese flujo, sin poder dar de alta a nadie. Con dinero real, el alta no acreditaría nada y exigiría identidad verificada.
+
+**Qué cuentas pueden transferir.** Solo las de ahorros y la corriente. Una cuenta de inversión no es origen ni destino: la decisión la rechaza con `account-not-eligible`.
+
+**Qué queda de un documento escrito por un teléfono.** Al liquidar, el documento se reescribe entero con la orden que el servidor leyó, su fecha de creación y el resultado. No se fusiona con lo almacenado: una referencia, un motivo o una fecha de liquidación que un cliente hubiera puesto en la solicitud pendiente no sobreviven. La regla de Firestore ya impide crear un documento con esos campos; el servidor no depende de ella.
+
+**Emuladores.** El servidor se niega a arrancar en producción si están definidas las variables de emulador de Firebase, porque con ellas aceptaría tokens sin firma.
+
 **Qué se registra.** Una línea por petición: ruta, estado, un código de resultado, duración e identificador de petición, que también viaja en la respuesta. Ningún cliente, cuenta, importe ni mensaje de error llega al registro.
 
 **Una solicitud que nunca se procesa.** Se queda en `pending` y no afecta a ningún saldo. La aplicación es la única que la procesa: al reconectar, o al abrirse con solicitudes pendientes. Si el teléfono no vuelve a conectarse, la transferencia no ocurre. No hay un proceso del servidor que barra las pendientes ni una fecha de caducidad.
@@ -86,12 +94,14 @@ El mismo identificador con una orden distinta se rechaza (`409`), en lugar de re
 - **Límite:** el número de cuenta que genera el alta es aleatorio y no se comprueba que sea único entre clientes.
 - **Límite:** no hay límite diario por cliente ni límite de frecuencia; solo el máximo por transferencia.
 - **Límite:** solo entre cuentas propias. No hay terceros, ni otros bancos, ni retención de fondos.
-- **Sin verificar:** el camino en cola de punta a punta. La liquidación de una solicitud pendiente se comprobó contra el proyecto real, pero el documento lo creó la herramienta de verificación, no la aplicación, porque la regla que se lo permite a la aplicación aún no está desplegada.
+- **Límite:** el alta de cuentas es un grifo de saldo ficticio para quien se registre muchas veces. Es aceptable solo porque el dinero es de demostración.
+- **Sin verificar:** el camino en cola de punta a punta en un dispositivo. La liquidación de una solicitud pendiente se comprobó contra el proyecto real con un documento creado por la herramienta de verificación; la aplicación ya puede crearlo, pero la cola no se ha visto funcionar en un teléfono.
 
 ## Impacto a largo plazo
 
 - **El contrato sobrevive a un cambio de motor.** La aplicación solo conoce el identificador, los estados y los códigos. Sustituir la ruta por una función disparada, o por un núcleo bancario, no la cambia.
 - **Lo que haría producción antes de mover dinero real:**
+  - **Identidad verificada** antes de abrir una cuenta: correo o teléfono confirmados y validación del documento, y un alta que no acredite saldo.
   - **App Check**, para que solo la aplicación legítima llame a las rutas.
   - **Límites por cliente** (diario, por número de operaciones) y límite de frecuencia por dirección y por cuenta.
   - **Conciliación periódica:** comprobar que los movimientos de cada cuenta suman su saldo y que toda transferencia completada tiene sus dos movimientos, con alerta si no.

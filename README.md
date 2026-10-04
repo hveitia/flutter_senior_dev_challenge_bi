@@ -17,7 +17,7 @@ El proyecto se construye por etapas, con `main` siempre en verde. Esta sección 
 | 5. Cuentas y movimientos | Navegación inferior, lectura en tiempo real, datos guardados sin conexión, filtros, búsqueda, paginación y estados degradados | Completa |
 | 6. Inicio dinámico | Inicio armado desde la configuración publicada, registro de módulos por dominio, personalización por segmento, laboratorio de resiliencia y diagnóstico | Completa |
 | 7. Consola web | Edición y publicación de la configuración con control de versión, acceso de administradores y envío de notificaciones | Completa, sin desplegar |
-| 8. Transferencias | API de servidor, cola sin conexión y flujo E2E | Pendiente |
+| 8. Transferencias | API de servidor, transferencias entre cuentas propias, cola sin conexión, alta de cuentas y flujo de extremo a extremo | Completa; la cola sin conexión no se ha visto en un dispositivo |
 | 9. Notificaciones | Push y bandeja | Pendiente |
 | 10. Servicios | Catálogo y micro aplicativos | Pendiente |
 | 11. Cierre | Diagramas, despliegue, operación y guion de demostración | Pendiente |
@@ -30,6 +30,7 @@ Lo que existe hoy:
 - **Inicio dirigido por configuración.** El inicio no tiene una composición fija: se arma en tiempo de ejecución con los módulos que la configuración publicada indica para el segmento del cliente, en el orden publicado. Al publicar otro orden u ocultar un módulo, la pantalla cambia sin reiniciar la aplicación. Cada dominio registra sus módulos y el inicio no conoce a ninguno ([ADR 0013](docs/adr/0013-registro-de-modulos-y-motor-del-inicio.md)). Un tipo de módulo que esta versión no conoce se omite.
 - **Personalización.** El cliente cambia sus intereses y su segmento en Perfil, en «Personalización», y el inicio se recompone para el segmento nuevo sin iniciar sesión otra vez. El segmento Patrimonio muestra el saldo con las inversiones, la tendencia del saldo de los últimos 30 días, calculada a partir de los movimientos reales, y un módulo con lo invertido.
 - **Consola de experiencia.** Una aplicación web interna edita la configuración por segmento (orden y visibilidad de los módulos, banner, funcionalidades, laboratorio de resiliencia), la valida contra el contrato y la publica con control de versión. Lo publicado cambia el inicio de los teléfonos sin publicar la aplicación. También envía notificaciones ([Consola de experiencia](#consola-de-experiencia)).
+- **Transferencias.** El cliente transfiere entre sus cuentas de ahorros y corriente. El dinero lo mueve el servidor, en una transacción, a través de la API de clientes; la aplicación solo lo pide. Cada orden lleva un identificador propio que el servidor liquida una sola vez, así que repetirla nunca mueve el dinero dos veces. Sin conexión, la orden queda en cola en el teléfono y se envía sola al volver la red. Una orden que pudo salir del teléfono nunca se encola: se repite con el mismo identificador. Un cliente recién registrado recibe sus dos cuentas, con un depósito de demostración, sin intervención de nadie.
 - **Degradación.** Los formularios avisan de la falta de conexión, cada llamada pasa por la política de resiliencia y una cuenta cuyo perfil no llegó a guardarse se completa en el siguiente inicio de sesión. Sin conexión, el inicio, las cuentas y los movimientos se muestran desde la copia guardada en el dispositivo, indicando desde cuándo. Cada módulo del inicio tiene su propio estado: si los movimientos fallan, el saldo y las cuentas siguen en pantalla. El detalle está en [`docs/operacion/conectividad-degradada.md`](docs/operacion/conectividad-degradada.md).
 - **Laboratorio de resiliencia.** La configuración publicada puede añadir latencia y dar por caído el servicio de movimientos. Solo tiene efecto en una compilación hecha para demostración; una compilación normal lo ignora.
 - **Diagnóstico.** Perfil muestra el estado de la conexión, la antigüedad de la última sincronización, la versión y el origen de la configuración en uso y la versión de la aplicación, con valores reales.
@@ -38,10 +39,11 @@ Lo que existe hoy:
 Lo que todavía no hace la aplicación:
 
 - La sección Servicios dice que está en construcción. Perfil muestra el nombre, el correo y el segmento del cliente, la personalización, el diagnóstico y permite cerrar sesión.
-- Las acciones del inicio cuyo destino aún no tiene pantalla (transferir, recargar, el seguro de viaje) no se muestran, aunque la configuración las publique. Tampoco se dibuja el módulo de servicios recomendados.
+- Las acciones del inicio cuyo destino aún no tiene pantalla (recargar, el seguro de viaje) no se muestran, aunque la configuración las publique. Tampoco se dibuja el módulo de servicios recomendados.
 - La consola web no está desplegada: se ejecuta en local. La aplicación todavía no registra dispositivos, así que las notificaciones que envía la consola se validan contra el servicio y no llegan a ningún teléfono.
-- Un cliente recién registrado no tiene cuentas hasta que exista la API de servidor que las abre. Mientras tanto hay una herramienta de desarrollo que carga datos de demostración (ver [Datos de demostración](#datos-de-demostración-herramienta-de-desarrollo)).
-- No se puede transferir, compartir datos de la cuenta ni compartir un comprobante. Esas acciones del diseño no se muestran hasta que tengan algo detrás.
+- La API de clientes no está desplegada: se ejecuta en local, junto a la consola. Sin ella en marcha, la aplicación no puede transferir ni abrir las cuentas de un cliente nuevo; para ese caso sigue existiendo la herramienta que carga datos de demostración (ver [Datos de demostración](#datos-de-demostración-herramienta-de-desarrollo)).
+- Solo se transfiere entre cuentas propias de ahorros y corriente. No hay terceros, ni otros bancos, ni comprobante para compartir. Compartir los datos de la cuenta tampoco está: esas acciones del diseño no se muestran hasta que tengan algo detrás.
+- La cola de transferencias sin conexión, su envío al reconectar y el alta de un cliente nuevo están cubiertos por pruebas automáticas, pero no se han visto en un dispositivo.
 
 Qué se ha comprobado en ejecución:
 
@@ -81,6 +83,18 @@ La aplicación apunta al proyecto de Firebase `flutter-challenge-bi`. Los archiv
 cd apps/mobile
 flutter run
 ```
+
+Para transferir y para que un cliente nuevo reciba sus cuentas, la aplicación necesita la API de clientes, que hoy se ejecuta en local dentro de `apps/backoffice`:
+
+```bash
+cd apps/backoffice
+npm ci
+npm run build
+npx next start -p 3210          # la API y la consola, en el puerto 3210
+adb reverse tcp:3210 tcp:3210   # el teléfono ve ese puerto como localhost
+```
+
+Una compilación de depuración o de perfil usa `http://localhost:3210/` si no se indica otra dirección. Para otra, `--dart-define=API_BASE_URL=https://…/`. Una compilación de publicación exige una dirección `https` y se niega a arrancar sin ella. El contrato y las reglas de la dirección están en [docs/operacion/api.md](docs/operacion/api.md).
 
 Para revisar el sistema de diseño (tokens y componentes en todos sus estados) sin iniciar Firebase ni ningún servicio:
 
@@ -163,6 +177,8 @@ npm run dev
 
 Las notificaciones solo se entregan con `PUSH_DELIVERY=live`; sin esa variable se validan y no se envían. La configuración, el alta de administradores y el despliegue están en [docs/operacion/backoffice.md](docs/operacion/backoffice.md). No está desplegada.
 
+El mismo servidor expone la API que usa la aplicación en nombre del cliente: alta de cuentas y transferencias entre cuentas propias, con el token de identidad del cliente. Una sesión de administrador no abre nada en esa API, ni un token de cliente en la consola. El contrato está en [docs/operacion/api.md](docs/operacion/api.md).
+
 Para la demostración de «cambiar la experiencia sin publicar la aplicación»: con la consola en marcha y el inicio abierto en un teléfono, se mueve un módulo en «Módulos del inicio» y se pulsa «Publicar cambios». El inicio del teléfono cambia de orden en un par de segundos.
 
 ## Pruebas
@@ -180,6 +196,19 @@ tool/verify.sh --affected
 ```
 
 El formato y el análisis siguen cubriendo todo el repositorio. Las pruebas se limitan a los paquetes que el commit toca y a los que dependen de ellos, y el script imprime cuáles eligió y por qué.
+
+### Prueba de extremo a extremo
+
+El flujo crítico (iniciar sesión, transferir y ver el movimiento) se prueba con la aplicación real en un dispositivo, contra el proyecto de Firebase y la API de clientes en marcha. No usa dobles y no corre en la integración continua. Necesita un cliente de prueba propio, con cuenta de ahorros y cuenta corriente, cuyas credenciales se pasan al ejecutar y no se guardan en el repositorio:
+
+```bash
+cd apps/mobile
+flutter test integration_test/transfer_flow_test.dart -d <dispositivo> \
+  --dart-define=E2E_EMAIL=<correo> --dart-define=E2E_PASSWORD=<contraseña> \
+  --dart-define=API_BASE_URL=http://localhost:3210/
+```
+
+Transfiere un dólar de la cuenta de ahorros a la corriente y lo devuelve con una segunda orden. En cada una comprueba que el movimiento que aparece en la cuenta lleva la referencia que devolvió el servidor. Los saldos terminan como empezaron, así que puede repetirse; cada ejecución deja cuatro movimientos reales en ese cliente. La primera versión, con un solo sentido, pasó en un teléfono; la versión con el viaje de vuelta aún no se ha ejecutado en un dispositivo.
 
 Para ejecutar solo las pruebas de un paquete:
 

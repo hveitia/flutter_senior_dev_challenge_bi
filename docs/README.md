@@ -23,6 +23,8 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0013](adr/0013-registro-de-modulos-y-motor-del-inicio.md) | Registro de módulos y motor del inicio, con un estado por conjunto de datos | Aceptada |
 | [0014](adr/0014-consola-de-experiencia.md) | Consola de experiencia: validación desde el contrato y publicación con control de versión | Aceptada |
 | [0015](adr/0015-acceso-de-administradores.md) | Acceso de administradores y credenciales del servidor de la consola | Aceptada |
+| [0016](adr/0016-movimiento-de-dinero-en-el-servidor.md) | Movimiento de dinero en el servidor: solicitud pendiente, idempotencia y una sola transacción | Aceptada |
+| [0017](adr/0017-transferencias-en-la-aplicacion.md) | Transferencias en la aplicación: cliente de API, cola sin conexión y prueba de extremo a extremo | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
 
@@ -34,6 +36,7 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 ## Operación
 
 - [Consola de experiencia](operacion/backoffice.md): configuración, ejecución, pruebas y despliegue.
+- [API de clientes](operacion/api.md): rutas, contrato, códigos de error y cómo llega la aplicación a ella en desarrollo y en un despliegue.
 - [Monitoreo en producción](operacion/monitoreo.md): cómo se detectarían problemas operativos y de experiencia, y qué está implementado hoy.
 - [Comportamiento con conectividad degradada](operacion/conectividad-degradada.md): qué hace la aplicación sin conexión, con alta latencia y con un servicio caído, separando lo visto en un dispositivo de lo cubierto solo por pruebas y de lo planificado.
 
@@ -45,7 +48,7 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 
 Estos documentos se escriben cuando exista lo que describen:
 
-- Diagramas de la consola web, de la API de servidor y de los flujos de transferencias y notificaciones.
+- Diagramas de la API de clientes y de los flujos de transferencias (en línea y en cola) y notificaciones.
 - Estrategia de despliegue.
 - Comportamiento ante conectividad limitada, alta latencia e indisponibilidad parcial del inicio, las transferencias y los servicios de aliados (el de acceso, cuentas y movimientos ya está escrito).
 - Supuestos, riesgos técnicos y estrategia de escalamiento.

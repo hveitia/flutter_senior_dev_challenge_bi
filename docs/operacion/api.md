@@ -2,7 +2,7 @@
 
 Rutas del servidor que la aplicación móvil llama en nombre del cliente que tiene la sesión iniciada. Viven en el mismo servidor Next.js que la consola (`apps/backoffice`), bajo `app/api/`. Las decisiones están en el [ADR 0016](../adr/0016-movimiento-de-dinero-en-el-servidor.md); la configuración y el arranque del servidor, en [backoffice.md](backoffice.md).
 
-Estado: construidas y probadas en local contra el proyecto real. Sin desplegar. La aplicación todavía no las llama.
+Estado: construidas y probadas en local contra el proyecto real. Sin desplegar. La aplicación las usa para transferir y para el alta de cuentas.
 
 ## Lo común a todas las rutas
 
@@ -148,7 +148,7 @@ El documento pendiente que escribe la aplicación:
 }
 ```
 
-La aplicación solo puede crearlo, nunca modificarlo ni borrarlo. Esa regla de Firestore está propuesta y aún no desplegada; hasta entonces este camino no funciona desde la aplicación.
+La aplicación solo puede crearlo, nunca modificarlo ni borrarlo: lo impone la regla de `users/{uid}/transfers/{transferId}` en `firebase/firestore.rules`, que está desplegada. Al liquidar, el servidor reescribe el documento con la orden que leyó y el resultado; cualquier otro campo se descarta.
 
 ## Qué debe hacer la aplicación
 
@@ -174,21 +174,32 @@ Los nombres de los campos son los que lee la aplicación en `packages/feature_ac
 
 El servidor se arranca como describe [backoffice.md](backoffice.md). La dirección base se pasa a la aplicación al compilar, sin dejarla escrita en el código:
 
-    flutter run --dart-define=API_BASE_URL=http://localhost:3000
+    flutter run --dart-define=API_BASE_URL=http://localhost:3210/
 
-El nombre `API_BASE_URL` es el propuesto; la aplicación todavía no lo lee.
+Sin `API_BASE_URL`, una compilación de depuración o de perfil usa `http://localhost:3210/`.
 
 | Dónde corre la aplicación | Dirección del servidor |
 |---|---|
-| Teléfono físico Android, por USB | `http://localhost:3000`, después de `adb reverse tcp:3000 tcp:3000` |
-| Emulador de Android | `http://10.0.2.2:3000` |
-| Simulador de iOS | `http://localhost:3000` |
+| Teléfono físico Android, por USB | `http://localhost:3210/`, después de `adb reverse tcp:3210 tcp:3210` |
+| Emulador de Android | `http://10.0.2.2:3210/` |
+| Simulador de iOS | `http://localhost:3210/` (sin probar) |
 
-`adb reverse` hace que el puerto del teléfono apunte al del equipo de desarrollo; hay que repetirlo cada vez que se reconecta el cable. No se ha comprobado si la plataforma bloquea HTTP sin cifrar hacia `localhost`: si lo hace, debe permitirse solo en la variante de depuración.
+`adb reverse` hace que el puerto del teléfono apunte al del equipo de desarrollo; hay que repetirlo cada vez que se reconecta el cable.
+
+La dirección la decide el código, no lo que reciba la compilación (`apps/mobile/lib/api_base_url.dart`):
+
+| Compilación | Acepta | Rechaza al arrancar |
+|---|---|---|
+| Depuración y perfil | `https` a cualquier servidor; `http` solo a `localhost`, `127.0.0.1` y `10.0.2.2` | `http` a cualquier otro servidor |
+| Publicación | `https` a un servidor que no sea de desarrollo | `http`, una dirección vacía y los servidores de desarrollo |
+
+En Android, el tráfico sin cifrar hacia esos tres servidores está permitido solo en las variantes de depuración y de perfil, por su configuración de seguridad de red; la de publicación no la tiene. El cliente no sigue redirecciones: el token es solo para ese servidor.
 
 ## Cómo llega en un despliegue (descrito, no realizado)
 
-Las rutas se despliegan con la consola, sin configuración propia: usan las mismas credenciales del servidor y la misma guarda de proyecto. La aplicación se compila con la dirección pública en `API_BASE_URL`, siempre por HTTPS.
+Las rutas se despliegan con la consola, sin configuración propia: usan las mismas credenciales del servidor y la misma guarda de proyecto. La aplicación se compila con la dirección pública en `API_BASE_URL`. Una compilación de publicación solo arranca con una dirección `https`: sin ella, o con `http`, se detiene antes de mostrar nada.
+
+El depósito que acredita el alta de cuentas es dinero de demostración sin valor real, y el registro es abierto: no debe desplegarse así con dinero de verdad.
 
 Estas rutas no comprueban el origen de la petición, porque no dependen de cookies y una aplicación móvil no envía cabecera de origen. Lo que las protege es el token. Antes de exponerlas en producción hacen falta App Check y un límite de frecuencia, que no existen.
 

@@ -46,6 +46,37 @@ service cloud.firestore {
           && profile.createdAt is timestamp;
     }
 
+    // Every field of a transfer order as the app leaves it. The limits are the
+    // server's (apps/backoffice/lib/api/transfer.ts); they change together.
+    // The server checks all of this again and the balances as well: this
+    // only keeps a client from storing anything that is not an order.
+    function transferFields() {
+      return ['fromAccountId', 'toAccountId', 'amountCents', 'concept',
+              'status', 'createdAt'];
+    }
+
+    function isAccountId(value) {
+      return value is string && value.matches('^[A-Za-z0-9_-]{1,64}$');
+    }
+
+    function isPendingTransfer(transfer) {
+      return transfer.keys().hasOnly(transferFields())
+          && transfer.keys().hasAll(transferFields())
+          && isAccountId(transfer.fromAccountId)
+          && isAccountId(transfer.toAccountId)
+          && transfer.fromAccountId != transfer.toAccountId
+          // Whole cents: `is int` rejects 10.5 and numbers sent as text.
+          && transfer.amountCents is int
+          && transfer.amountCents > 0
+          && transfer.amountCents <= 500000
+          && transfer.concept is string
+          && transfer.concept.size() <= 80
+          // A client can only ask; settling is the server's.
+          && transfer.status == 'pending'
+          // The creation time is the server's, never the device's.
+          && transfer.createdAt == request.time;
+    }
+
     // Published experience configuration (home modules, flags, resilience).
     // Any signed-in customer reads it, so it must never hold sensitive data.
     match /config/{document} {
@@ -69,6 +100,16 @@ service cloud.firestore {
           && request.resource.data.email == resource.data.email;
 
       allow delete: if false;
+
+      // A transfer order waiting to be carried out. The app may only leave
+      // it: the server settles it and nobody edits or removes it afterwards.
+      // The document id is the idempotency key, chosen by the app.
+      match /transfers/{transferId} {
+        allow create: if isOwner(uid)
+            && transferId.matches('^[A-Za-z0-9_-]{16,64}$')
+            && isPendingTransfer(request.resource.data);
+        allow update, delete: if false;
+      }
 
       // Accounts, movements and anything else under the customer: read-only.
       match /{document=**} {

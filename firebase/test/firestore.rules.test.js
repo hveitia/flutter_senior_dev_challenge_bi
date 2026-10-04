@@ -425,6 +425,125 @@ describe('config: published configuration', () => {
   });
 });
 
+describe('users/{uid}/transfers: transfer orders left by the app', () => {
+  const TRANSFER_ID = '4f1c2a9e-7b3d-4e21-9c55-0a1b2c3d4e5f';
+  const path = `users/${OWNER}/transfers/${TRANSFER_ID}`;
+
+  /** A transfer order exactly as the app leaves it. */
+  function order(overrides = {}) {
+    return {
+      fromAccountId: 'savings',
+      toAccountId: 'checking',
+      amountCents: 15010,
+      concept: 'Arriendo',
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      ...overrides,
+    };
+  }
+
+  test('a customer leaves a pending order under an id of their choosing',
+    async () => {
+      await assertSucceeds(setDoc(doc(asOwner(), path), order()));
+    });
+
+  test('a customer reads their own order, to follow its outcome', async () => {
+    await seed(path, order({ createdAt: Timestamp.now() }));
+    await assertSucceeds(getDoc(doc(asOwner(), path)));
+  });
+
+  test('the largest amount, the longest concept and an empty concept are '
+    + 'accepted', async () => {
+    await assertSucceeds(setDoc(doc(asOwner(), path),
+      order({ amountCents: 500000, concept: 'a'.repeat(80) })));
+    await assertSucceeds(setDoc(
+      doc(asOwner(), `users/${OWNER}/transfers/another-order-id-0001`),
+      order({ concept: '' })));
+  });
+
+  test('a customer cannot leave an order for another customer', async () => {
+    await assertFails(setDoc(doc(asOtherCustomer(), path), order()));
+  });
+
+  test('a visitor cannot leave an order', async () => {
+    await assertFails(setDoc(doc(asVisitor(), path), order()));
+  });
+
+  test('a customer cannot read another customer\'s order', async () => {
+    await seed(path, order({ createdAt: Timestamp.now() }));
+    await assertFails(getDoc(doc(asOtherCustomer(), path)));
+  });
+
+  const refused = {
+    'already completed': { status: 'completed' },
+    'already rejected': { status: 'rejected' },
+    'for zero': { amountCents: 0 },
+    'for a negative amount': { amountCents: -100 },
+    'for a fraction of a cent': { amountCents: 150.1 },
+    'with the amount as text': { amountCents: '15010' },
+    'one cent over the limit': { amountCents: 500001 },
+    'from an account to itself': { toAccountId: 'savings' },
+    'with an account id that is a path': { fromAccountId: 'a/b' },
+    'with an empty account id': { toAccountId: '' },
+    'with an account id that is not text': { fromAccountId: 7 },
+    'with a concept one character too long': { concept: 'a'.repeat(81) },
+    'with a concept that is not text': { concept: 42 },
+    'dated by the device instead of the server':
+      { createdAt: Timestamp.fromMillis(1_700_000_000_000) },
+    'that already carries a reference': { reference: 'TRF-202610-ABCDEF0123' },
+    'that already carries a settlement time': { processedAt: serverTimestamp() },
+    'that names a customer': { uid: OTHER },
+  };
+
+  for (const [name, change] of Object.entries(refused)) {
+    test(`a customer cannot leave an order ${name}`, async () => {
+      await assertFails(setDoc(doc(asOwner(), path), order(change)));
+    });
+  }
+
+  for (const field of ['fromAccountId', 'toAccountId', 'amountCents',
+    'concept', 'status', 'createdAt']) {
+    test(`a customer cannot leave an order without ${field}`, async () => {
+      await assertFails(setDoc(doc(asOwner(), path), without(order(), field)));
+    });
+  }
+
+  test('an order id must be long enough to be unique', async () => {
+    await assertFails(
+      setDoc(doc(asOwner(), `users/${OWNER}/transfers/short`), order()),
+    );
+  });
+
+  test('a customer cannot change an order once it is left', async () => {
+    await seed(path, order({ createdAt: Timestamp.now() }));
+    await assertFails(updateDoc(doc(asOwner(), path), { amountCents: 1 }));
+    await assertFails(updateDoc(doc(asOwner(), path), { status: 'completed' }));
+  });
+
+  test('a customer cannot replace an order by leaving it again', async () => {
+    await seed(path, order({ createdAt: Timestamp.now() }));
+    await assertFails(
+      setDoc(doc(asOwner(), path), order({ amountCents: 20000 })),
+    );
+  });
+
+  test('a customer cannot reopen an order the server settled', async () => {
+    await seed(path, order({
+      status: 'rejected',
+      reason: 'insufficient-funds',
+      createdAt: Timestamp.now(),
+      processedAt: Timestamp.now(),
+    }));
+    await assertFails(updateDoc(doc(asOwner(), path), { status: 'pending' }));
+    await assertFails(setDoc(doc(asOwner(), path), order()));
+  });
+
+  test('a customer cannot delete an order', async () => {
+    await seed(path, order({ createdAt: Timestamp.now() }));
+    await assertFails(deleteDoc(doc(asOwner(), path)));
+  });
+});
+
 describe('anything else', () => {
   test('a path no rule mentions is closed, even when signed in', async () => {
     await assertFails(getDoc(doc(asOwner(), 'secrets/keys')));

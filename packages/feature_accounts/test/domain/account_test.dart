@@ -29,6 +29,22 @@ void main() {
     expect(totalAvailableCents(const []), 0);
   });
 
+  test('there is no total across accounts in different currencies: adding '
+      'them would be a number that means nothing', () {
+    const euros = Account(
+      id: 'euros',
+      name: 'Cuenta en euros',
+      kind: AccountKind.savings,
+      number: '22009999',
+      availableCents: 50000,
+      ledgerCents: 50000,
+      currency: 'EUR',
+    );
+
+    expect(totalAvailableCents([savings, euros]), isNull);
+    expect(totalAvailableCents([euros, euros]), 100000);
+  });
+
   test('accounts are listed by kind and then by name', () {
     const secondSavings = Account(
       id: 'goal',

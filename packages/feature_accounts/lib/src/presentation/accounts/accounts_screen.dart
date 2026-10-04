@@ -116,13 +116,12 @@ class AccountsScreen extends StatelessWidget {
               message: AccountsStrings.accountsIncomplete,
               tone: AppTone.warning,
             )
-          else ...[
+          // Accounts in different currencies have no total either; each
+          // card still states its own balance.
+          else if (totalAvailableCents(data) case final total?) ...[
             const GroupHeader(label: AccountsStrings.totalBalance),
             const SizedBox(height: AppSpacing.x1),
-            AmountText(
-              cents: totalAvailableCents(data),
-              size: AmountTextSize.display,
-            ),
+            AmountText(cents: total, size: AmountTextSize.display),
           ],
           if (showsAge) ...[
             const SizedBox(height: AppSpacing.x1),

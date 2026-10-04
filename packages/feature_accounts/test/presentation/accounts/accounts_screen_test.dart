@@ -77,6 +77,27 @@ void main() {
     expect(find.byType(AccountCard), findsOneWidget);
   });
 
+  testWidgets('shows no total when the accounts are in different '
+      'currencies, only each account', (tester) async {
+    const euros = Account(
+      id: 'euros',
+      name: 'Cuenta en euros',
+      kind: AccountKind.savings,
+      number: '22009999',
+      availableCents: 50000,
+      ledgerCents: 50000,
+      currency: 'EUR',
+    );
+    backendAnswers(Success(accountsSnapshot(const [savings, euros])));
+
+    await harness.pump(tester, screen());
+    await tester.pump();
+
+    expect(find.text('SALDO TOTAL'), findsNothing);
+    expect(find.byType(AccountCard), findsNWidgets(2));
+    expect(find.textContaining('No pudimos mostrar'), findsNothing);
+  });
+
   testWidgets('pulling down asks the backend again', (tester) async {
     backendAnswers(Success(accountsSnapshot(const [savings, checking])));
     await harness.pump(tester, screen());

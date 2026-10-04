@@ -69,9 +69,18 @@ final class Account extends Equatable {
   ];
 }
 
-/// Sum of what is available across [accounts], in cents.
-int totalAvailableCents(Iterable<Account> accounts) =>
-    accounts.fold(0, (total, account) => total + account.availableCents);
+/// Sum of what is available across [accounts], in cents, or null when they
+/// are not all in the same currency: cents of different currencies do not
+/// add up to anything.
+int? totalAvailableCents(Iterable<Account> accounts) {
+  final currencies = {for (final account in accounts) account.currency};
+  if (currencies.length > 1) return null;
+
+  return accounts.fold<int>(
+    0,
+    (total, account) => total + account.availableCents,
+  );
+}
 
 /// [accounts] in the order they are listed: by kind, then by name.
 List<Account> inListingOrder(Iterable<Account> accounts) {

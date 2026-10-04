@@ -2,6 +2,8 @@
 
 Recorrido de unos 25 minutos, ordenado por lo que más pesa en la evaluación. Cada paso dice qué mostrar, qué decir en una frase y qué hacer si falla en vivo. Al final, los ejercicios que es probable que se pidan y dónde se toca cada uno.
 
+Hay además un [video de demostración](https://youtu.be/ZUzv-hzOfw4) grabado: un recorrido narrado de la aplicación y la consola.
+
 ## Preparación (antes de la sesión)
 
 Hay dos formas de prepararla. La primera es la que se comprobó de punta a punta en un teléfono.

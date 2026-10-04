@@ -6,6 +6,7 @@ Este repositorio es la solución a la prueba técnica de Front-End Senior. Los d
 
 - **Sitio de entrega:** el punto de entrada para quien evalúa, con los pasos para probar la demostración, capturas, flujos y la guía de la consola. Su código está en `apps/showroom/`. Está publicado en <https://flutter-challenge-bi.web.app>.
 - **Instalador de Android (v0.1.0):** el APK de demostración, firmado, está en la [publicación `v0.1.0`](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.0). Se entra con las credenciales de demostración que el autor envía por correo.
+- **Video de demostración:** un recorrido narrado de la aplicación y la consola, en <https://youtu.be/ZUzv-hzOfw4>.
 - **Qué se pidió y qué hay, requisito por requisito:** [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md)
 - **Decisiones de arquitectura (19):** [docs/adr/](docs/adr/)
 - **Guion de la demostración:** [docs/demo/guion.md](docs/demo/guion.md)

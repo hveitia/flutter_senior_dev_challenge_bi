@@ -119,6 +119,26 @@ test('the delivery site has no problems', () => {
   assert.deepEqual(checkSite(site), []);
 });
 
+test('the recorded demo is a plain link on the home page and in the steps, never an embedded player', () => {
+  const video = 'https://youtu.be/ZUzv-hzOfw4';
+  for (const name of ['index.html', 'documentacion.html']) {
+    const html = readFileSync(path.join(site, name), 'utf8');
+    const link = html.match(
+      new RegExp(`<a\\b[^>]*href="${video}"[^>]*>`),
+    )?.[0];
+    assert.notEqual(link, undefined, `${name} must link to the recorded demo`);
+    assert.ok(/target="_blank"/.test(link), `${name}: opens in a new tab`);
+    assert.ok(
+      /rel="noopener noreferrer"/.test(link),
+      `${name}: the link must not pass the opener or the referrer`,
+    );
+  }
+  for (const name of ['index.html', 'documentacion.html', 'avisos.html', '404.html']) {
+    const html = readFileSync(path.join(site, name), 'utf8');
+    assert.ok(!/<iframe\b/i.test(html), `${name} must not embed a player`);
+  }
+});
+
 test('the installer address is empty or a secure address, and lives in one file', () => {
   const config = readFileSync(
     path.join(site, 'assets', 'js', 'config.js'),

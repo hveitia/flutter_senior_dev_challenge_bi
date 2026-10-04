@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PublishOutcome } from "@/app/actions";
 import { exampleConfig } from "@/test/support/fixtures";
 import { openAddress } from "@/test/support/location-search";
@@ -13,6 +13,19 @@ vi.mock("next/navigation", async () => {
   const { useLocationSearch } = await import("@/test/support/location-search");
   return { useRouter: () => router, useSearchParams: useLocationSearch };
 });
+
+// The test window cannot scroll; what matters is that the console asks to.
+const scrollTo = vi.fn();
+beforeEach(() => {
+  window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+});
+
+/** What the browser does when a tab is reloaded or closed. */
+function leavingIsQuestioned(): boolean {
+  const leaving = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(leaving);
+  return leaving.defaultPrevented;
+}
 
 afterEach(() => {
   cleanup();
@@ -396,14 +409,132 @@ describe("Console sections", () => {
     expect(screen.getByRole("switch", { name: "Mostrar Banner promocional" })).toBeTruthy();
   });
 
-  it("goes back to the previous section with the browser's back button", async () => {
+  it("goes back and forward through the sections without touching the draft", async () => {
+    renderConsole();
+    await hidePromo();
+    await openSection("Funcionalidades");
+    await userEvent.click(screen.getByRole("switch", { name: "Transferencias" }));
+    await openSection("Notificaciones");
+
+    window.history.back();
+
+    await waitFor(() =>
+      expect(currentSection()).toEqual(["Funcionalidades, con cambios sin publicar"]),
+    );
+    expect(
+      screen.getByRole("switch", { name: "Transferencias" }).getAttribute("aria-checked"),
+    ).toBe("false");
+    expect(screen.getByText("2 cambios sin publicar")).toBeTruthy();
+
+    window.history.back();
+
+    await waitFor(() =>
+      expect(currentSection()).toEqual(["Inicio, con cambios sin publicar"]),
+    );
+    expect(
+      screen
+        .getByRole("switch", { name: "Mostrar Banner promocional" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+
+    window.history.forward();
+
+    await waitFor(() =>
+      expect(currentSection()).toEqual(["Funcionalidades, con cambios sin publicar"]),
+    );
+    expect(screen.getByText("2 cambios sin publicar")).toBeTruthy();
+  });
+
+  it("asks before a reload or a closed tab loses unpublished changes", async () => {
+    renderConsole();
+    expect(leavingIsQuestioned()).toBe(false);
+
+    await hidePromo();
+    expect(leavingIsQuestioned()).toBe(true);
+
+    await openSection("Funcionalidades");
+    expect(leavingIsQuestioned()).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Descartar" }));
+    expect(leavingIsQuestioned()).toBe(false);
+  });
+
+  it("stops asking once the changes are published", async () => {
+    const publish = renderConsole();
+    publish.mockResolvedValue({
+      ok: true,
+      version: 15,
+      publishedAt: "2026-10-03T14:00:00.000Z",
+    });
+    await hidePromo();
+
+    await userEvent.click(publishButton());
+    await screen.findByText("Configuración v15");
+
+    expect(leavingIsQuestioned()).toBe(false);
+  });
+
+  it("stops asking when the console is closed", async () => {
+    renderConsole();
+    await hidePromo();
+
+    cleanup();
+
+    expect(leavingIsQuestioned()).toBe(false);
+  });
+
+  it("lands on the heading of the section it opens, at the top of the page", async () => {
+    renderConsole();
+    scrollTo.mockClear();
+
+    await openSection("Funcionalidades");
+
+    const heading = screen.getByRole("heading", { level: 2, name: "Funcionalidades" });
+    expect(document.activeElement).toBe(heading);
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+  });
+
+  it("does not take the focus when the console first opens", () => {
+    openAddress("?seccion=funcionalidades");
+    renderConsole();
+
+    expect(document.activeElement).toBe(document.body);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("lands on the heading after the back button as well", async () => {
     renderConsole();
     await openSection("Funcionalidades");
     await openSection("Notificaciones");
 
     window.history.back();
 
-    await waitFor(() => expect(currentSection()).toEqual(["Funcionalidades"]));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { level: 2, name: "Funcionalidades" }),
+      ),
+    );
+  });
+
+  it("keeps the controls of the other sections out of reach of the keyboard", async () => {
+    renderConsole();
+    const user = userEvent.setup();
+    const reached: Element[] = [];
+
+    // Far more tab stops than the page has, so the walk wraps around.
+    for (let stop = 0; stop < 60; stop += 1) {
+      await user.tab();
+      if (document.activeElement) reached.push(document.activeElement);
+    }
+
+    expect(reached.some((element) => element.getAttribute("role") === "switch")).toBe(
+      true,
+    );
+    expect(reached.filter((element) => element.closest("[hidden]"))).toEqual([]);
+    expect(screen.queryByRole("switch", { name: "Transferencias" })).toBeNull();
+    expect(screen.queryByRole("slider")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
   });
 
   it("keeps the edits of one section while another is open", async () => {
@@ -496,7 +627,11 @@ describe("Console sections", () => {
 
     expect(within(sections()).queryByRole("link", { name: /Resiliencia/ })).toBeNull();
     expect(currentSection()).toEqual(["Inicio"]);
+    expect(screen.getByRole("switch", { name: "Mostrar Banner promocional" })).toBeTruthy();
     expect(screen.queryByText("Laboratorio de resiliencia")).toBeNull();
+    // Not hidden somewhere in the page either: the lab is not rendered at all.
+    expect(document.querySelector('input[type="range"]')).toBeNull();
+    expect(document.body.textContent).not.toContain("Latencia");
   });
 
   it("keeps the warning about published faults in view from any section", async () => {
@@ -577,16 +712,27 @@ describe("Console sections", () => {
     expect(previewText()).toContain("Inversiones");
   });
 
-  it("offers a way to skip the menus and tells assistive technology which section opened", async () => {
+  it("offers a way to skip the menus, before and after a section is opened", async () => {
     renderConsole();
+    const skip = () => screen.getByRole("link", { name: "Saltar al contenido" });
 
-    const skip = screen.getByRole("link", { name: "Saltar al contenido" });
-    expect(skip.getAttribute("href")).toBe("#contenido");
+    expect(skip().getAttribute("href")).toBe("#contenido");
     expect(screen.getByRole("main").id).toBe("contenido");
 
     await openSection("Funcionalidades");
 
-    expect(screen.getByTestId("announcer").textContent).toBe("Sección Funcionalidades");
+    expect(skip().getAttribute("href")).toBe("#contenido");
+    expect(screen.getByRole("main").id).toBe("contenido");
+  });
+
+  it("names the opened section once, through its heading, not twice", async () => {
+    renderConsole();
+
+    await openSection("Funcionalidades");
+
+    // Focus lands on the heading, which a screen reader reads out; the
+    // status region stays for what sight alone would show.
+    expect(screen.getByTestId("announcer").textContent).toBe("");
   });
 
   it("keeps the headings in order: the console, the section, its cards", async () => {

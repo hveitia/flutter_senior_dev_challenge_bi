@@ -93,7 +93,7 @@ La consola se divide en secciones, con un menú bajo la barra superior. Cada una
 | Resiliencia | `/?seccion=resiliencia` | Fallos simulados, para todos los segmentos. Solo con `BACKOFFICE_ENVIRONMENT=demo` |
 | Notificaciones | `/?seccion=notificaciones` | Envío de avisos e historial |
 
-Todas editan el mismo borrador: los cambios pendientes y «Publicar cambios» están en la barra superior, y una publicación envía lo editado en todas las secciones. El menú marca las secciones con cambios sin publicar. Cambiar de sección no descarta nada; recargar la página sí descarta el borrador, igual que antes.
+Todas editan el mismo borrador: los cambios pendientes y «Publicar cambios» están en la barra superior, y una publicación envía lo editado en todas las secciones. El menú marca las secciones con cambios sin publicar. Cambiar de sección no descarta nada. Recargar la página o cerrar la pestaña sí descarta el borrador; si hay cambios sin publicar, el navegador pide confirmación antes.
 
 ## Pruebas
 

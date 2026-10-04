@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existe en `apps/backoffice` la consola, dividida en secciones con un menú superior (inicio con módulos y banner, funcionalidades, laboratorio de resiliencia y envío de notificaciones, más la lista de segmentos y la vista previa) con su lado de servidor, cubierta por 214 pruebas. Dos revisiones independientes (fiabilidad y riesgo) dieron lugar a las correcciones que este documento ya recoge. Se ejecutó en local contra el proyecto real `flutter-challenge-bi`: se publicó la primera versión de `config/home`, se provocó un conflicto de versión y se envió una notificación en modo de prueba. Después se desplegó en Firebase App Hosting ([operación](../operacion/backoffice.md#despliegue-en-firebase-app-hosting)); la aplicación móvil ya escucha la configuración publicada y recibe notificaciones enviadas desde la consola en local. Para ese despliegue, el contrato y los tokens de diseño dejaron de importarse desde fuera de la carpeta de la consola: se copian a `shared/` antes de cada compilación y prueba, con una prueba que compara las copias con sus fuentes, que siguen siendo únicas. El detalle de lo verificado está al final.
+- **Implementación:** existe en `apps/backoffice` la consola, dividida en secciones con un menú superior (inicio con módulos y banner, funcionalidades, laboratorio de resiliencia y envío de notificaciones, más la lista de segmentos y la vista previa) con su lado de servidor, cubierta por pruebas automáticas (el número actual está en el README). Dos revisiones independientes (fiabilidad y riesgo) dieron lugar a las correcciones que este documento ya recoge. Se ejecutó en local contra el proyecto real `flutter-challenge-bi`: se publicó la primera versión de `config/home`, se provocó un conflicto de versión y se envió una notificación en modo de prueba. Después se desplegó en Firebase App Hosting ([operación](../operacion/backoffice.md#despliegue-en-firebase-app-hosting)); la aplicación móvil ya escucha la configuración publicada y recibe notificaciones enviadas desde la consola en local. Para ese despliegue, el contrato y los tokens de diseño dejaron de importarse desde fuera de la carpeta de la consola: se copian a `shared/` antes de cada compilación y prueba, con una prueba que compara las copias con sus fuentes, que siguen siendo únicas. El detalle de lo verificado está al final.
 
 ## Problema a resolver
 
@@ -102,6 +102,9 @@ La consola empezó como una sola pantalla con todas las tarjetas en columna. Al 
 - **La sección va en la dirección**, como parámetro de consulta (`?seccion=funcionalidades`). Se eligió el parámetro y no un segmento de ruta porque un cambio de ruta volvería a ejecutar la página en el servidor, que es donde se lee la configuración: el borrador en curso se quedaría atrás respecto de lo recién leído. Con el parámetro, el cambio ocurre en el navegador, el botón de retroceso vuelve a la sección anterior y una recarga o un enlace compartido abren la misma. Un valor desconocido, o una sección que el entorno no tiene, abre la primera.
 - **Resiliencia existe solo en demostración.** Fuera de ella no aparece en el menú ni se puede abrir por su dirección. El aviso de que la configuración publicada tiene fallos activos, que afecta a cualquier publicación, se muestra sobre todas las secciones.
 - **La vista previa acompaña a lo que cambia el inicio.** Queda fija junto al contenido en las tres secciones cuyas ediciones se ven en el teléfono y no aparece en Notificaciones. La lista de segmentos explica en cada sección qué significa elegir uno: en Resiliencia, por ejemplo, los ajustes valen para todos y el segmento solo cambia la vista previa.
+- **Abrir una sección lleva a ella.** La página vuelve arriba y el foco pasa al título de la sección, también al volver con el botón de retroceso. El título se puede enfocar desde el código pero no es una parada del tabulador. Un lector de pantalla lo lee al recibir el foco, por lo que la región de avisos no lo repite.
+- **Recargar sí pierde el borrador, y el navegador pregunta antes.** Mientras hay cambios sin publicar, una recarga o el cierre de la pestaña muestran la confirmación estándar del navegador. Se registra solo en ese caso y se retira al publicar o descartar; cambiar de sección no pasa por ella.
+- **La lectura de la dirección va dentro de un límite de suspensión** en la página, con un contenido de espera que no nombra ninguna sección. La página sigue generándose en cada petición, porque lee la sesión.
 - **La protección no cambia.** La sección es solo presentación: la página sigue comprobando la sesión antes de leer nada, y cada acción y ruta, por su cuenta.
 
 ## Trade-offs
@@ -151,6 +154,11 @@ Verificado tras dividir la consola en secciones, en un navegador contra el modo 
 - Una edición hecha en Inicio y otra en Funcionalidades seguían contadas desde Notificaciones («2 cambios sin publicar»), con las dos secciones marcadas en el menú, y se publicaron desde allí.
 - El botón de retroceso volvió a la sección anterior sin perder el borrador; una recarga abrió la sección de la dirección y un valor desconocido abrió Inicio.
 - A 1280, 1024 y 768 píxeles de ancho no hay desbordamiento horizontal. A 1280 por 800, Funcionalidades, Resiliencia y Notificaciones caben sin desplazamiento; Inicio necesita uno corto para llegar al banner.
+
+- Al abrir una sección con el teclado, el foco quedó en su título y la página arriba; el siguiente tabulador llegó al primer control de la sección. Lo mismo tras el botón de retroceso.
+- Con un cambio sin publicar, la recarga mostró la confirmación del navegador; con el borrador limpio, tras descartar y al cambiar de sección, no.
+
+La compilación de producción no puede comprobarse contra los emuladores: el servidor los rechaza en producción a propósito ([ADR 0015](0015-acceso-de-administradores.md)).
 
 Sin verificar:
 

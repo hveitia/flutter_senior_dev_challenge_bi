@@ -71,6 +71,15 @@ export interface ConsoleProps {
   }) => Promise<PublishOutcome>;
 }
 
+function headingIdOf(section: Section): string {
+  return `seccion-${section.slug}`;
+}
+
+/** The browser's own question before a reload or a closed tab. */
+function questionLeaving(event: BeforeUnloadEvent) {
+  event.preventDefault();
+}
+
 /**
  * One section of the console. Every section stays mounted and only the open
  * one is shown: what was typed in another, the notification composer
@@ -85,7 +94,7 @@ function SectionPanel({
   current: SectionId;
   children: ReactNode;
 }) {
-  const headingId = `seccion-${section.slug}`;
+  const headingId = headingIdOf(section);
   return (
     <section
       hidden={section.id !== current}
@@ -93,7 +102,9 @@ function SectionPanel({
       className="grid min-w-0 gap-5"
     >
       <header>
-        <h2 id={headingId} className="font-heading text-subtitle">
+        {/* Focusable from code, so opening the section can land here, but
+            not a stop of its own when tabbing through the page. */}
+        <h2 id={headingId} tabIndex={-1} className="font-heading text-subtitle">
           {section.label}
         </h2>
         <p className="mt-1 text-caption text-secondary">{section.description}</p>
@@ -146,6 +157,30 @@ export function Console({
     return () => observer.disconnect();
   }, []);
 
+  // A reload or a closed tab discards the draft, so the browser asks first.
+  // Changing section is not leaving: it never goes through this.
+  const hasPendingChanges = pendingChanges(state) > 0;
+  useEffect(() => {
+    if (!hasPendingChanges) return;
+    window.addEventListener("beforeunload", questionLeaving);
+    return () => window.removeEventListener("beforeunload", questionLeaving);
+  }, [hasPendingChanges]);
+
+  // A newly opened section starts at its top, with focus on its heading:
+  // someone using the keyboard or a screen reader lands in what just opened,
+  // whether it was opened from the menu or with the back button.
+  const shownSection = useRef(sectionId);
+  useEffect(() => {
+    if (shownSection.current === sectionId) return;
+    shownSection.current = sectionId;
+    const opened = availableSections({ isDemo }).find(
+      (candidate) => candidate.id === sectionId,
+    );
+    if (!opened) return;
+    window.scrollTo({ top: 0 });
+    document.getElementById(headingIdOf(opened))?.focus({ preventScroll: true });
+  }, [sectionId, isDemo]);
+
   /**
    * Opens a section by writing it into the address. The framework follows
    * the address without asking the server again, so the draft is untouched
@@ -154,8 +189,6 @@ export function Console({
   function openSection(id: SectionId) {
     if (id === sectionId) return;
     window.history.pushState(null, "", sectionHref(id, window.location.search));
-    const opened = byId(id);
-    if (opened) setAnnouncement(`Sección ${opened.label}`);
   }
 
   async function publishDraft() {

@@ -86,6 +86,16 @@ function publisherIssues(config: HomeConfig): ConfigIssue[] {
   return issues;
 }
 
+/**
+ * The version number of whatever is stored, valid or not. A document can
+ * break the contract and still carry the number a publish must be based on.
+ */
+export function configVersionOf(stored: unknown): number | null {
+  if (!isRecord(stored)) return null;
+  const version = stored.configVersion;
+  return typeof version === "number" && Number.isInteger(version) ? version : null;
+}
+
 /** Checks a document against everything the publisher must guarantee. */
 export function validateHomeConfig(document: unknown): ValidationResult {
   if (!matchesContract(document)) {

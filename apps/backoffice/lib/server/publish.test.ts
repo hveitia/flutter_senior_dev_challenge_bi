@@ -24,11 +24,11 @@ const production: ServerSettings = { ...demo, isDemo: false };
 /** Keeps one document and its audit trail in memory, atomically. */
 class MemoryStore implements ConfigStore {
   audit: AuditEntry[] = [];
-  constructor(public stored: HomeConfig | null) {}
+  constructor(public stored: unknown) {}
 
   async transact<T>(
     run: (
-      stored: HomeConfig | null,
+      stored: unknown,
       write: (document: HomeConfig, entry: AuditEntry) => void,
     ) => T,
   ): Promise<T> {
@@ -37,6 +37,10 @@ class MemoryStore implements ConfigStore {
       this.audit.push(entry);
     });
   }
+}
+
+function live(store: MemoryStore): HomeConfig | null {
+  return store.stored as HomeConfig | null;
 }
 
 function published(version = 14): HomeConfig {
@@ -54,11 +58,39 @@ describe("publishConfig", () => {
     });
 
     expect(result).toEqual({ ok: true, version: 15, publishedAt: now.toISOString() });
-    expect(store.stored?.configVersion).toBe(15);
+    expect(live(store)?.configVersion).toBe(15);
     expect(
-      store.stored?.segments.starting?.modules.find((m) => m.id === "promo")
-        ?.visible,
+      live(store)?.segments.starting?.modules.find((m) => m.id === "promo")?.visible,
     ).toBe(false);
+  });
+
+  it("repairs a stored document that has a version but no segments", async () => {
+    const store = new MemoryStore({ schemaVersion: 1, configVersion: 7 });
+
+    const result = await publishConfig(store, demo, admin, now, {
+      draft: exampleConfig(),
+      baseVersion: 7,
+    });
+
+    expect(result).toMatchObject({ ok: true, version: 8 });
+    expect(live(store)?.segments.starting?.label).toBe("Estoy empezando");
+    expect(store.audit[0]?.changes).toBe(0);
+  });
+
+  it("repairs a stored document whose segments are malformed", async () => {
+    const store = new MemoryStore({
+      schemaVersion: 1,
+      configVersion: 7,
+      destinations: [],
+      segments: { starting: "broken" },
+    });
+
+    const result = await publishConfig(store, demo, admin, now, {
+      draft: exampleConfig(),
+      baseVersion: 7,
+    });
+
+    expect(result).toMatchObject({ ok: true, version: 8 });
   });
 
   it("takes the version from what is stored, not from the draft", async () => {
@@ -100,7 +132,7 @@ describe("publishConfig", () => {
     });
 
     expect(result).toEqual({ ok: false, kind: "conflict", storedVersion: 15 });
-    expect(store.stored?.configVersion).toBe(15);
+    expect(live(store)?.configVersion).toBe(15);
     expect(store.audit).toEqual([]);
   });
 
@@ -113,7 +145,7 @@ describe("publishConfig", () => {
     });
 
     expect(result).toMatchObject({ ok: true, version: 1 });
-    expect(store.stored?.configVersion).toBe(1);
+    expect(live(store)?.configVersion).toBe(1);
   });
 
   it("refuses a first publish when a document appeared in the meantime", async () => {
@@ -138,7 +170,7 @@ describe("publishConfig", () => {
     });
 
     expect(result).toMatchObject({ ok: false, kind: "invalid" });
-    expect(store.stored?.configVersion).toBe(14);
+    expect(live(store)?.configVersion).toBe(14);
     expect(store.audit).toEqual([]);
   });
 
@@ -163,7 +195,7 @@ describe("publishConfig", () => {
     });
 
     expect(result).toEqual({ ok: false, kind: "faults-not-allowed" });
-    expect(store.stored?.configVersion).toBe(14);
+    expect(live(store)?.configVersion).toBe(14);
   });
 
   it("publishes a draft without faults outside a demonstration environment", async () => {
@@ -188,6 +220,6 @@ describe("publishConfig", () => {
     });
 
     expect(result).toMatchObject({ ok: true });
-    expect(store.stored?.resilience?.movementsUnavailable).toBe(true);
+    expect(live(store)?.resilience?.movementsUnavailable).toBe(true);
   });
 });

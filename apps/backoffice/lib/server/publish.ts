@@ -1,6 +1,10 @@
 import { countChanges } from "@/lib/config/diff";
 import { NO_FAULTS, resilienceOf, type HomeConfig } from "@/lib/config/types";
-import { validateHomeConfig, type ConfigIssue } from "@/lib/config/validate";
+import {
+  configVersionOf,
+  validateHomeConfig,
+  type ConfigIssue,
+} from "@/lib/config/validate";
 import type { Admin } from "./session";
 import type { ServerSettings } from "./settings";
 
@@ -15,14 +19,15 @@ export interface AuditEntry {
 }
 
 /**
- * Where the published document lives. `transact` reads the stored document
+ * Where the published document lives. `transact` reads the stored document,
+ * as it is and unchecked (it may predate the contract or be damaged),
  * and, if `write` is called, replaces it and appends the audit entry, all or
  * nothing, retrying if the document changed underneath.
  */
 export interface ConfigStore {
   transact<T>(
     run: (
-      stored: HomeConfig | null,
+      stored: unknown,
       write: (document: HomeConfig, entry: AuditEntry) => void,
     ) => T,
   ): Promise<T>;
@@ -74,19 +79,22 @@ export async function publishConfig(
   }
 
   return store.transact((stored, write) => {
-    const storedVersion = stored?.configVersion ?? null;
+    const storedVersion = configVersionOf(stored);
     if (storedVersion !== request.baseVersion) {
       return { ok: false, kind: "conflict", storedVersion };
     }
 
     const version = storedVersion === null ? FIRST_VERSION : storedVersion + 1;
+    const previous = validateHomeConfig(stored);
     const document: HomeConfig = { ...draft, configVersion: version };
     write(document, {
       version,
       publishedBy: admin.email,
       publishedByUid: admin.uid,
       publishedAt: now,
-      changes: stored ? countChanges(stored, document) : 0,
+      // Only a stored document that honours the contract can be compared;
+      // over a broken one this publish is a repair, not a set of edits.
+      changes: previous.ok ? countChanges(previous.config, document) : 0,
     });
     return { ok: true, version, publishedAt: now.toISOString() };
   });

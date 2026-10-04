@@ -23,7 +23,7 @@ vi.mock("@/lib/server/config-store", () => ({
 
 const { publishConfigAction } = await import("./actions");
 
-function storing(stored: HomeConfig | null) {
+function storing(stored: unknown) {
   const written: { document?: HomeConfig; entry?: AuditEntry } = {};
   transact.mockImplementation(async (run) =>
     run(stored, (document: HomeConfig, entry: AuditEntry) => {

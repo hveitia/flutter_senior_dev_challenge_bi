@@ -1,6 +1,6 @@
 import example from "../../../../contracts/home-config.example.json";
 import type { HomeConfig } from "@/lib/config/types";
-import { validateHomeConfig } from "@/lib/config/validate";
+import { configVersionOf, validateHomeConfig } from "@/lib/config/validate";
 
 /** What the editor opens with. */
 export interface ConsoleState {
@@ -10,12 +10,6 @@ export interface ConsoleState {
   /** Whether `config` is what is live or the contract's example. */
   source: "published" | "example";
   lastPublishedAt: string | null;
-}
-
-function versionOf(stored: unknown): number | null {
-  if (typeof stored !== "object" || stored === null) return null;
-  const version = (stored as { configVersion?: unknown }).configVersion;
-  return typeof version === "number" && Number.isInteger(version) ? version : null;
 }
 
 /**
@@ -38,7 +32,7 @@ export function consoleStateFrom(
   }
   return {
     config: structuredClone(example) as unknown as HomeConfig,
-    baseVersion: versionOf(stored),
+    baseVersion: configVersionOf(stored),
     source: "example",
     lastPublishedAt,
   };

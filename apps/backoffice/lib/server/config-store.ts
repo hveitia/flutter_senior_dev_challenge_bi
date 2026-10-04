@@ -1,6 +1,6 @@
 import "server-only";
 import type { Firestore, Timestamp } from "firebase-admin/firestore";
-import type { HomeConfig } from "@/lib/config/types";
+import { configVersionOf } from "@/lib/config/validate";
 import { consoleStateFrom, type ConsoleState } from "./console-state";
 import type { ConfigStore } from "./publish";
 
@@ -20,7 +20,7 @@ export function firestoreConfigStore(db: Firestore): ConfigStore {
     transact(run) {
       return db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(home);
-        const stored = snapshot.exists ? (snapshot.data() as HomeConfig) : null;
+        const stored: unknown = snapshot.exists ? snapshot.data() : null;
         return run(stored, (document, entry) => {
           transaction.set(home, document);
           transaction.set(
@@ -41,9 +41,9 @@ export async function loadConsoleState(db: Firestore): Promise<ConsoleState> {
     .get();
   const stored: unknown = snapshot.exists ? snapshot.data() : null;
 
-  const version = (stored as { configVersion?: unknown } | null)?.configVersion;
+  const version = configVersionOf(stored);
   let lastPublishedAt: string | null = null;
-  if (typeof version === "number") {
+  if (version !== null) {
     const entry = await db.collection(AUDIT_COLLECTION).doc(auditId(version)).get();
     const publishedAt = entry.get("publishedAt") as Timestamp | undefined;
     lastPublishedAt = publishedAt?.toDate().toISOString() ?? null;

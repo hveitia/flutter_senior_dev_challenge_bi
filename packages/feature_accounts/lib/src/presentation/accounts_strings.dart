@@ -29,6 +29,10 @@ abstract final class AccountsStrings {
   static const String noMatchesTitle = 'No hay movimientos';
   static const String noMatchesMessage = 'Prueba con otro nombre o filtro.';
 
+  static const String narrowedScope =
+      'La búsqueda y los filtros solo ven los movimientos cargados. '
+      'Toca «Ver más» para incluir los anteriores.';
+
   static const String accountMissingTitle = 'No encontramos esta cuenta';
   static const String accountMissingMessage =
       'Vuelve a tus cuentas y elige una de la lista.';

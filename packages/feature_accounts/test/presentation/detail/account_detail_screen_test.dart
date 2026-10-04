@@ -350,6 +350,73 @@ void main() {
     expect(find.text('Transferencia recibida'), findsOneWidget);
   });
 
+  group('a search over a list that may have older movements', () {
+    const scope =
+        'La búsqueda y los filtros solo ven los movimientos cargados. '
+        'Toca «Ver más» para incluir los anteriores.';
+
+    testWidgets('says it only covers what is loaded and keeps "Ver más" at '
+        'hand, also when nothing matches', (tester) async {
+      await open(
+        tester,
+        pageSize: 2,
+        movementsAnswer: Success(movementsSnapshot([salary, groceries])),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField), 'zapatos');
+      await tester.pump();
+
+      expect(find.text(scope, skipOffstage: false), findsOneWidget);
+      expect(find.text('Ver más', skipOffstage: false), findsOneWidget);
+      expect(
+        find.text('No hay movimientos', skipOffstage: false),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a filter gets the same note', (tester) async {
+      await open(
+        tester,
+        pageSize: 2,
+        movementsAnswer: Success(movementsSnapshot([salary, groceries])),
+      );
+      await tester.pump();
+
+      await scrollTo(tester, find.text('Ingresos'));
+      await tester.tap(find.text('Ingresos'));
+      await tester.pump();
+
+      expect(find.text(scope, skipOffstage: false), findsOneWidget);
+    });
+
+    testWidgets('needs no note when everything is loaded', (tester) async {
+      await open(
+        tester,
+        movementsAnswer: Success(movementsSnapshot(movements)),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField), 'zapatos');
+      await tester.pump();
+
+      expect(find.text(scope, skipOffstage: false), findsNothing);
+    });
+
+    testWidgets('needs no note while the list is not narrowed', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        pageSize: 2,
+        movementsAnswer: Success(movementsSnapshot([salary, groceries])),
+      );
+      await tester.pump();
+
+      expect(find.text(scope, skipOffstage: false), findsNothing);
+    });
+  });
+
   testWidgets('does not offer more when everything is loaded', (tester) async {
     await open(tester, movementsAnswer: Success(movementsSnapshot(movements)));
     await tester.pump();

@@ -304,6 +304,20 @@ class _AccountContent extends StatelessWidget {
             ],
           ),
         ),
+      // The search and the filters work on the loaded pages. With older
+      // movements still on the server, "nothing found" would be a guess.
+      if (state.isNarrowed && state.hasMore)
+        box(
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.x4),
+            child: Text(
+              AccountsStrings.narrowedScope,
+              style: AppTypography.caption.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+          ),
+        ),
       // While the next page is on its way there is nothing "more" yet, but
       // the button stays to show the progress.
       if (state.hasMore || state.isLoadingMore)

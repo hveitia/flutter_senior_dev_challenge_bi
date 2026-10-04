@@ -83,7 +83,7 @@ class AccountsScreen extends StatelessWidget {
         vertical: context.metrics.moduleGap,
       ),
       children: [
-        if (accounts.isOutdated) ...[
+        if (accounts.needsOutdatedNotice) ...[
           OutdatedNotice(
             message: AccountsStrings.accountsOutdated,
             isRetrying: accounts.isLoading,

@@ -198,7 +198,7 @@ class _AccountContent extends StatelessWidget {
         movements.origin == DataOrigin.cache || movements.isOutdated;
 
     return [
-      if (movements.isOutdated)
+      if (movements.needsOutdatedNotice)
         box(
           OutdatedNotice(
             message: AccountsStrings.movementsOutdated,

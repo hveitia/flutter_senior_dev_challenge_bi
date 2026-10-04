@@ -62,6 +62,19 @@ void main() {
     expect(state.syncedAt, syncedAt);
   });
 
+  test('outdated data needs its own notice unless the device is offline', () {
+    final saved = const LoadState<List<Account>>().withSnapshot(
+      snapshot(DataOrigin.cache, at: syncedAt),
+    );
+
+    expect(saved.withRefresh(failed).needsOutdatedNotice, isTrue);
+    expect(
+      saved.withRefresh(const Failed(OfflineFailure())).needsOutdatedNotice,
+      isFalse,
+    );
+    expect(saved.needsOutdatedNotice, isFalse);
+  });
+
   test('retrying keeps the failure on screen until there is an answer', () {
     final retrying = const LoadState<List<Account>>()
         .withRefresh(failed)

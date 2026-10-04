@@ -82,6 +82,10 @@ void main() {
     expect(find.text('Actualizado hace 8 min'), findsOneWidget);
     expect(find.byType(AccountCard), findsNWidgets(2));
     expect(find.text(r'$4,820.35', findRichText: true), findsOneWidget);
+    // The banner already says why the data is not fresh. A second notice
+    // with a retry that cannot work offline would only add noise.
+    expect(find.textContaining('No pudimos actualizar'), findsNothing);
+    expect(find.text('Reintentar'), findsNothing);
   });
 
   testWidgets('when the refresh fails, keeps the saved accounts with a notice '

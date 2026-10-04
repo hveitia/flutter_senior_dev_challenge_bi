@@ -214,8 +214,9 @@ void main() {
     expect(harness.repository.accountRefreshes, 1);
   });
 
-  testWidgets('saved movements say how old they are', (tester) async {
-    await open(tester, movementsAnswer: const Failed(OfflineFailure()));
+  testWidgets('saved movements say how old they are, and that they could '
+      'not be refreshed', (tester) async {
+    await open(tester, movementsAnswer: const Failed(TimeoutFailure()));
     await harness.deliverMovements(
       tester,
       movementsSnapshot(movements, origin: DataOrigin.cache),
@@ -234,6 +235,24 @@ void main() {
     );
     await scrollTo(tester, find.text('Nómina de septiembre'));
     expect(rows(), findsWidgets);
+  });
+
+  testWidgets('offline, saved movements show their age without a second '
+      'notice: the banner already explains it', (tester) async {
+    await open(tester, movementsAnswer: const Failed(OfflineFailure()));
+    await harness.deliverMovements(
+      tester,
+      movementsSnapshot(movements, origin: DataOrigin.cache),
+    );
+
+    expect(
+      find.text('Actualizado hace 8 min', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('No pudimos actualizar', skipOffstage: false),
+      findsNothing,
+    );
   });
 
   testWidgets('brings older movements when asked', (tester) async {

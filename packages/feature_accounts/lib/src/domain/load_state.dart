@@ -55,6 +55,11 @@ final class LoadState<T> extends Equatable {
   /// There is something to show, but it could not be brought up to date.
   bool get isOutdated => hasData && failure != null;
 
+  /// Whether the outdated data needs a notice of its own. Without a
+  /// connection it does not: the app already says it is offline, and a
+  /// retry could not work anyway.
+  bool get needsOutdatedNotice => isOutdated && failure != LoadFailure.offline;
+
   /// A refresh is in flight. An earlier failure stays visible until the
   /// answer arrives, so a retry shows progress on the error itself instead
   /// of flashing back to the skeleton.

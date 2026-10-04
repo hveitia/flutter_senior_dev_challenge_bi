@@ -1,5 +1,6 @@
 package com.hveitia.banca_digital
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
@@ -45,6 +46,10 @@ class MainActivity : FlutterFragmentActivity() {
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
             description = "Movimientos, seguridad y beneficios."
+            // On a locked screen the system shows that a notification
+            // arrived, not what it says: a notice from a bank is not for
+            // whoever happens to be holding the phone.
+            lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         }
         getSystemService(NotificationManager::class.java)
             ?.createNotificationChannel(channel)

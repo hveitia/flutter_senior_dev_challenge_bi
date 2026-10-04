@@ -168,6 +168,7 @@ void main() {
     expect(find.text('Valentina Andrade'), findsOneWidget);
     expect(currentDestination(tester), 3);
 
+    await tester.ensureVisible(find.text('Cerrar sesión'));
     await tester.tap(find.text('Cerrar sesión'));
     await tester.pumpAndSettle();
 
@@ -187,6 +188,7 @@ void main() {
 
     await tester.tap(destination('Perfil'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Cerrar sesión'));
     await tester.tap(find.text('Cerrar sesión'));
     await tester.pumpAndSettle();
 
@@ -200,6 +202,7 @@ void main() {
 
     await tester.tap(destination('Perfil'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Cerrar sesión'));
     await tester.tap(find.text('Cerrar sesión'));
     await tester.pumpAndSettle();
 
@@ -210,6 +213,7 @@ void main() {
     Future<void> signOut(WidgetTester tester) async {
       await tester.tap(destination('Perfil'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Cerrar sesión'));
       await tester.tap(find.text('Cerrar sesión'));
       await tester.pumpAndSettle();
     }

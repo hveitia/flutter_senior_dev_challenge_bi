@@ -541,6 +541,78 @@ void main() {
     });
   });
 
+  group('updatePreferences', () {
+    Future<UserProfile> signedIn() async {
+      final profile = seedCustomer();
+      await repository.signIn(email: email, password: password);
+      await forgetSessions();
+      return profile;
+    }
+
+    test('stores the new segment and interests and announces the profile '
+        'that has them', () async {
+      final profile = await signedIn();
+
+      final result = await repository.updatePreferences(
+        segment: Segment.wealth,
+        interests: {Interest.investing},
+      );
+      await settle();
+
+      expect(result, isA<AuthOk<void>>());
+      final stored = profiles.profiles[profile.uid]!;
+      expect(stored.segment, Segment.wealth);
+      expect(stored.interests, {Interest.investing});
+      expect(stored.nationalId, profile.nationalId);
+      expect(sessions, [ActiveSession(stored, unlockRequired: false)]);
+    });
+
+    test('leaves the session as it was when storing fails', () async {
+      final profile = await signedIn();
+      profiles.failUpdate = const ServiceUnavailableFailure();
+
+      final result = await repository.updatePreferences(
+        segment: Segment.wealth,
+        interests: const {},
+      );
+      await settle();
+
+      expect(
+        result,
+        isA<AuthError<void>>().having(
+          (error) => error.failure,
+          'failure',
+          AuthFailure.unavailable,
+        ),
+      );
+      expect(profiles.profiles[profile.uid]!.segment, Segment.family);
+      expect(sessions, isEmpty);
+    });
+
+    test('is refused without a signed-in customer', () async {
+      final result = await repository.updatePreferences(
+        segment: Segment.wealth,
+        interests: const {},
+      );
+
+      expect(result, isA<AuthError<void>>());
+      expect(profiles.updateCalls, 0);
+    });
+
+    test('reports that preferences changed and nothing about which', () async {
+      await signedIn();
+      telemetry.events.clear();
+
+      await repository.updatePreferences(
+        segment: Segment.wealth,
+        interests: {Interest.investing},
+      );
+
+      expect(telemetry.events.single.name, AuthTelemetry.preferencesUpdated);
+      expect(telemetry.events.single.parameters, isEmpty);
+    });
+  });
+
   group('signOut', () {
     test('signs out of the provider and announces it', () async {
       seedCustomer();

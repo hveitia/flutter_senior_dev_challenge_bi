@@ -163,6 +163,7 @@ void main() {
 
       await tester.tap(find.text('Perfil'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Cerrar sesión'));
       await tester.tap(find.text('Cerrar sesión'));
       await tester.pumpAndSettle();
 

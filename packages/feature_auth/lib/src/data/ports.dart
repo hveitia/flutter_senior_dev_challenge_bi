@@ -27,6 +27,14 @@ abstract interface class ProfileStore {
   Future<UserProfile?> read(String uid);
 
   Future<void> create(UserProfile profile);
+
+  /// Changes the segment and the interests of the stored profile of [uid],
+  /// and nothing else.
+  Future<void> updatePreferences(
+    String uid, {
+    required Segment segment,
+    required Set<Interest> interests,
+  });
 }
 
 /// Per-device preference: does this customer want a biometric check when

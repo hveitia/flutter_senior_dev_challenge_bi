@@ -46,6 +46,14 @@ abstract interface class AuthRepository {
   /// Stores the profile of an account that has none.
   Future<AuthResult<void>> completeProfile(ProfileDraft draft);
 
+  /// Changes what personalizes the signed-in customer's home. On success the
+  /// profile that has the change is announced as the active session, and
+  /// nothing else about the session moves.
+  Future<AuthResult<void>> updatePreferences({
+    required Segment segment,
+    required Set<Interest> interests,
+  });
+
   /// Tries again to read the profile after [UnavailableSession].
   Future<void> retry();
 

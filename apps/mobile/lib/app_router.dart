@@ -119,6 +119,7 @@ GoRouter createAppRouter({
             ],
           ),
           accountDetailRoute(),
+          preferencesRoute(),
         ],
       ),
     ],

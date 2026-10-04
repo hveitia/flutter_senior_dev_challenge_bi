@@ -5,12 +5,15 @@ import 'package:feature_auth/src/domain/auth_repository.dart';
 import 'package:feature_auth/src/domain/biometric_authenticator.dart';
 import 'package:feature_auth/src/presentation/login/login_cubit.dart';
 import 'package:feature_auth/src/presentation/login/login_screen.dart';
+import 'package:feature_auth/src/presentation/preferences/preferences_cubit.dart';
+import 'package:feature_auth/src/presentation/preferences/preferences_screen.dart';
 import 'package:feature_auth/src/presentation/session/session_bloc.dart';
 import 'package:feature_auth/src/presentation/session/session_unavailable_screen.dart';
 import 'package:feature_auth/src/presentation/sign_up/sign_up_cubit.dart';
 import 'package:feature_auth/src/presentation/sign_up/sign_up_screen.dart';
 import 'package:feature_auth/src/presentation/unlock/unlock_screen.dart';
 import 'package:feature_auth/src/presentation/welcome/welcome_screen.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,6 +36,34 @@ abstract final class AuthPaths {
     unavailable,
   };
 }
+
+/// Locations of the signed-in customer's profile. They are not part of
+/// [AuthPaths.all]: a signed-in customer belongs there.
+abstract final class ProfilePaths {
+  static const String preferences = '/personalizacion';
+}
+
+/// "Personalización" as a route, to mount among the screens of a signed-in
+/// customer. It reads [AuthRepository], [SessionBloc] and
+/// [ConnectivityCubit] from the tree and closes itself once the change is
+/// stored.
+GoRoute preferencesRoute() => GoRoute(
+  path: ProfilePaths.preferences,
+  builder: (context, state) {
+    final session = context.read<SessionBloc>().state;
+    // Only reachable signed in; anything else is about to be redirected.
+    if (session is! SessionSignedIn) return const SizedBox.shrink();
+
+    return BlocProvider(
+      create: (context) => PreferencesCubit(
+        repository: context.read<AuthRepository>(),
+        segment: session.profile.segment,
+        interests: session.profile.interests,
+      ),
+      child: PreferencesScreen(onSaved: () => context.pop()),
+    );
+  },
+);
 
 /// Where the session sends the customer, or null when [location] is already
 /// a place they may be.

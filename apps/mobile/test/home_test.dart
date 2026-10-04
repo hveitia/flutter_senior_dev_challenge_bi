@@ -81,6 +81,7 @@ void main() {
   Future<void> signOut(WidgetTester tester) async {
     await tester.tap(destination('Perfil'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Cerrar sesión'));
     await tester.tap(find.text('Cerrar sesión'));
     await tester.pumpAndSettle();
   }
@@ -149,6 +150,69 @@ void main() {
             .currentIndex,
         1,
       );
+    });
+  });
+
+  group('personalization', () {
+    final twoSegments = {
+      ...homeDocument(
+        modules: [
+          moduleDocument('balance', 'totalBalance'),
+          moduleDocument('accounts', 'accountCarousel'),
+        ],
+      ),
+    };
+    (twoSegments['segments']! as Map<String, Object?>)['wealth'] = {
+      'label': 'Patrimonio',
+      'modules': [
+        moduleDocument('movements', 'recentMovements'),
+        moduleDocument('balance', 'totalBalance'),
+      ],
+      'features': {'transfers': true, 'partnerServices': true},
+    };
+
+    testWidgets('Perfil says which segment the home is composed for', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+
+      await tester.tap(destination('Perfil'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Estoy empezando'), findsOneWidget);
+      expect(find.text('Personalización'), findsOneWidget);
+    });
+
+    testWidgets('a customer who changes their segment in Perfil gets the '
+        'home of the new one, without signing in again', (tester) async {
+      await pumpApp(tester);
+      app.auth.signedInProfile = profile;
+      app.config.publish(twoSegments);
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountCard), findsOneWidget);
+      expect(find.text('Últimos movimientos'), findsNothing);
+
+      await tester.tap(destination('Perfil'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mis intereses'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Patrimonio'));
+      await tester.tap(find.text('Patrimonio'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Guardar cambios'));
+      await tester.tap(find.text('Guardar cambios'));
+      await tester.pumpAndSettle();
+
+      // Back in Perfil, which now names the new segment.
+      expect(find.text('Guardar cambios'), findsNothing);
+      expect(find.text('Patrimonio'), findsOneWidget);
+
+      await tester.tap(destination('Inicio'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Últimos movimientos'), findsOneWidget);
+      expect(find.byType(AccountCard), findsNothing);
+      expect(app.auth.signOutCalls, 0);
     });
   });
 

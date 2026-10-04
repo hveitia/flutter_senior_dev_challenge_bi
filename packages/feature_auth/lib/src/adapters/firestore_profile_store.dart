@@ -46,6 +46,29 @@ final class FirestoreProfileStore implements ProfileStore {
     );
   }
 
+  @override
+  Future<void> updatePreferences(
+    String uid, {
+    required Segment segment,
+    required Set<Interest> interests,
+  }) {
+    return _translating(
+      () => _firestore
+          .collection(collection)
+          .doc(uid)
+          .update(encodePreferences(segment, interests)),
+    );
+  }
+
+  /// The two fields a customer may change after sign-up.
+  static Map<String, Object> encodePreferences(
+    Segment segment,
+    Set<Interest> interests,
+  ) => {
+    ProfileFields.segment: segment.id,
+    ProfileFields.interests: [for (final interest in interests) interest.id],
+  };
+
   /// The document stored for [profile]. The creation time is set by the
   /// server, which is the only clock the rules trust.
   static Map<String, Object> encode(UserProfile profile) => {
@@ -53,10 +76,7 @@ final class FirestoreProfileStore implements ProfileStore {
     ProfileFields.nationalId: profile.nationalId,
     ProfileFields.email: profile.email,
     ProfileFields.phone: profile.phone,
-    ProfileFields.segment: profile.segment.id,
-    ProfileFields.interests: [
-      for (final interest in profile.interests) interest.id,
-    ],
+    ...encodePreferences(profile.segment, profile.interests),
     ProfileFields.createdAt: FieldValue.serverTimestamp(),
   };
 

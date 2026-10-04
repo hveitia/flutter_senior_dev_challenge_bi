@@ -110,6 +110,23 @@ final class InMemoryProfileStore implements ProfileStore {
     }
     _throwIfSet(failCreate);
   }
+
+  Object? failUpdate;
+  int updateCalls = 0;
+
+  @override
+  Future<void> updatePreferences(
+    String uid, {
+    required Segment segment,
+    required Set<Interest> interests,
+  }) async {
+    updateCalls++;
+    _throwIfSet(failUpdate);
+    profiles[uid] = profiles[uid]!.withPreferences(
+      segment: segment,
+      interests: interests,
+    );
+  }
 }
 
 /// Throws [failure] as the scripted outcome of a call, whatever its type.
@@ -250,6 +267,35 @@ final class FakeAuthRepository implements AuthRepository {
     passwordResets.add(email);
     await gate?.future;
     return passwordResetResult;
+  }
+
+  AuthResult<void> updatePreferencesResult = const AuthOk(null);
+  final List<({Segment segment, Set<Interest> interests})> preferenceUpdates =
+      [];
+
+  /// Set to the signed-in profile so a successful update announces the
+  /// changed one, as the real repository does.
+  UserProfile? signedInProfile;
+
+  @override
+  Future<AuthResult<void>> updatePreferences({
+    required Segment segment,
+    required Set<Interest> interests,
+  }) async {
+    preferenceUpdates.add((segment: segment, interests: interests));
+    await gate?.future;
+    final result = updatePreferencesResult;
+    if (result is AuthOk<void>) {
+      if (signedInProfile case final profile?) {
+        final updated = profile.withPreferences(
+          segment: segment,
+          interests: interests,
+        );
+        signedInProfile = updated;
+        announce(ActiveSession(updated, unlockRequired: false));
+      }
+    }
+    return result;
   }
 
   /// Runs when a sign-out starts, before the session is announced as

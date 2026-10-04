@@ -62,6 +62,13 @@ abstract final class AuthStrings {
   static const String segmentQuestion = '¿Qué te describe mejor?';
   static const String skip = 'Omitir por ahora';
 
+  static const String preferencesTitle = 'Personalización';
+  static const String preferencesHeading = 'Mis intereses';
+  static const String preferencesBody =
+      'Tu inicio se adapta a lo que elijas aquí.';
+  static const String savePreferences = 'Guardar cambios';
+  static const String preferencesSaved = 'Guardamos tus preferencias';
+
   static const String accessTitle = 'Protege tu acceso';
   static const String accessBody = 'Crea una contraseña que solo tú conozcas.';
   static const String biometricUnlock = 'Ingresar con huella o rostro';

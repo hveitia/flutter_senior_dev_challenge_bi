@@ -105,6 +105,21 @@ final class UserProfile extends Equatable {
   /// The name the app greets the customer with.
   String get firstName => fullName.split(' ').first;
 
+  /// This profile with what personalizes the home changed. Who the customer
+  /// is stays as it was.
+  UserProfile withPreferences({
+    required Segment segment,
+    required Set<Interest> interests,
+  }) => UserProfile(
+    uid: uid,
+    email: email,
+    fullName: fullName,
+    nationalId: nationalId,
+    phone: phone,
+    segment: segment,
+    interests: interests,
+  );
+
   @override
   List<Object?> get props => [
     uid,

@@ -17,6 +17,12 @@ abstract final class AuthTelemetry {
   static const String unlockFailed = 'auth_unlock_failed';
   static const String signedOut = 'auth_signed_out';
 
+  /// Event: the customer changed what personalizes their home. It carries
+  /// no parameter: which segment or interests is not reported.
+  static const String preferencesUpdated = 'auth_preferences_updated';
+  static const String preferencesUpdateFailed =
+      'auth_preferences_update_failed';
+
   static const String reasonKey = 'reason';
   static const String stepKey = 'step';
   static const String outcomeKey = 'outcome';

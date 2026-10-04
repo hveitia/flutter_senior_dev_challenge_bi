@@ -13,4 +13,5 @@ export 'src/domain/biometric_authenticator.dart';
 export 'src/domain/session.dart';
 export 'src/domain/user_profile.dart';
 export 'src/presentation/auth_routes.dart';
+export 'src/presentation/preferences/segment_label.dart';
 export 'src/presentation/session/session_bloc.dart';

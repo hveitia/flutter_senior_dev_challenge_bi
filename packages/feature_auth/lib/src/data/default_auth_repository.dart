@@ -153,6 +153,45 @@ final class DefaultAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AuthResult<void>> updatePreferences({
+    required Segment segment,
+    required Set<Interest> interests,
+  }) async {
+    final session = _current;
+    if (session is! ActiveSession) {
+      return const AuthError(AuthFailure.unexpected);
+    }
+    final profile = session.profile;
+
+    final stored = await _policy.run(
+      () => _profiles.updatePreferences(
+        profile.uid,
+        segment: segment,
+        interests: interests,
+      ),
+      // Storing the same choice twice leaves the same profile.
+      idempotent: true,
+      serviceId: AuthTelemetry.profileService,
+    );
+
+    switch (stored) {
+      case Failed(:final failure):
+        return _failed(AuthTelemetry.preferencesUpdateFailed, failure);
+      case Success():
+        // What changed stays out of the report: the segment says something
+        // about the customer.
+        _telemetry.event(AuthTelemetry.preferencesUpdated);
+        _announce(
+          ActiveSession(
+            profile.withPreferences(segment: segment, interests: interests),
+            unlockRequired: false,
+          ),
+        );
+        return const AuthOk(null);
+    }
+  }
+
+  @override
   Future<AuthResult<void>> sendPasswordReset(String email) async {
     final sent = await _policy.run(
       () => _gateway.sendPasswordReset(email),

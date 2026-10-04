@@ -34,6 +34,7 @@ const _outsideAdapters = ImportBoundary(
     'flutter',
     'flutter_bloc',
     'go_router',
+    'module_kit',
   },
   closedDirectories: {_adaptersDirectory},
   closedLibraries: {

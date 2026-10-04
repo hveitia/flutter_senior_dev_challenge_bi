@@ -1,6 +1,5 @@
 import 'package:app_platform/app_platform.dart';
 import 'package:design_system/design_system.dart';
-import 'package:feature_accounts/src/presentation/accounts_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -15,6 +14,9 @@ class ConnectionBanner extends StatelessWidget {
   /// not claim that saved data is on screen.
   final bool hasSavedData;
 
+  /// Said without a connection when there is nothing saved to show.
+  static const String offlineWithoutData = 'Sin conexión';
+
   @override
   Widget build(BuildContext context) {
     final status = context.watch<ConnectivityCubit>().state;
@@ -23,7 +25,7 @@ class ConnectionBanner extends StatelessWidget {
       ConnectivityStatus.online => const SizedBox.shrink(),
       ConnectivityStatus.offline => StatusBanner(
         kind: StatusBannerKind.offline,
-        message: hasSavedData ? null : AccountsStrings.offlineWithoutData,
+        message: hasSavedData ? null : offlineWithoutData,
       ),
       ConnectivityStatus.slow => const StatusBanner(
         kind: StatusBannerKind.slow,

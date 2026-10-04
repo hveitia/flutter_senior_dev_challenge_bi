@@ -42,7 +42,6 @@ abstract final class AccountsStrings {
       'Revisa tu conexión e intenta de nuevo.';
   static const String unexpectedFailure =
       'Algo no salió como esperábamos. Intenta de nuevo.';
-  static const String offlineWithoutData = 'Sin conexión';
 
   static const String movementsFailed = 'No pudimos cargar tus movimientos';
   static const String accountsOutdated =

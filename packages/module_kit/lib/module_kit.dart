@@ -5,6 +5,7 @@
 /// Domain packages depend on this package and never on each other.
 library;
 
+export 'src/connection_banner.dart';
 export 'src/destination_resolver.dart';
 export 'src/home_module.dart';
 export 'src/home_module_binding.dart';

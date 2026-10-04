@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:design_system/design_system.dart';
-import 'package:feature_accounts/src/presentation/widgets/connection_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:module_kit/module_kit.dart';
 
 void main() {
   late FakeConnectivityMonitor monitor;

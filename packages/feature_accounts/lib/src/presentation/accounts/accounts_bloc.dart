@@ -45,12 +45,13 @@ final class AccountsState extends Equatable {
 
   final LoadState<List<Account>> accounts;
 
-  /// What is available across every account, in cents. Null when there is
-  /// no total to state: the accounts are in different currencies, or one of
-  /// them could not be read.
+  /// What the customer can spend across their accounts, in cents; what is
+  /// invested is not part of it, the same rule the home follows. Null when
+  /// there is no total to state: the accounts are in different currencies,
+  /// or one of them could not be read.
   int? get totalCents => accounts.isIncomplete
       ? null
-      : totalAvailableCents(accounts.data ?? const []);
+      : totalAvailableCents(cashAccounts(accounts.data ?? const []));
 
   /// The account with [id], or null when it is not among the customer's.
   Account? byId(String id) {

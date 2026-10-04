@@ -53,6 +53,29 @@ void main() {
     expect(find.textContaining('Actualizado'), findsNothing);
   });
 
+  testWidgets('the total is the money that can be spent, and says that '
+      'investments are not in it', (tester) async {
+    backendAnswers(Success(accountsSnapshot(const [savings, checking, fund])));
+
+    await harness.pump(tester, screen());
+    await tester.pump();
+
+    expect(find.text(r'$4,820.35', findRichText: true), findsOneWidget);
+    expect(find.text('Sin contar tus inversiones'), findsOneWidget);
+    expect(find.byType(AccountCard), findsNWidgets(3));
+  });
+
+  testWidgets('without investments, the total needs no clarification', (
+    tester,
+  ) async {
+    backendAnswers(Success(accountsSnapshot(const [savings, checking])));
+
+    await harness.pump(tester, screen());
+    await tester.pump();
+
+    expect(find.text('Sin contar tus inversiones'), findsNothing);
+  });
+
   testWidgets('when an account could not be read, says so and does not show '
       'a total that would leave it out', (tester) async {
     backendAnswers(

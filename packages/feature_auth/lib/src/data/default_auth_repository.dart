@@ -181,12 +181,20 @@ final class DefaultAuthRepository implements AuthRepository {
         // What changed stays out of the report: the segment says something
         // about the customer.
         _telemetry.event(AuthTelemetry.preferencesUpdated);
-        _announce(
-          ActiveSession(
-            profile.withPreferences(segment: segment, interests: interests),
-            unlockRequired: false,
-          ),
-        );
+        // The write took a while: the session may have ended or changed
+        // hands meanwhile, and announcing it now would bring it back.
+        final current = _current;
+        if (current is ActiveSession && current.profile.uid == profile.uid) {
+          _announce(
+            ActiveSession(
+              current.profile.withPreferences(
+                segment: segment,
+                interests: interests,
+              ),
+              unlockRequired: current.unlockRequired,
+            ),
+          );
+        }
         return const AuthOk(null);
     }
   }

@@ -118,10 +118,22 @@ class AccountsScreen extends StatelessWidget {
             )
           // Accounts in different currencies have no total either; each
           // card still states its own balance.
-          else if (totalAvailableCents(data) case final total?) ...[
+          // The total is spendable money, as on the home: an investment has
+          // its own card below and is named as left out.
+          else if (totalAvailableCents(cashAccounts(data))
+              case final total?) ...[
             const GroupHeader(label: AccountsStrings.totalBalance),
             const SizedBox(height: AppSpacing.x1),
             AmountText(cents: total, size: AmountTextSize.display),
+            if (investmentAccounts(data).isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.x1),
+              Text(
+                AccountsStrings.totalWithoutInvestments,
+                style: AppTypography.caption.copyWith(
+                  color: context.colors.textSecondary,
+                ),
+              ),
+            ],
           ],
           if (showsAge) ...[
             const SizedBox(height: AppSpacing.x1),

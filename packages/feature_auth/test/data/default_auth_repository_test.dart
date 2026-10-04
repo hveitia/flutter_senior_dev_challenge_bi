@@ -589,6 +589,25 @@ void main() {
       expect(sessions, isEmpty);
     });
 
+    test('does not bring back a session that ended while the change was being '
+        'stored', () async {
+      await signedIn();
+      final release = Completer<void>();
+      profiles.holdUpdate = release.future;
+
+      final update = repository.updatePreferences(
+        segment: Segment.wealth,
+        interests: {Interest.investing},
+      );
+      await repository.signOut();
+      await forgetSessions();
+      release.complete();
+      await update;
+      await settle();
+
+      expect(sessions, isEmpty);
+    });
+
     test('is refused without a signed-in customer', () async {
       final result = await repository.updatePreferences(
         segment: Segment.wealth,

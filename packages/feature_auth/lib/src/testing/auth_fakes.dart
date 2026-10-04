@@ -114,6 +114,10 @@ final class InMemoryProfileStore implements ProfileStore {
   Object? failUpdate;
   int updateCalls = 0;
 
+  /// When set, an update waits for it before it is stored, so a test can
+  /// make something else happen while the write is in flight.
+  Future<void>? holdUpdate;
+
   @override
   Future<void> updatePreferences(
     String uid, {
@@ -121,6 +125,7 @@ final class InMemoryProfileStore implements ProfileStore {
     required Set<Interest> interests,
   }) async {
     updateCalls++;
+    await holdUpdate;
     _throwIfSet(failUpdate);
     profiles[uid] = profiles[uid]!.withPreferences(
       segment: segment,

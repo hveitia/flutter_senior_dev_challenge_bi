@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exampleConfig } from "@/test/support/fixtures";
-import { countChanges } from "./diff";
+import { changesBySection, countChanges } from "./diff";
 import {
   moveModule,
   setFeature,
@@ -68,5 +68,62 @@ describe("countChanges", () => {
     delete published.resilience;
 
     expect(countChanges(published, exampleConfig())).toBe(0);
+  });
+});
+
+describe("changesBySection", () => {
+  it("finds nothing anywhere between a configuration and its copy", () => {
+    expect(changesBySection(exampleConfig(), exampleConfig())).toEqual({
+      home: 0,
+      features: 0,
+      resilience: 0,
+    });
+  });
+
+  it("files order, visibility and the banner under the home", () => {
+    let draft = moveModule(exampleConfig(), "starting", 0, 4);
+    draft = setModuleVisible(draft, "family", "promo", false);
+    draft = setPromo(draft, "starting", { title: "Otro título" });
+
+    expect(changesBySection(exampleConfig(), draft)).toEqual({
+      home: 3,
+      features: 0,
+      resilience: 0,
+    });
+  });
+
+  it("files a feature switch under features, whichever the segment", () => {
+    let draft = setFeature(exampleConfig(), "wealth", "partnerServices", false);
+    draft = setFeature(draft, "starting", "transfers", false);
+
+    expect(changesBySection(exampleConfig(), draft)).toEqual({
+      home: 0,
+      features: 2,
+      resilience: 0,
+    });
+  });
+
+  it("files each fault setting under resilience", () => {
+    const draft = setResilience(exampleConfig(), {
+      latencyMs: 2000,
+      movementsUnavailable: true,
+    });
+
+    expect(changesBySection(exampleConfig(), draft)).toEqual({
+      home: 0,
+      features: 0,
+      resilience: 2,
+    });
+  });
+
+  it("adds up to what the editor counts as a whole", () => {
+    let draft = moveModule(exampleConfig(), "starting", 0, 4);
+    draft = setFeature(draft, "wealth", "partnerServices", false);
+    draft = setResilience(draft, { latencyMs: 2000 });
+    const bySection = changesBySection(exampleConfig(), draft);
+
+    expect(bySection.home + bySection.features + bySection.resilience).toBe(
+      countChanges(exampleConfig(), draft),
+    );
   });
 });

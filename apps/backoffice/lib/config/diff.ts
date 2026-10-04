@@ -14,7 +14,8 @@ function sameOrder(before: SegmentConfig, after: SegmentConfig): boolean {
   );
 }
 
-function segmentChanges(before: SegmentConfig, after: SegmentConfig): number {
+/** What a segment's home composition changes: order, visibility and banner. */
+function homeChanges(before: SegmentConfig, after: SegmentConfig): number {
   let changes = sameOrder(before, after) ? 0 : 1;
 
   for (const drafted of after.modules) {
@@ -28,7 +29,14 @@ function segmentChanges(before: SegmentConfig, after: SegmentConfig): number {
     changes += differing(publishedPromo, draftPromo);
   }
 
-  return changes + differing(before.features, after.features);
+  return changes;
+}
+
+/** Unpublished changes, filed under the part of the console that edits them. */
+export interface SectionChanges {
+  home: number;
+  features: number;
+  resilience: number;
 }
 
 /**
@@ -36,11 +44,26 @@ function segmentChanges(before: SegmentConfig, after: SegmentConfig): number {
  * the terms an editor thinks in: a reordering counts once per segment, and
  * each switch or field counts once. The version number is not an edit.
  */
-export function countChanges(published: HomeConfig, draft: HomeConfig): number {
-  let changes = differing(resilienceOf(published), resilienceOf(draft));
+export function changesBySection(
+  published: HomeConfig,
+  draft: HomeConfig,
+): SectionChanges {
+  const changes: SectionChanges = {
+    home: 0,
+    features: 0,
+    resilience: differing(resilienceOf(published), resilienceOf(draft)),
+  };
   for (const [segmentId, segment] of Object.entries(draft.segments)) {
     const before = published.segments[segmentId];
-    if (before) changes += segmentChanges(before, segment);
+    if (!before) continue;
+    changes.home += homeChanges(before, segment);
+    changes.features += differing(before.features, segment.features);
   }
   return changes;
+}
+
+/** Every unpublished change, wherever in the console it was made. */
+export function countChanges(published: HomeConfig, draft: HomeConfig): number {
+  const { home, features, resilience } = changesBySection(published, draft);
+  return home + features + resilience;
 }

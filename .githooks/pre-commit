@@ -23,6 +23,19 @@ if [ -n "$unstaged" ] || [ -n "$untracked" ]; then
   exit 1
 fi
 
+# The staged list is read here, while git's own view of the commit is intact,
+# and handed over: the variables cleared below are what tell git which index
+# this commit uses.
+VERIFY_STAGED=$(git diff --cached --name-only --diff-filter=ACMRD)
+export VERIFY_STAGED
+
+# Git exports these to its hooks. In a linked worktree they point at the main
+# repository, and every tool that asks git where it is gets that answer: the
+# Flutter tool then takes this repository for its own SDK checkout and stops
+# resolving dependencies. Without them, each tool finds the repository from
+# the directory it runs in.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 # Format and analysis cover the whole repository; tests run for what the
 # commit can break. CI runs everything on every push.
 exec tool/verify.sh --affected

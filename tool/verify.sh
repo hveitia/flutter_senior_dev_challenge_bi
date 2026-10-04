@@ -114,7 +114,8 @@ if [ "$mode" = all ]; then
   selected=("${members[@]}")
 else
   echo "==> Affected by the staged changes"
-  staged=$(git diff --cached --name-only --diff-filter=ACMRD)
+  # The pre-commit hook passes the list it read from the commit's own index.
+  staged=${VERIFY_STAGED-$(git diff --cached --name-only --diff-filter=ACMRD)}
 
   # Files that configure every package: after them nothing can be assumed
   # to still work.

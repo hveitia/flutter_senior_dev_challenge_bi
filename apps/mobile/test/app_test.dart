@@ -1,15 +1,12 @@
-import 'package:app_platform/app_platform.dart';
-import 'package:app_platform/testing.dart';
 import 'package:banca_digital/app.dart';
-import 'package:banca_digital/app_dependencies.dart';
 import 'package:design_system/design_system.dart';
-import 'package:feature_accounts/testing.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_auth/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_saved_customer_data.dart';
+import 'support/test_dependencies.dart';
 
 void main() {
   const account = AuthAccount(uid: 'uid-1', email: 'valentina@example.com');
@@ -30,15 +27,11 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
       BancaDigitalApp(
-        dependencies: AppDependencies(
-          telemetry: InMemoryTelemetry(),
-          connectivity: ConnectivityCubit(monitor: FakeConnectivityMonitor())
-            ..start(),
-          authRepository: repository,
+        dependencies: TestDependencies(
+          auth: repository,
           biometrics: biometrics,
-          accountsRepositoryFor: (_) => FakeAccountsRepository(),
-          savedCustomerData: savedData,
-        ),
+          savedData: savedData,
+        ).dependencies,
       ),
     );
   }

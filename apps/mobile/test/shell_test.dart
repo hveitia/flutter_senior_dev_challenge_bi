@@ -1,7 +1,6 @@
 import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:banca_digital/app.dart';
-import 'package:banca_digital/app_dependencies.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_accounts/testing.dart';
@@ -11,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_saved_customer_data.dart';
+import 'support/test_dependencies.dart';
 
 void main() {
   const profile = UserProfile(
@@ -37,6 +37,7 @@ void main() {
   late List<String> customersAskedFor;
   late FakeSavedCustomerData savedData;
   late InMemoryTelemetry telemetry;
+  late TestDependencies app;
 
   Future<void> pumpSignedIn(WidgetTester tester) async {
     auth.restored = const ActiveSession(profile, unlockRequired: false);
@@ -61,22 +62,16 @@ void main() {
       ..onRefreshAccounts = accountsAnswer
       ..onRefreshMovements = movementsAnswer;
 
-    await tester.pumpWidget(
-      BancaDigitalApp(
-        dependencies: AppDependencies(
-          telemetry: telemetry,
-          connectivity: ConnectivityCubit(monitor: FakeConnectivityMonitor())
-            ..start(),
-          authRepository: auth,
-          biometrics: FakeBiometricAuthenticator(),
-          accountsRepositoryFor: (uid) {
-            customersAskedFor.add(uid);
-            return accounts;
-          },
-          savedCustomerData: savedData,
-        ),
-      ),
+    app = TestDependencies(
+      auth: auth,
+      telemetry: telemetry,
+      savedData: savedData,
+      accountsRepositoryFor: (uid) {
+        customersAskedFor.add(uid);
+        return accounts;
+      },
     );
+    await tester.pumpWidget(BancaDigitalApp(dependencies: app.dependencies));
     await tester.pumpAndSettle();
   }
 

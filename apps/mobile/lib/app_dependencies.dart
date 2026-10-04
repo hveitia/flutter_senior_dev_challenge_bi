@@ -1,7 +1,22 @@
 import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:module_kit/module_kit.dart';
+
+/// Which build of the app this is, as the store names it.
+@immutable
+final class AppInfo {
+  const AppInfo({required this.version, required this.build});
+
+  /// `1.0.0`.
+  final String version;
+
+  /// The build number within the version: `12`.
+  final String build;
+}
 
 /// Everything the widget tree needs from outside it.
 ///
@@ -15,6 +30,10 @@ final class AppDependencies {
     required this.biometrics,
     required this.accountsRepositoryFor,
     required this.savedCustomerData,
+    required this.configRepository,
+    required this.publishedFaults,
+    required this.homeModules,
+    required this.appInfo,
   });
 
   final Telemetry telemetry;
@@ -32,4 +51,17 @@ final class AppDependencies {
   /// Cleared whenever the session ends, so nothing of a customer stays on
   /// the device after they sign out.
   final SavedCustomerData savedCustomerData;
+
+  /// The published configuration. It is listened to only while a customer
+  /// is signed in: reading it needs a session.
+  final ConfigRepository configRepository;
+
+  /// Where the resilience policy reads the faults of the configuration in
+  /// use. The same instance the policy was built with.
+  final PublishedFaults publishedFaults;
+
+  /// Every home module this build can draw, registered by its domain.
+  final HomeModuleRegistry homeModules;
+
+  final AppInfo appInfo;
 }

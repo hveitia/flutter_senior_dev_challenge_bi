@@ -1,3 +1,5 @@
+import 'package:banca_digital/app_dependencies.dart';
+import 'package:banca_digital/shell/diagnostics_card.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,14 +13,9 @@ abstract final class ShellStrings {
   static const String profile = 'Perfil';
 
   static const String underConstruction = 'Estamos construyendo esta sección';
-  static const String homeComing =
-      'Pronto verás aquí un resumen hecho a tu medida. Mientras tanto, tus '
-      'cuentas están en la sección Cuentas.';
   static const String servicesComing =
       'Pronto encontrarás aquí productos del banco y de nuestros aliados.';
   static const String signOut = 'Cerrar sesión';
-
-  static String greeting(String firstName) => 'Hola, $firstName';
 }
 
 /// The root of a section that is not built yet. It says so plainly instead
@@ -53,30 +50,19 @@ class SectionPlaceholderScreen extends StatelessWidget {
   }
 }
 
-/// Where a signed-in customer lands until the home is built: it greets
-/// them by name and points at what already works.
-class HomePlaceholderScreen extends StatelessWidget {
-  const HomePlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final session = context.watch<SessionBloc>().state;
-    final firstName = session is SessionSignedIn
-        ? session.profile.firstName
-        : '';
-
-    return SectionPlaceholderScreen(
-      title: ShellStrings.greeting(firstName),
-      message: ShellStrings.homeComing,
-      icon: Icons.home_outlined,
-    );
-  }
-}
-
-/// Who is signed in, and the way out. The rest of the profile comes with
-/// its own stage.
+/// Who is signed in, the state of the app and the way out. The rest of the
+/// profile comes with its own stage.
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    required this.appInfo,
+    this.now = DateTime.now,
+    super.key,
+  });
+
+  final AppInfo appInfo;
+
+  /// The current moment, for the diagnostics.
+  final DateTime Function() now;
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +87,8 @@ class ProfileScreen extends StatelessWidget {
               color: context.colors.textSecondary,
             ),
           ),
+          SizedBox(height: context.metrics.moduleGap),
+          DiagnosticsCard(appInfo: appInfo, now: now),
           SizedBox(height: context.metrics.moduleGap),
           AppButton(
             label: ShellStrings.signOut,

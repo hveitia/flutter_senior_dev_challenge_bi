@@ -1,13 +1,19 @@
 import 'dart:async';
 
+import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/app_dependencies.dart';
+import 'package:banca_digital/destinations.dart';
 import 'package:banca_digital/shell/app_shell.dart';
 import 'package:banca_digital/shell/customer_scope.dart';
 import 'package:banca_digital/shell/section_screens.dart';
 import 'package:banca_digital/splash_screen.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
+import 'package:feature_home/feature_home.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:module_kit/module_kit.dart';
 
 /// Locations owned by the app itself. Each feature owns its own.
 abstract final class AppPaths {
@@ -53,7 +59,7 @@ const List<AppSection> appSections = [
 GoRouter createAppRouter({
   required SessionBloc session,
   required String productName,
-  required AccountsRepository Function(String uid) accountsRepositoryFor,
+  required AppDependencies dependencies,
 }) {
   final refresh = _StreamListenable(session.stream);
 
@@ -74,7 +80,9 @@ GoRouter createAppRouter({
       ...authRoutes(),
       ShellRoute(
         builder: (context, state, child) => CustomerScope(
-          accountsRepositoryFor: accountsRepositoryFor,
+          accountsRepositoryFor: dependencies.accountsRepositoryFor,
+          configRepository: dependencies.configRepository,
+          publishedFaults: dependencies.publishedFaults,
           child: child,
         ),
         routes: [
@@ -88,7 +96,11 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppPaths.home,
-                builder: (context, state) => const HomePlaceholderScreen(),
+                builder: (context, state) => _home(
+                  context,
+                  productName: productName,
+                  registry: dependencies.homeModules,
+                ),
               ),
               accountsTabRoute(),
               GoRoute(
@@ -101,7 +113,8 @@ GoRouter createAppRouter({
               ),
               GoRoute(
                 path: AppPaths.profile,
-                builder: (context, state) => const ProfileScreen(),
+                builder: (context, state) =>
+                    ProfileScreen(appInfo: dependencies.appInfo),
               ),
             ],
           ),
@@ -109,6 +122,30 @@ GoRouter createAppRouter({
         ],
       ),
     ],
+  );
+}
+
+/// The home of the signed-in customer: drawn from the published
+/// configuration, with the modules every domain registered. Its actions
+/// lead only where this build has a screen and the customer's feature
+/// flags allow.
+Widget _home(
+  BuildContext context, {
+  required String productName,
+  required HomeModuleRegistry registry,
+}) {
+  final session = context.watch<SessionBloc>().state;
+  final profile = session is SessionSignedIn ? session.profile : null;
+  final config = context.read<RemoteConfigCubit>();
+
+  return HomeScreen(
+    registry: registry,
+    destinations: AppDestinationResolver(
+      features: () => config.state.segment?.features ?? FeatureFlags.allOff,
+    ),
+    productName: productName,
+    firstName: profile?.firstName ?? '',
+    fullName: profile?.fullName ?? '',
   );
 }
 

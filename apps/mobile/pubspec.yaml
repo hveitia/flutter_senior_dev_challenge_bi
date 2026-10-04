@@ -16,6 +16,7 @@ dependencies:
   design_system: ^0.1.0
   feature_accounts: ^0.1.0
   feature_auth: ^0.1.0
+  feature_home: ^0.1.0
   firebase_auth: ^6.7.0
   firebase_core: ^4.15.0
   flutter:
@@ -23,6 +24,8 @@ dependencies:
   flutter_bloc: ^9.1.1
   go_router: ^17.5.0
   local_auth: ^3.0.2
+  module_kit: ^0.1.0
+  package_info_plus: ^9.0.0
   shared_preferences: ^2.5.5
 
 dev_dependencies:

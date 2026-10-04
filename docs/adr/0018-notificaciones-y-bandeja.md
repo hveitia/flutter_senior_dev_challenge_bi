@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** construida en la etapa 9. Paquete `packages/feature_notifications`, cableado en `apps/mobile` (`notifications_wiring.dart`, `notifications_composition.dart`), reglas de `users/{uid}/devices` y `users/{uid}/inbox` en `firebase/firestore.rules`, y escritura de la bandeja al enviar en `apps/backoffice/lib/server/push.ts`. Verificada con pruebas, con el emulador de reglas y compilando el APK. **No verificada en un dispositivo ni contra el servicio real de mensajería**: ver «Qué no está verificado».
+- **Implementación:** construida en la etapa 9. Paquete `packages/feature_notifications`, cableado en `apps/mobile` (`notifications_wiring.dart`, `notifications_composition.dart`), reglas de `users/{uid}/devices` y `users/{uid}/inbox` en `firebase/firestore.rules`, y escritura de la bandeja al enviar en `apps/backoffice/lib/server/push.ts`. Verificada con pruebas, con el emulador de reglas y, tras la integración, en un teléfono Android con entrega real: ver «Qué no está verificado» para lo que se vio y lo que falta.
 
 ## Problema a resolver
 
@@ -94,7 +94,11 @@ sequenceDiagram
 
 ### Qué no está verificado
 
-Nada de esto corrió en un teléfono ni contra FCM. Tampoco se comprobó en un dispositivo que eliminar la dirección cancele las suscripciones a temas, que es lo que el servicio documenta y en lo que se apoya la limpieza. En particular: la recepción real de un push, el aviso de permiso de Android 13, el registro de la dirección y del tema, la apertura desde un aviso con la aplicación cerrada, el canal de notificaciones de Android y todo lo de iOS (capacidad de notificaciones, APNs y `UIBackgroundModes`, añadido pero sin compilar). Las reglas nuevas tienen pruebas contra el emulador y no están desplegadas. Queda una verificación en dispositivo pendiente para la integración.
+Tras la integración se ejecutó en un teléfono Android, con la consola en local y entrega real. Se vio: la invitación sobre el inicio y el aviso en la bandeja tras «Ahora no»; el aviso de permiso del sistema y el documento del dispositivo con sus tres campos; un envío a un cliente recibido con la aplicación abierta, en segundo plano y cerrada, la campana con el contador, el aviso como «Nueva» y su marca de leído al tocarlo; el historial de la consola con «En la bandeja de 1 cliente»; el permiso retirado, que quitó el registro y mostró el aviso con «Activar en Ajustes», y su vuelta; un envío al segmento por tema, y tras cambiar de segmento el tema anterior en silencio y el nuevo recibido; el cierre de sesión, que eliminó el documento del dispositivo y dejó de recibir; y un segundo cliente en el mismo teléfono, al que no llegó nada dirigido al primero ni a su segmento. Las reglas de dispositivos y bandeja están desplegadas.
+
+Esa ejecución encontró dos defectos, corregidos con una prueba que falló primero: el aviso de un push recibido con la aplicación abierta no se retiraba solo y seguía en pantalla sobre otras pantallas, y un aviso tocado con la aplicación cerrada caía en la bandeja porque se abría antes de leerse la configuración.
+
+Sigue sin verificar: que el texto no se vea en la pantalla bloqueada (se comprobó que el aviso llega con visibilidad privada, no bloqueando el teléfono), el aviso tocado con el bloqueo biométrico activo, la sesión revocada desde la consola de Firebase, y todo lo de iOS (capacidad de notificaciones, APNs y `UIBackgroundModes`, añadido pero sin compilar). Tocar un aviso del sistema no lo marca como leído en la bandeja.
 
 ## Impacto a largo plazo
 

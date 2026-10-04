@@ -96,22 +96,22 @@ La regla que ordena todo: una orden solo se deja en cola cuando es seguro que no
 | --- | --- | --- |
 | Transferencia con conexión | «Transferencia realizada» con su referencia, y el movimiento en las dos cuentas | Visto en un teléfono, con la prueba de extremo a extremo |
 | Monto por encima del máximo por transferencia | El error bajo el monto y no se puede continuar | Visto en un teléfono |
-| Monto por encima del saldo disponible | «Saldo insuficiente. Disponible: …» bajo el monto | Pruebas automáticas |
-| Sin conexión al confirmar | «Transferencia pendiente», etiqueta «En cola», sin «Ver movimiento». La orden queda en el teléfono | Pruebas automáticas |
-| Vuelve la conexión con órdenes en cola | Se envían solas, de una en una. Cada movimiento aparece en su cuenta | Pruebas automáticas |
-| Se cierra y se abre la aplicación con órdenes en cola | Siguen en cola y se envían al haber conexión | Sin verificar: depende de la persistencia de Firestore en el dispositivo |
+| Monto por encima del saldo disponible | «Saldo insuficiente. Disponible: …» bajo el monto | Visto en un teléfono |
+| Sin conexión al confirmar | «Transferencia pendiente», etiqueta «En cola», sin «Ver movimiento». La orden queda en el teléfono | Visto en un teléfono, en modo avión |
+| Vuelve la conexión con órdenes en cola | Se envían solas, de una en una. Cada movimiento aparece en su cuenta | Visto en un teléfono, con una orden |
+| Se cierra y se abre la aplicación con órdenes en cola | Siguen en cola y se envían al haber conexión | Visto en un teléfono: el aviso «Tienes 1 transferencia en cola» seguía tras reiniciar sin conexión |
 | El servidor no contesta a tiempo, o la conexión se pierde con la petición ya enviada | «No pudimos enviar la transferencia» y «Reintentar», que repite la misma orden. Nunca «En cola» | Pruebas automáticas |
 | El cliente sale y vuelve a entrar a transferir con esa orden sin resolver | La pantalla se abre sobre esa orden, no sobre un formulario vacío | Pruebas automáticas |
-| La petición está en vuelo | No se puede salir de la pantalla: ni con el retroceso del sistema ni con el botón de cerrar | Pruebas automáticas |
+| La petición está en vuelo | No se puede salir de la pantalla: ni con el retroceso del sistema ni con el botón de cerrar | Visto en un teléfono, con latencia inyectada |
 | El servidor rechaza la orden | El motivo, sin «Reintentar» | Pruebas automáticas |
 | La sesión ya no es válida | Se renueva el token una vez; si no basta, «Tu sesión venció…», sin reintento | Pruebas automáticas |
 | El banco no acepta una orden que estaba en cola | Aviso en Cuentas: el motivo del rechazo, o «Una transferencia en cola no se pudo enviar. Revisa tus movimientos antes de repetirla.» | Pruebas automáticas |
 | Cerrar sesión con órdenes que solo existen en el teléfono | Aviso de que se descartan; la sesión solo se cierra si el cliente lo confirma | Pruebas automáticas |
 | Cerrar sesión con órdenes que el banco ya recibió | Aviso de que no se descartan y se completarán al volver a iniciar sesión | Pruebas automáticas |
 | La API de clientes está caída | «No pudimos enviar la transferencia». No se encola: el teléfono tiene conexión y la orden esperaría a un servidor caído | Pruebas automáticas |
-| Cliente nuevo sin cuentas | «Estamos preparando tu cuenta» mientras se pide el alta; si falla, el aviso con «Reintentar» | Pruebas automáticas |
+| Cliente nuevo sin cuentas | «Estamos preparando tu cuenta» mientras se pide el alta; si falla, el aviso con «Reintentar» | El alta se vio en un teléfono con un registro nuevo; el fallo, en pruebas automáticas |
 
-Lo marcado como «Pruebas automáticas» no se ha visto en un dispositivo: el teléfono estaba bloqueado cuando se intentó.
+Lo marcado como «Pruebas automáticas» no se ha visto en un dispositivo.
 
 ## Laboratorio de resiliencia
 
@@ -157,18 +157,22 @@ Una observación sin explicar: en el primer arranque tras instalar la compilaci�
 | Los servicios de aliados se apagan en la configuración | Desaparecen de Servicios y de «Para ti», y una mini aplicación abierta se cierra | Pruebas |
 | El borrado del cierre de sesión anterior no terminó | Se completa antes de cargar; si no puede, «Servicio no disponible» | Pruebas |
 
-En todos los casos la barra del banco permanece y el mensaje dice que la cuenta y los saldos no se ven afectados. Nada de esta tabla se ha visto todavía en un dispositivo.
+En todos los casos la barra del banco permanece y el mensaje dice que la cuenta y los saldos no se ven afectados.
+
+Visto en un teléfono, con las páginas de los aliados servidas en local: sin conexión al volver a cargar y su recuperación con «Reintentar»; el seguro de viaje dado por caído con la mini aplicación abierta, al instante, y su recarga sola al levantarse; y los servicios de aliados apagados, que quitaron la sección, «Para ti» y reemplazaron la mini aplicación abierta por «Servicio no disponible». El resto de la tabla (el límite de 15 s, el error del servidor del aliado, la navegación que falla, el reintento durante la carga y el borrado pendiente) está cubierto solo por pruebas.
 
 ## Notificaciones
 
-La bandeja es una lectura como las demás: sin conexión muestra los avisos guardados bajo el aviso de falta de conexión, y un fallo con datos guardados no los reemplaza por un error. Un aviso tocado sin sesión, o con la sesión bloqueada, se conserva y se abre cuando el cliente entra. El aviso de una transferencia realizada se escribe después de responder a la aplicación: si falla, la transferencia no se ve afectada. Cubierto por pruebas; sin ver en un dispositivo.
+La bandeja es una lectura como las demás: sin conexión muestra los avisos guardados bajo el aviso de falta de conexión, y un fallo con datos guardados no los reemplaza por un error. Un aviso tocado sin sesión, o con la sesión bloqueada, se conserva y se abre cuando el cliente entra. El aviso de una transferencia realizada se escribe después de responder a la aplicación: si falla, la transferencia no se ve afectada.
+
+En un teléfono se vio que un aviso tocado con la aplicación cerrada abre su destino una sola vez. Esa comprobación encontró un defecto: el aviso se abría antes de que la aplicación hubiera leído la configuración, cuando todavía no sabía qué funcionalidades estaban encendidas, y caía en la bandeja aunque su destino existiera. Ahora espera a que la configuración esté leída. La bandeja sin conexión y el aviso tocado con la sesión bloqueada siguen cubiertos solo por pruebas.
 
 ## Qué no está hecho
 
 - **Publicar los fallos desde la consola, visto en un dispositivo.** La consola tiene el laboratorio de resiliencia y sus pruebas, pero en el teléfono los fallos se publicaron con la herramienta de desarrollo `firebase/seed/publish-config.mjs`. Desde la consola se comprobó en el teléfono un cambio de orden de módulos.
 - **El aviso de conexión como aviso flotante.** El diseño muestra «Conexión restablecida» como un aviso flotante; la aplicación lo muestra como un aviso bajo el encabezado.
-- **Transferencias sin conexión, vistas en un dispositivo.** La cola con identificador de idempotencia está construida y cubierta por pruebas (sección Transferencias), pero su envío al reconectar no se ha visto en un teléfono.
-- **Mini aplicaciones de aliados y notificaciones, vistas en un dispositivo.** Sus estados degradados están cubiertos por pruebas (secciones anteriores) y pendientes de comprobarse en un teléfono.
+- **La prueba de extremo a extremo de ida y vuelta, ejecutada en un dispositivo.** Se intentó una vez y el teléfono se bloqueó durante la ejecución; sigue sin un resultado válido.
+- **El servidor del aliado detenido, visto en un dispositivo.** Se comprobó la falta de conexión, no el servidor caído con conexión.
 - **El contador «Intento 2 de 3» del diseño.** La pantalla indica que está reintentando y, al terminar, cuántos intentos hubo.
 - **Detección de falta de salida real a internet.** El estado de conectividad dice si el dispositivo tiene una interfaz de red activa, no si esa red llega a internet (un portal cautivo, por ejemplo). En ese caso las peticiones agotan su tiempo y se muestran como una falla, no como «sin conexión».
 - **iOS.** Nada de lo anterior se ha ejecutado en iOS.

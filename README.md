@@ -17,9 +17,9 @@ El proyecto se construye por etapas, con `main` siempre en verde. Esta sección 
 | 5. Cuentas y movimientos | Navegación inferior, lectura en tiempo real, datos guardados sin conexión, filtros, búsqueda, paginación y estados degradados | Completa |
 | 6. Inicio dinámico | Inicio armado desde la configuración publicada, registro de módulos por dominio, personalización por segmento, laboratorio de resiliencia y diagnóstico | Completa |
 | 7. Consola web | Edición y publicación de la configuración con control de versión, acceso de administradores y envío de notificaciones | Completa, sin desplegar |
-| 8. Transferencias | API de servidor, transferencias entre cuentas propias, cola sin conexión, alta de cuentas y flujo de extremo a extremo | Completa; la cola sin conexión no se ha visto en un dispositivo |
-| 9. Notificaciones | Bandeja escrita por el servidor, invitación previa al permiso, registro del dispositivo, tema por segmento y aviso de transferencia realizada | Completa en código y pruebas; sin ver en un dispositivo |
-| 10. Servicios | Catálogo, contenedor de mini aplicaciones de aliados, módulo «Para ti» y dos aliados simulados | Completa en código y pruebas; sin ver en un dispositivo |
+| 8. Transferencias | API de servidor, transferencias entre cuentas propias, cola sin conexión, alta de cuentas y flujo de extremo a extremo | Completa y vista en un teléfono, cola sin conexión incluida; la prueba de extremo a extremo de ida y vuelta no tiene todavía una ejecución válida |
+| 9. Notificaciones | Bandeja escrita por el servidor, invitación previa al permiso, registro del dispositivo, tema por segmento y aviso de transferencia realizada | Completa y vista en un teléfono con entrega real; el texto oculto en la pantalla bloqueada solo se comprobó por la configuración del aviso |
+| 10. Servicios | Catálogo, contenedor de mini aplicaciones de aliados, módulo «Para ti» y dos aliados simulados | Completa y vista en un teléfono; la intercepción de marcos y formularios hacia otros sitios y el borrado de la vista web siguen sin comprobarse |
 | 11. Cierre | Diagramas, despliegue, operación y guion de demostración | Pendiente |
 
 Lo que existe hoy:
@@ -40,10 +40,10 @@ Lo que existe hoy:
 
 Lo que todavía no hace la aplicación:
 
-- Notificaciones, Servicios y las mini aplicaciones están cubiertos por pruebas automáticas y por el emulador de reglas, pero nada de ello se ha ejecutado todavía en un dispositivo ni contra el servicio de mensajería. El borrado de lo que guarda la vista web al cerrar sesión está pendiente de comprobación, y en iOS no cubre todo el almacenamiento.
+- Notificaciones, Servicios y las mini aplicaciones se ejecutaron en un teléfono Android, con entrega real de notificaciones. Queda sin comprobar: que un marco o un formulario de la página de un aliado no pueda salir a otro sitio, y qué borra exactamente el cierre de sesión de lo que guarda la vista web (las páginas simuladas no guardan nada, así que el borrado no tuvo qué demostrar; en iOS, además, no cubre todo el almacenamiento).
 - Una compilación sin `PARTNER_BASE_URL` no ofrece ninguna mini aplicación. Perfil muestra el nombre, el correo y el segmento del cliente, la personalización, el diagnóstico y permite cerrar sesión.
 - Las acciones del inicio cuyo destino no tiene pantalla en la compilación instalada no se muestran, aunque la configuración las publique. Es el caso de las mini aplicaciones en una compilación sin origen de aliados.
-- La consola web no está desplegada: se ejecuta en local. La entrega real de una notificación exige `PUSH_DELIVERY=live` en el servidor y todavía no se ha comprobado contra el servicio de mensajería.
+- La consola web no está desplegada: se ejecuta en local. La entrega real de una notificación exige `PUSH_DELIVERY=live` en el servidor; así se comprobó, desde la consola en local hasta un teléfono.
 - La API de clientes no está desplegada: se ejecuta en local, junto a la consola. Sin ella en marcha, la aplicación no puede transferir ni abrir las cuentas de un cliente nuevo; para ese caso sigue existiendo la herramienta que carga datos de demostración (ver [Datos de demostración](#datos-de-demostración-herramienta-de-desarrollo)).
 - Solo se transfiere entre cuentas propias de ahorros y corriente. No hay terceros, ni otros bancos, ni comprobante para compartir. Compartir los datos de la cuenta tampoco está: esas acciones del diseño no se muestran hasta que tengan algo detrás.
 - La cola de transferencias sin conexión, su envío al reconectar y el alta de un cliente nuevo están cubiertos por pruebas automáticas, pero no se han visto en un dispositivo.

@@ -2,7 +2,7 @@
 
 Cómo se sabría que la aplicación falla o que la experiencia empeora, y con qué se diagnosticaría. Describe lo instalado hasta la etapa 6 y lo que se añadirá sobre ello.
 
-Cada apartado separa lo **implementado** de lo **planificado**. La aplicación ya se ejecutó en un emulador y en un teléfono contra el proyecto real, pero **nada de lo descrito se ha observado todavía en la consola de Firebase**: no se comprobó que los eventos y los informes llegaran.
+Cada apartado separa lo **implementado** de lo **planificado**. La aplicación ya se ejecutó en un emulador y en un teléfono contra el proyecto real, incluidas las transferencias, las notificaciones con entrega real y las mini aplicaciones, pero **nada de lo descrito se ha observado todavía en la consola de Firebase**: no se comprobó que los eventos y los informes llegaran.
 
 ## Qué hay instalado hoy
 

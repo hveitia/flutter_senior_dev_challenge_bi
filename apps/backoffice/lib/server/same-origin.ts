@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Cross-site request forgery guard for route handlers that change state.
  * Server Actions get the same comparison from the framework; route handlers

@@ -8,7 +8,7 @@ import {
   type PushField,
   type PushRecord,
   type PushStatus,
-} from "@/lib/server/push";
+} from "@/lib/push/types";
 import {
   AlertIcon,
   Button,

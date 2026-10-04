@@ -1,32 +1,23 @@
+import "server-only";
+import {
+  BODY_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  type PushAudience,
+  type PushDraft,
+  type PushField,
+  type PushRecord,
+  type PushStatus,
+} from "@/lib/push/types";
 import type { Admin } from "./session";
 import type { ServerSettings } from "./settings";
 
 /** Push notifications sent from the console, and the record kept of each. */
 
-export const TITLE_MAX_LENGTH = 65;
-export const BODY_MAX_LENGTH = 240;
-
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export type PushAudience =
-  | { kind: "segment"; segmentId: string }
-  | { kind: "customer"; email: string };
-
-export interface PushDraft {
-  title: string;
-  body: string;
-  audience: PushAudience;
-  destination: string;
-}
-
-export type PushField = keyof PushDraft;
 
 export type PushValidation =
   | { ok: true; draft: PushDraft }
   | { ok: false; fields: PushField[] };
-
-/** `validated` is a dry run the service accepted: nothing was delivered. */
-export type PushStatus = "sent" | "validated" | "failed";
 
 export interface PushMessage {
   title: string;
@@ -51,16 +42,6 @@ export interface StoredPush {
   attempts: number;
   sentBy: string;
   dryRun: boolean;
-}
-
-/** What the history table shows. */
-export interface PushRecord {
-  id: string;
-  createdAt: string;
-  title: string;
-  audienceLabel: string;
-  status: PushStatus;
-  error: string | null;
 }
 
 export interface PushPorts {

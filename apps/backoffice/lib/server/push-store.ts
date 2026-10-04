@@ -2,7 +2,8 @@ import "server-only";
 import type { Auth } from "firebase-admin/auth";
 import type { Firestore, Timestamp } from "firebase-admin/firestore";
 import type { Messaging } from "firebase-admin/messaging";
-import type { PushMessage, PushPorts, PushRecord, StoredPush } from "./push";
+import type { PushRecord } from "@/lib/push/types";
+import type { PushMessage, PushPorts, StoredPush } from "./push";
 
 /** One document per send. Clients cannot read or write it. */
 export const PUSH_HISTORY_COLLECTION = "pushHistory";

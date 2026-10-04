@@ -1,3 +1,5 @@
+import "server-only";
+
 /** Settings the server reads from the environment, checked once at startup. */
 
 export const EXPECTED_PROJECT_ID = "flutter-challenge-bi";

@@ -25,7 +25,7 @@ import {
   pendingChanges,
   type LoadedConfig,
 } from "@/lib/console/editor-state";
-import type { PushRecord } from "@/lib/server/push";
+import type { PushRecord } from "@/lib/push/types";
 import { AlertIcon, Button } from "../ui";
 import { ModulesCard } from "./modules-card";
 import { PhonePreview } from "./phone-preview";

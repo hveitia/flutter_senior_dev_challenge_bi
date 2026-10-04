@@ -1,3 +1,4 @@
+import "server-only";
 import { countChanges } from "@/lib/config/diff";
 import {
   NO_FAULTS,

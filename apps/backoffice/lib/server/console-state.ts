@@ -1,3 +1,4 @@
+import "server-only";
 import example from "../../../../contracts/home-config.example.json";
 import type { HomeConfig } from "@/lib/config/types";
 import { configVersionOf, validateHomeConfig } from "@/lib/config/validate";

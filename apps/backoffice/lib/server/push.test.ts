@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH } from "@/lib/push/types";
 import {
-  BODY_MAX_LENGTH,
   retryPush,
   segmentTopic,
   sendPush,
-  TITLE_MAX_LENGTH,
   validatePushDraft,
   type PushPorts,
   type StoredPush,

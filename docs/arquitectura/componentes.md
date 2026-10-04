@@ -1,6 +1,6 @@
 # Componentes y dependencias
 
-Qué paquetes forman la solución, de qué depende cada uno y por qué las flechas van en ese sentido. Describe lo construido hasta la etapa 7: la aplicación móvil y la consola web. La API de servidor para transferencias y los dominios de transferencias, notificaciones y servicios se añadirán en sus etapas.
+Qué paquetes forman la solución, de qué depende cada uno y por qué las flechas van en ese sentido. Describe todo lo construido: la aplicación móvil con sus ocho paquetes y el servidor Next.js con la consola, la API de clientes y las páginas de los aliados simulados. Las flechas continuas del primer diagrama son las dependencias declaradas en los `pubspec.yaml`; los flujos entre piezas están en [flujos.md](flujos.md) y [publicar-configuracion.md](publicar-configuracion.md).
 
 ## Paquetes
 
@@ -41,6 +41,8 @@ flowchart TB
   app --> notifications
   app --> services
   app --> kit
+  app --> platform
+  app --> ds
 
   auth --> platform
   auth --> ds
@@ -68,7 +70,7 @@ flowchart TB
   platform -. adaptadores .-> obs
 ```
 
-`module_kit` no depende de ningún otro paquete del repositorio: es el contrato y solo necesita el framework.
+`module_kit` no depende en ejecución de ningún otro paquete del repositorio: es el contrato y solo necesita el framework. Su `pubspec.yaml` nombra `app_platform` únicamente como dependencia de desarrollo, para la prueba que vigila esa frontera. `feature_auth` es el único dominio que no usa `module_kit`, porque no aporta módulos al inicio.
 
 Ningún paquete de dominio depende de otro. Notificaciones y servicios llegan al inicio sin que el inicio los conozca: la campana ocupa un hueco del encabezado que coloca la raíz de composición, y «Para ti» es un módulo que `feature_services` registra. Un aviso tocado y una acción del inicio usan el mismo resolutor de destinos, de modo que ambos abren lo mismo, mini aplicaciones incluidas.
 

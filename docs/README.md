@@ -1,6 +1,11 @@
 # Documentación
 
-Índice de la documentación del proyecto. Se amplía al cerrar cada etapa.
+Índice de la documentación del proyecto. Para ejecutar el sistema, empieza por el [README de la raíz](../README.md); para saber qué se construyó y qué no, por [Alcance, supuestos, riesgos y escalamiento](alcance-y-riesgos.md).
+
+## Alcance y demostración
+
+- [Alcance, supuestos, riesgos y escalamiento](alcance-y-riesgos.md): cada requisito del reto con dónde está, cómo se comprobó y su estado; decisiones conscientes de alcance; supuestos; riesgos técnicos y estrategia de escalamiento.
+- [Guion de la demostración](demo/guion.md): recorrido con tiempos, comandos y alternativas si algo falla, y los ejercicios probables en vivo con el archivo y la prueba que toca cada uno.
 
 ## Decisiones de arquitectura
 
@@ -32,11 +37,13 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 
 ## Arquitectura
 
-- [Componentes y dependencias](arquitectura/componentes.md): los paquetes de la aplicación móvil, de qué depende cada uno, qué aporta cada dominio al inicio y qué comparten la consola y la aplicación.
+- [Componentes y dependencias](arquitectura/componentes.md): los paquetes de la aplicación móvil, de qué depende cada uno según sus `pubspec.yaml`, qué aporta cada dominio al inicio y qué comparten la consola y la aplicación.
 - [Flujo: publicar la configuración y recomponer el inicio](arquitectura/publicar-configuracion.md): la secuencia desde que un administrador publica en la consola hasta que cambia la pantalla de un teléfono.
+- [Flujos principales](arquitectura/flujos.md): registro y alta de cuentas, transferencia con conexión, transferencia en cola, notificación con bandeja y mini aplicación de un aliado.
 
 ## Operación
 
+- [Estrategia de despliegue y operación](operacion/despliegue.md): entornos, publicación de la aplicación desde `main`, servidor, reglas, reversión por componente, guía ante incidentes y lo que falta para producción. Describe una estrategia; nada está desplegado.
 - [Consola de experiencia](operacion/backoffice.md): configuración, ejecución, pruebas y despliegue.
 - [API de clientes](operacion/api.md): rutas, contrato, códigos de error y cómo llega la aplicación a ella en desarrollo y en un despliegue.
 - [Monitoreo en producción](operacion/monitoreo.md): cómo se detectarían problemas operativos y de experiencia, y qué está implementado hoy.
@@ -46,12 +53,7 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 
 - [Registro de uso de IA](ia/registro-uso-ia.md): qué se delegó, qué decidió o corrigió el autor y qué impacto tuvo.
 
-## Pendiente de documentar
+## Lo que la documentación no cubre
 
-Estos documentos se escriben cuando exista lo que describen:
-
-- Diagramas de la API de clientes y de los flujos de transferencias (en línea y en cola) y notificaciones.
-- Estrategia de despliegue.
-- Lo visto en un dispositivo de la conectividad degradada en transferencias, notificaciones y mini aplicaciones de aliados (su comportamiento ya está descrito y cubierto por pruebas).
-- Supuestos, riesgos técnicos y estrategia de escalamiento.
-- Decisiones conscientes de alcance.
+- No hay documentación de un despliegue real ni de la publicación en tiendas, porque no se hicieron: [la estrategia](operacion/despliegue.md) describe cómo serían.
+- iOS no se compiló ni se probó; ningún documento lo da por verificado.

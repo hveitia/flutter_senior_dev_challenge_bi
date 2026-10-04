@@ -75,6 +75,64 @@ describe("transferReference", () => {
   });
 });
 
+describe("processTransfer, a pending document that carries more than an order", () => {
+  const createdAt = new Date("2026-10-03T13:00:00Z");
+  const forged = {
+    reference: "TRF-FORGED",
+    reason: "forged-by-client",
+    processedAt: new Date("2020-01-01T00:00:00Z"),
+    uid: "someone-else",
+    note: "anything",
+  };
+
+  it("settles the order and keeps nothing else the document carried", async () => {
+    ledger.putTransfer(UID, TRANSFER_ID, pending(forged));
+
+    const result = await processTransfer(ledger, UID, TRANSFER_ID, now);
+
+    const reference = transferReference(UID, TRANSFER_ID, now);
+    expect(result).toMatchObject({
+      kind: "settled",
+      transfer: { status: "completed", reference },
+    });
+    expect(ledger.transfer(UID, TRANSFER_ID)).toEqual({
+      ...order,
+      createdAt,
+      status: "completed",
+      processedAt: now,
+      reference,
+    });
+  });
+
+  it("records a rejection with the server's reason and no reference of the client's", async () => {
+    ledger.putTransfer(UID, TRANSFER_ID, pending({ ...forged, amountCents: 400_000 }));
+
+    await processTransfer(ledger, UID, TRANSFER_ID, now);
+
+    expect(ledger.transfer(UID, TRANSFER_ID)).toEqual({
+      ...order,
+      amountCents: 400_000,
+      createdAt,
+      status: "rejected",
+      processedAt: now,
+      reason: "insufficient-funds",
+    });
+  });
+
+  it("closes a document that is not an order with only the outcome", async () => {
+    ledger.putTransfer(UID, TRANSFER_ID, { status: "pending", createdAt, ...forged });
+
+    await processTransfer(ledger, UID, TRANSFER_ID, now);
+
+    expect(ledger.transfer(UID, TRANSFER_ID)).toEqual({
+      createdAt,
+      status: "rejected",
+      processedAt: now,
+      reason: "invalid-request",
+    });
+  });
+});
+
 describe("processTransfer, a request the app left pending", () => {
   it("moves the money and settles the request as completed", async () => {
     ledger.putTransfer(UID, TRANSFER_ID, pending());

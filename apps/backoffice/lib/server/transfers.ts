@@ -52,8 +52,12 @@ export interface Settlement {
     reference?: string;
     reason?: TransferRejection;
   };
-  /** Set when the pending document does not exist yet (the online path). */
-  newRequest: { order: TransferOrder; createdAt: Date } | null;
+  /**
+   * The request as it is kept: the order the server read and when the request
+   * was created. Nothing else of a document written by a phone survives the
+   * settlement. `order` is null for a document that is not an order at all.
+   */
+  request: { order: TransferOrder | null; createdAt: Date };
   /** The accounts with their new balances; empty for a rejection. */
   accounts: AccountBalance[];
   movements: MovementRecord[];
@@ -232,9 +236,12 @@ export async function processTransfer(
     }
 
     const order = stored ? storedOrder : (submitted ?? null);
-    const newRequest = !stored && order ? { order, createdAt: now } : null;
-    const settle = (settlement: Omit<Settlement, "newRequest">): ProcessResult => {
-      transaction.write({ ...settlement, newRequest });
+    // The document is rewritten from what the server read, never merged into
+    // what a phone stored: a field a client added cannot outlive this.
+    const createdAt = stored?.createdAt instanceof Date ? stored.createdAt : now;
+    const request = { order, createdAt };
+    const settle = (settlement: Omit<Settlement, "request">): ProcessResult => {
+      transaction.write({ ...settlement, request });
       return {
         kind: "settled",
         // Read back from what is being recorded, the way a replay will read

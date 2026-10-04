@@ -75,10 +75,10 @@ describe("firestoreTransferLedger", () => {
     const reference = transferReference(UID, TRANSFER_ID, now);
     expect(db.writes).toEqual([
       {
+        // Replaced whole, never merged into what the phone had written.
         kind: "set",
-        merge: true,
         path: TRANSFER_PATH,
-        data: { status: "completed", processedAt: now, reference },
+        data: { ...order, createdAt, status: "completed", processedAt: now, reference },
       },
       {
         kind: "update",

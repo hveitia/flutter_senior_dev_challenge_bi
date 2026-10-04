@@ -77,12 +77,16 @@ export function firestoreTransferLedger(db: Firestore): TransferLedger {
             const data = (await transaction.get(accounts.doc(accountId))).data();
             return data ? accountBalanceFrom(accountId, data) : null;
           },
-          write({ record, newRequest, accounts: balances, movements: lines }) {
-            const request = newRequest
-              ? { ...newRequest.order, createdAt: newRequest.createdAt }
-              : {};
-            // Merged: a request written by the app keeps its own fields.
-            transaction.set(transfer, { ...request, ...record }, { merge: true });
+          write({ record, request, accounts: balances, movements: lines }) {
+            // Replaced whole, not merged: the document ends as the order the
+            // server read, when it was created and the outcome. Whatever else
+            // a phone wrote into a pending document is dropped here, so a
+            // forged reference or reason can never sit beside a real outcome.
+            transaction.set(transfer, {
+              ...request.order,
+              createdAt: request.createdAt,
+              ...record,
+            });
 
             for (const balance of balances) {
               // Only the balances: the rest of the account is not this write's.

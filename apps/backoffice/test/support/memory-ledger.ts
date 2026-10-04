@@ -106,12 +106,10 @@ export class MemoryLedger implements TransferLedger {
   private apply(uid: string, transferId: string, settlement: Settlement): void {
     this.commits += 1;
     const key = `${uid}/${transferId}`;
-    const created = settlement.newRequest
-      ? { ...settlement.newRequest.order, createdAt: settlement.newRequest.createdAt }
-      : {};
+    // Replaced whole, as the real ledger does.
     this.transfers.set(key, {
-      ...this.transfers.get(key),
-      ...created,
+      ...settlement.request.order,
+      createdAt: settlement.request.createdAt,
       ...settlement.record,
     });
     this.bump(`transfer:${key}`);

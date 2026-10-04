@@ -68,6 +68,20 @@ void main() {
     expect(calls, ['new']);
   });
 
+  testWidgets('withdraws its report when it leaves the screen', (tester) async {
+    await tester.pumpWidget(binding(HomeModuleStatus.failed));
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    expect(host.statuses, isEmpty);
+    expect(host.withdrawn, ['movements']);
+  });
+
+  testWidgets('can say it has nothing to draw', (tester) async {
+    await tester.pumpWidget(binding(HomeModuleStatus.hidden));
+
+    expect(host.statuses, {'movements': HomeModuleStatus.hidden});
+  });
+
   testWidgets('takes its refresh back when it leaves the screen', (
     tester,
   ) async {

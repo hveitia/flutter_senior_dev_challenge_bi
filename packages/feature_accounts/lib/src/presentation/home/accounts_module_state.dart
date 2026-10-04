@@ -15,13 +15,22 @@ List<Account>? showableAccounts(LoadState<List<Account>> accounts) {
   return data;
 }
 
-/// What a module that shows the accounts reports to the home.
-HomeModuleStatus accountsModuleStatus(LoadState<List<Account>> accounts) {
-  if (showableAccounts(accounts) != null) return HomeModuleStatus.ready;
-  return accounts.failure == null
+/// What a module reports to the home about the data set it shows: ready
+/// while it [hasContent] on screen, fresh or saved; otherwise waiting, or
+/// failed once loading has failed.
+HomeModuleStatus moduleStatus(
+  LoadState<Object?> state, {
+  required bool hasContent,
+}) {
+  if (hasContent) return HomeModuleStatus.ready;
+  return state.failure == null
       ? HomeModuleStatus.waiting
       : HomeModuleStatus.failed;
 }
+
+/// What a module that shows the accounts reports to the home.
+HomeModuleStatus accountsModuleStatus(LoadState<List<Account>> accounts) =>
+    moduleStatus(accounts, hasContent: showableAccounts(accounts) != null);
 
 /// Asks [bloc] for the accounts again and completes when it has answered.
 Future<void> refreshAccounts(AccountsBloc bloc, {bool isRetry = false}) {

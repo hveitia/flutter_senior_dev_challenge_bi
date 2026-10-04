@@ -11,13 +11,25 @@ enum HomeModuleStatus {
 
   /// It has nothing to show because loading failed.
   failed,
+
+  /// It has nothing to draw and nothing went wrong: no action it can open,
+  /// no data for this customer, or a sibling already speaks for it. The
+  /// home takes its space away.
+  hidden,
 }
 
 /// The home, as a module sees it.
+///
+/// A module that draws published content and nothing else needs none of
+/// this: one that never reports counts as shown.
 abstract interface class HomeModuleHost {
   /// Tells the home how the module with [moduleId] is doing, so it can tell
   /// "one module failed" from "nothing can be shown".
   void report(String moduleId, HomeModuleStatus status);
+
+  /// Takes back what the module with [moduleId] reported, when it leaves
+  /// the screen or stops reporting.
+  void withdraw(String moduleId);
 
   /// Registers how a module brings its data up to date when the customer
   /// asks the whole home to refresh. Returns the function that removes the
@@ -35,6 +47,7 @@ final class HomeModuleContext {
     required this.props,
     required this.destinations,
     required this.host,
+    this.composedTypes = const {},
   });
 
   /// Unique within the customer's home.
@@ -49,6 +62,11 @@ final class HomeModuleContext {
 
   final DestinationResolver destinations;
   final HomeModuleHost host;
+
+  /// The types of every module drawn in this home, this one included. A
+  /// module that shares its data with another type reads it to know whether
+  /// that one is there to speak for both.
+  final Set<String> composedTypes;
 
   /// The text published under [key], or null when there is none.
   String? text(String key) => textIn(props, key);

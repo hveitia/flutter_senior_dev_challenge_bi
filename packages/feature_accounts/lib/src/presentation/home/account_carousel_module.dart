@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
+import 'package:feature_accounts/src/presentation/accounts_strings.dart';
 import 'package:feature_accounts/src/presentation/home/accounts_home_modules.dart';
 import 'package:feature_accounts/src/presentation/home/accounts_module_state.dart';
 import 'package:feature_accounts/src/presentation/home/amount_visibility_cubit.dart';
@@ -10,8 +13,10 @@ import 'package:module_kit/module_kit.dart';
 /// Home module: the customer's accounts as cards that scroll sideways.
 ///
 /// It shares the accounts with the total balance module. When they cannot
-/// be loaded it draws nothing: the balance module already says so, and two
-/// errors about the same thing would only add noise.
+/// be loaded and the balance is published in the same home, it draws
+/// nothing: the balance already says so, and two errors about the same
+/// thing would only add noise. Published without the balance, it says the
+/// failure itself and offers the retry.
 class AccountCarouselModule extends StatelessWidget {
   const AccountCarouselModule({
     required this.module,
@@ -33,13 +38,27 @@ class AccountCarouselModule extends StatelessWidget {
     final accounts = context.watch<AccountsBloc>().state.accounts;
     final data = showableAccounts(accounts);
 
+    final hasFailed = data == null && accounts.failure != null;
+    final balanceSaysIt = module.composedTypes.contains(
+      AccountsModuleTypes.totalBalance,
+    );
+    final drawsNothing =
+        (hasFailed && balanceSaysIt) || (data?.isEmpty ?? false);
+
     return HomeModuleBinding(
       module: module,
-      status: accountsModuleStatus(accounts),
+      status: drawsNothing
+          ? HomeModuleStatus.hidden
+          : accountsModuleStatus(accounts),
       onRefresh: () => refreshAccounts(bloc),
       child: switch (data) {
-        null when accounts.failure == null => const _CarouselSkeleton(),
-        null || [] => const SizedBox.shrink(),
+        _ when drawsNothing => const SizedBox.shrink(),
+        null when hasFailed => InlineError(
+          message: AccountsStrings.carouselFailed,
+          isRetrying: accounts.isLoading,
+          onRetry: () => unawaited(refreshAccounts(bloc, isRetry: true)),
+        ),
+        null => const _CarouselSkeleton(),
         _ => LayoutBuilder(
           builder: (context, constraints) {
             final hidden = context.watch<AmountVisibilityCubit>().state;

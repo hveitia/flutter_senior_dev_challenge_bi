@@ -5,8 +5,9 @@ import 'package:design_system/design_system.dart';
 import 'package:feature_home/src/connection_notice.dart';
 import 'package:feature_home/src/home_composition.dart';
 import 'package:feature_home/src/home_composition_cubit.dart';
+import 'package:feature_home/src/home_header.dart';
+import 'package:feature_home/src/home_host_controller.dart';
 import 'package:feature_home/src/home_strings.dart';
-import 'package:feature_home/src/home_telemetry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:module_kit/module_kit.dart';
@@ -49,7 +50,7 @@ class HomeScreen extends StatelessWidget {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _HomeHeader(
+            HomeHeader(
               productName: productName,
               greeting: HomeStrings.greeting(firstName),
               initials: initialsOf(fullName),
@@ -64,88 +65,9 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({
-    required this.productName,
-    required this.greeting,
-    required this.initials,
-  });
-
-  final String productName;
-  final String greeting;
-  final String initials;
-
-  static const double _avatar = 40;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: scheme.surface,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.metrics.screenMargin,
-            vertical: AppSpacing.x3,
-          ),
-          child: Row(
-            children: [
-              if (initials.isNotEmpty) ...[
-                ExcludeSemantics(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: colors.surfaceInset,
-                      shape: BoxShape.circle,
-                    ),
-                    child: SizedBox.square(
-                      dimension: _avatar,
-                      child: Center(
-                        child: Text(
-                          initials,
-                          style: AppTypography.captionStrong.copyWith(
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.x3),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      productName,
-                      style: AppTypography.caption.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        greeting,
-                        style: AppTypography.subtitle.copyWith(
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// Lays out the composition. Everything it decides comes from the
+/// [HomeHostController]: which modules are hidden, whether anything can be
+/// shown and whether a refresh is running.
 class _HomeBody extends StatefulWidget {
   const _HomeBody({required this.registry, required this.destinations});
 
@@ -156,22 +78,27 @@ class _HomeBody extends StatefulWidget {
   State<_HomeBody> createState() => _HomeBodyState();
 }
 
-class _HomeBodyState extends State<_HomeBody> implements HomeModuleHost {
-  /// What each module with data of its own last reported.
-  final Map<String, HomeModuleStatus> _statuses = {};
-  final List<Future<void> Function()> _refreshers = [];
-
+class _HomeBodyState extends State<_HomeBody> {
+  late final HomeHostController _host;
   bool _rebuildScheduled = false;
-  bool _isRefreshing = false;
-  bool _reportedNothingToShow = false;
 
   @override
-  void report(String moduleId, HomeModuleStatus status) {
-    if (_statuses[moduleId] == status) return;
-    _statuses[moduleId] = status;
+  void initState() {
+    super.initState();
+    _host = HomeHostController(telemetry: context.read<Telemetry>())
+      ..addListener(_onHostChanged);
+    _follow(context.read<HomeCompositionCubit>().state);
+  }
 
-    // Modules report while they are being built, when this widget cannot be
-    // marked for rebuilding. The new status is taken in after the frame.
+  void _follow(HomeCompositionState state) {
+    final composition = state.composition;
+    if (composition == null) return;
+    _host.show([for (final module in composition.modules) module.id]);
+  }
+
+  /// Modules report while they are being built, when this widget cannot be
+  /// marked for rebuilding. Whatever changed is taken in after the frame.
+  void _onHostChanged() {
     if (_rebuildScheduled) return;
     _rebuildScheduled = true;
     WidgetsBinding.instance
@@ -183,115 +110,62 @@ class _HomeBodyState extends State<_HomeBody> implements HomeModuleHost {
   }
 
   @override
-  VoidCallback addRefresher(Future<void> Function() refresh) {
-    _refreshers.add(refresh);
-    return () => _refreshers.remove(refresh);
-  }
-
-  Future<void> _refreshAll() async {
-    if (_isRefreshing) return;
-    setState(() => _isRefreshing = true);
-
-    context.read<Telemetry>().event(
-      HomeTelemetry.refreshRequested,
-      parameters: {HomeTelemetry.modulesKey: _refreshers.length},
-    );
-    // Each module reports its own outcome; one that throws must not keep
-    // the others, or the indicator, waiting.
-    await Future.wait([
-      for (final refresh in [..._refreshers])
-        refresh().catchError((Object _) {}),
-    ]);
-
-    if (mounted) setState(() => _isRefreshing = false);
-  }
-
-  /// Whether every module with data of its own has failed with nothing to
-  /// show. Modules that carry no data never report, so a home made only of
-  /// them is never in this state.
-  bool _nothingToShow(HomeComposition composition) {
-    final reported = [
-      for (final module in composition.modules) ?_statuses[module.id],
-    ];
-    return reported.isNotEmpty &&
-        reported.every((status) => status == HomeModuleStatus.failed);
-  }
-
-  bool _hasSomethingSaved(HomeComposition composition) => composition.modules
-      .any((module) => _statuses[module.id] == HomeModuleStatus.ready);
-
-  void _reportNothingToShow(bool nothingToShow) {
-    if (nothingToShow && !_reportedNothingToShow) {
-      context.read<Telemetry>().event(HomeTelemetry.nothingToShow);
-    }
-    _reportedNothingToShow = nothingToShow;
+  void dispose() {
+    _host
+      ..removeListener(_onHostChanged)
+      ..dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final composition = context.watch<HomeCompositionCubit>().state.composition;
-    if (composition == null) return const _HomeSkeleton();
+    return BlocConsumer<HomeCompositionCubit, HomeCompositionState>(
+      listener: (context, state) => _follow(state),
+      builder: (context, state) {
+        final composition = state.composition;
+        if (composition == null) return const _HomeSkeleton();
 
-    // A module that left the composition no longer counts.
-    final current = {for (final module in composition.modules) module.id};
-    _statuses.removeWhere((id, _) => !current.contains(id));
+        if (composition.modules.isEmpty) return const _NothingPublished();
 
-    if (composition.modules.isEmpty) {
-      return const _Centered(
-        child: EmptyState(
-          icon: Icons.home_outlined,
-          title: HomeStrings.emptyTitle,
-          message: HomeStrings.emptyMessage,
-        ),
-      );
-    }
-
-    final nothingToShow = _nothingToShow(composition);
-    _reportNothingToShow(nothingToShow);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ConnectionNotice(hasSavedData: _hasSomethingSaved(composition)),
-        Expanded(
-          child: Stack(
-            children: [
-              // Kept in the tree while hidden: the modules go on listening,
-              // and the home returns the moment one of them has data.
-              Offstage(
-                offstage: nothingToShow,
-                child: RefreshIndicator(
-                  onRefresh: _refreshAll,
-                  child: _modules(context, composition),
-                ),
-              ),
-              if (nothingToShow)
-                _Centered(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const EmptyState(
-                        icon: Icons.cloud_off,
-                        title: HomeStrings.nothingToShowTitle,
-                        message: HomeStrings.nothingToShowMessage,
-                      ),
-                      const SizedBox(height: AppSpacing.x6),
-                      AppButton(
-                        label: HomeStrings.retry,
-                        isLoading: _isRefreshing,
-                        onPressed: () => unawaited(_refreshAll()),
-                      ),
-                    ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ConnectionNotice(hasSavedData: _host.hasData),
+            Expanded(
+              child: Stack(
+                children: [
+                  // Kept in the tree while hidden: the modules go on
+                  // listening, and the home returns the moment one of them
+                  // has something to show.
+                  Offstage(
+                    offstage: _host.nothingToShow || _host.isBlank,
+                    child: RefreshIndicator(
+                      onRefresh: _host.refreshAll,
+                      child: _modules(context, composition),
+                    ),
                   ),
-                ),
-            ],
-          ),
-        ),
-      ],
+                  if (_host.nothingToShow)
+                    _NothingToShow(
+                      isRetrying: _host.isRefreshing,
+                      onRetry: () => unawaited(_host.refreshAll()),
+                    )
+                  else if (_host.isBlank)
+                    const _NothingPublished(),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _modules(BuildContext context, HomeComposition composition) {
+    final composedTypes = {
+      for (final module in composition.modules) module.type,
+    };
+    var drawn = 0;
+
     return ListView(
       // Always scrollable, so a short home can still be pulled down.
       physics: const AlwaysScrollableScrollPhysics(),
@@ -300,8 +174,11 @@ class _HomeBodyState extends State<_HomeBody> implements HomeModuleHost {
         vertical: context.metrics.moduleGap,
       ),
       children: [
-        for (final (index, module) in composition.modules.indexed) ...[
-          if (index > 0) SizedBox(height: context.metrics.moduleGap),
+        for (final module in composition.modules) ...[
+          // A module that draws nothing takes no space, so it gets no gap
+          // either. It stays in the tree to say when it has something.
+          if (!_host.isHidden(module.id) && drawn++ > 0)
+            SizedBox(height: context.metrics.moduleGap),
           // Keyed by its id: a module that keeps its place in a newly
           // published configuration keeps its state too.
           KeyedSubtree(
@@ -314,13 +191,61 @@ class _HomeBodyState extends State<_HomeBody> implements HomeModuleHost {
                   type: module.type,
                   props: module.props,
                   destinations: widget.destinations,
-                  host: this,
+                  host: _host,
+                  composedTypes: composedTypes,
                 ),
               ),
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Every module that would draw something is a data module that failed.
+class _NothingToShow extends StatelessWidget {
+  const _NothingToShow({required this.isRetrying, required this.onRetry});
+
+  final bool isRetrying;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Centered(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const EmptyState(
+            icon: Icons.cloud_off,
+            title: HomeStrings.nothingToShowTitle,
+            message: HomeStrings.nothingToShowMessage,
+          ),
+          const SizedBox(height: AppSpacing.x6),
+          AppButton(
+            label: HomeStrings.retry,
+            isLoading: isRetrying,
+            onPressed: onRetry,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The configuration publishes no module this customer would see: nothing
+/// failed, there is simply nothing to draw.
+class _NothingPublished extends StatelessWidget {
+  const _NothingPublished();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _Centered(
+      child: EmptyState(
+        icon: Icons.home_outlined,
+        title: HomeStrings.emptyTitle,
+        message: HomeStrings.emptyMessage,
+      ),
     );
   }
 }
@@ -343,11 +268,13 @@ class _Centered extends StatelessWidget {
 }
 
 /// Shown for the instant between opening the home and having a
-/// configuration to compose it from.
+/// configuration to compose it from. It cannot know which modules will
+/// come, so it stands for none in particular.
 class _HomeSkeleton extends StatelessWidget {
   const _HomeSkeleton();
 
-  static const List<double> _blocks = [64, 146, 96];
+  static const int _blocks = 3;
+  static const double _blockHeight = 96;
 
   @override
   Widget build(BuildContext context) {
@@ -358,9 +285,9 @@ class _HomeSkeleton extends StatelessWidget {
         vertical: context.metrics.moduleGap,
       ),
       children: [
-        for (final (index, height) in _blocks.indexed) ...[
-          if (index > 0) SizedBox(height: context.metrics.moduleGap),
-          SkeletonBlock(height: height),
+        for (var block = 0; block < _blocks; block++) ...[
+          if (block > 0) SizedBox(height: context.metrics.moduleGap),
+          const SkeletonBlock(height: _blockHeight),
         ],
       ],
     );

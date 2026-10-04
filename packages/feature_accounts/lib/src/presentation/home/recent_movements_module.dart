@@ -10,6 +10,7 @@ import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
 import 'package:feature_accounts/src/presentation/detail/movement_detail_sheet.dart';
 import 'package:feature_accounts/src/presentation/formatting/time_labels.dart';
+import 'package:feature_accounts/src/presentation/home/accounts_module_state.dart';
 import 'package:feature_accounts/src/presentation/home/recent_movements_bloc.dart';
 import 'package:feature_accounts/src/presentation/widgets/freshness_caption.dart';
 import 'package:feature_accounts/src/presentation/widgets/load_failure_view.dart';
@@ -85,7 +86,7 @@ class _RecentMovements extends StatelessWidget {
 
     return HomeModuleBinding(
       module: module,
-      status: _status(movements),
+      status: moduleStatus(movements, hasContent: movements.hasData),
       onRefresh: refresh,
       child: ModuleContainer(
         title: AccountsStrings.recentMovementsTitle,
@@ -98,13 +99,6 @@ class _RecentMovements extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static HomeModuleStatus _status(LoadState<List<Movement>> movements) {
-    if (movements.hasData) return HomeModuleStatus.ready;
-    return movements.failure == null
-        ? HomeModuleStatus.waiting
-        : HomeModuleStatus.failed;
   }
 
   Widget _content(

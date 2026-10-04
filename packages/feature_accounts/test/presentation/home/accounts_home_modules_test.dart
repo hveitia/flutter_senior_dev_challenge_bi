@@ -26,6 +26,7 @@ void main() {
 
   HomeModuleContext module(
     String type, {
+    required Set<String> composedTypes,
     Map<String, Object?> props = const {},
   }) {
     return HomeModuleContext(
@@ -34,6 +35,7 @@ void main() {
       props: props,
       destinations: destinations,
       host: host,
+      composedTypes: composedTypes,
     );
   }
 
@@ -77,7 +79,11 @@ void main() {
                     for (final type in types)
                       registry.builderFor(type)!(
                         context,
-                        module(type, props: props),
+                        module(
+                          type,
+                          props: props,
+                          composedTypes: types.toSet(),
+                        ),
                       ),
                   ],
                 ),
@@ -254,19 +260,56 @@ void main() {
       );
     });
 
-    testWidgets('draws nothing when the accounts failed: the balance says it', (
-      tester,
-    ) async {
+    testWidgets('with the balance above it, leaves a failure for the balance '
+        'to say, and takes no space', (tester) async {
+      repository.onRefreshAccounts = () async => const Failed(TimeoutFailure());
+
+      await pumpModules(tester, const [
+        AccountsModuleTypes.totalBalance,
+        AccountsModuleTypes.accountCarousel,
+      ]);
+      await settle(tester);
+
+      expect(find.byType(AccountCard), findsNothing);
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(find.text('No pudimos cargar tu saldo'), findsOneWidget);
+      expect(
+        host.statuses[AccountsModuleTypes.accountCarousel],
+        HomeModuleStatus.hidden,
+      );
+    });
+
+    testWidgets('published without the balance, says the failure itself and '
+        'retries when asked', (tester) async {
       repository.onRefreshAccounts = () async => const Failed(TimeoutFailure());
 
       await pumpModules(tester, types);
       await settle(tester);
 
-      expect(find.byType(AccountCard), findsNothing);
-      expect(find.text('Reintentar'), findsNothing);
+      expect(find.text('No pudimos cargar tus cuentas'), findsOneWidget);
       expect(
         host.statuses[AccountsModuleTypes.accountCarousel],
         HomeModuleStatus.failed,
+      );
+
+      await tester.tap(find.text('Reintentar'));
+      await settle(tester);
+
+      expect(repository.accountRefreshes, 2);
+    });
+
+    testWidgets('takes no space for a customer without accounts', (
+      tester,
+    ) async {
+      repository.onRefreshAccounts = () async =>
+          Success(accountsSnapshot(const []));
+
+      await pumpModules(tester, types);
+      await settle(tester);
+
+      expect(
+        host.statuses[AccountsModuleTypes.accountCarousel],
+        HomeModuleStatus.hidden,
       );
     });
   });
@@ -291,6 +334,33 @@ void main() {
         host.statuses[AccountsModuleTypes.recentMovements],
         HomeModuleStatus.ready,
       );
+    });
+
+    for (final MapEntry(key: description, value: published) in {
+      'missing': null,
+      'zero': 0,
+      'negative': -3,
+      'a text': '7',
+      'a fraction': 2.5,
+      'a list': [3],
+    }.entries) {
+      testWidgets('uses its default when the published limit is $description', (
+        tester,
+      ) async {
+        await pumpModules(tester, types, props: {'limit': ?published});
+
+        expect(repository.recentListeners, [
+          RecentMovementsModule.defaultLimit,
+        ]);
+      });
+    }
+
+    testWidgets('caps a huge published limit: the module is a summary', (
+      tester,
+    ) async {
+      await pumpModules(tester, types, props: const {'limit': 9999999});
+
+      expect(repository.recentListeners, [RecentMovementsModule.maxLimit]);
     });
 
     testWidgets('uses its default when the limit is missing or absurd', (

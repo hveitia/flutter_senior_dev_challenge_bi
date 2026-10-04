@@ -8,6 +8,7 @@ import 'package:module_kit/testing.dart';
 void main() {
   late HomeModuleRegistry registry;
   late FakeDestinationResolver destinations;
+  late RecordingModuleHost host;
 
   Future<void> pumpModule(
     WidgetTester tester,
@@ -34,6 +35,7 @@ void main() {
                   type: type,
                   props: props,
                   destinations: destinations,
+                  host: host,
                 ),
               ),
             ),
@@ -46,6 +48,7 @@ void main() {
   setUp(() {
     registry = HomeModuleRegistry();
     registerHomeModules(registry);
+    host = RecordingModuleHost();
     destinations = FakeDestinationResolver(
       available: {Destinations.services, Destinations.accounts},
     );
@@ -105,6 +108,17 @@ void main() {
       await pumpModule(tester, HomeModuleTypes.quickActions, actions);
 
       expect(find.byType(InkWell), findsNothing);
+    });
+
+    testWidgets('tells the home when it has nothing to draw, so its space '
+        'is taken away, and takes that back when it has', (tester) async {
+      destinations.available.clear();
+      await pumpModule(tester, HomeModuleTypes.quickActions, actions);
+      expect(host.statuses, {'module': HomeModuleStatus.hidden});
+
+      destinations.available.add(Destinations.services);
+      await pumpModule(tester, HomeModuleTypes.quickActions, actions);
+      expect(host.statuses, isEmpty);
     });
 
     testWidgets('ignores entries it cannot read and unknown icons', (
@@ -189,6 +203,7 @@ void main() {
       });
 
       expect(find.text('Sin título'), findsNothing);
+      expect(host.statuses, {'module': HomeModuleStatus.hidden});
     });
   });
 

@@ -15,8 +15,10 @@ class QuickActionsModule extends StatelessWidget {
   static const String iconKey = 'icon';
   static const String destinationKey = 'destination';
 
-  /// The most shortcuts drawn in the row. The design has four; more would
-  /// not fit a small phone with large text.
+  /// The most shortcuts drawn in the row. Four is what the design's home
+  /// frames show, and the row is laid out and tested for that many on a
+  /// 320 px wide phone with text at 130 %. Further published actions are
+  /// left out, in order, rather than squeezed in.
   static const int maxActions = 4;
 
   final HomeModuleContext module;
@@ -57,7 +59,7 @@ class QuickActionsModule extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = _actions();
-    if (actions.isEmpty) return const SizedBox.shrink();
+    if (actions.isEmpty) return HomeModuleBinding.hidden(module: module);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,9 +3,14 @@ import 'package:flutter/widgets.dart';
 /// Takes the customer to a destination.
 typedef DestinationOpener = void Function(BuildContext context);
 
-/// Names of the places an action may lead to, as the published
-/// configuration writes them. They are the configuration contract's
-/// allow-list; the app decides which of them it can open.
+/// The destination names this app knows, spelled as the published
+/// configuration writes them. They are the single place those names are
+/// typed in the app: the resolver's table and every module refer to them.
+///
+/// This is not the allow-list. Which destinations a document may use is
+/// stated by the document itself, and the reader has already dropped the
+/// actions that point outside it; the app then decides which of the
+/// remaining ones it has a screen for.
 abstract final class Destinations {
   static const String transfer = 'transfer';
   static const String accounts = 'accounts';

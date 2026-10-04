@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_home/feature_home.dart';
+import 'package:feature_home/src/home_host_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,7 +62,9 @@ class _DataModuleState extends State<_DataModule> {
         module: widget.module,
         status: status,
         onRefresh: () async => widget.modules.refreshed.add(id),
-        child: Text('data $id: ${status.name}'),
+        child: status == HomeModuleStatus.hidden
+            ? const SizedBox.shrink()
+            : Text('data $id: ${status.name}'),
       ),
     );
   }
@@ -95,6 +100,8 @@ void main() {
 
     await tester.pumpWidget(
       RepositoryProvider<Telemetry>.value(
+        // A test that pumps the home twice gets a new home each time.
+        key: UniqueKey(),
         value: telemetry,
         child: MultiBlocProvider(
           providers: [
@@ -210,6 +217,36 @@ void main() {
     expect(data.created, {'balance': 1, 'movements': 1});
   });
 
+  testWidgets('recomposes for another segment while it is open, keeping the '
+      'modules both segments share', (tester) async {
+    final config = await pumpHome(
+      tester,
+      document: configDocument(
+        segments: {
+          'starting': [
+            moduleDocument('balance', 'data'),
+            moduleDocument('promo', 'static'),
+          ],
+          'wealth': [
+            moduleDocument('investments', 'data'),
+            moduleDocument('balance', 'data'),
+          ],
+        },
+      ),
+    );
+    expect(find.text('static promo'), findsOneWidget);
+
+    config.cubit.selectSegment('wealth');
+    await settle(tester);
+
+    expect(find.text('static promo'), findsNothing);
+    expect(
+      top(tester, 'data investments'),
+      lessThan(top(tester, 'data balance')),
+    );
+    expect(data.created, {'balance': 1, 'investments': 1});
+  });
+
   testWidgets('a module that fails alone leaves the others on screen', (
     tester,
   ) async {
@@ -223,9 +260,121 @@ void main() {
     expect(find.text('No pudimos conectarnos'), findsNothing);
   });
 
+  testWidgets('a module without data stays on screen when every data module '
+      'failed', (tester) async {
+    await pumpHome(tester);
+
+    data.status('balance').value = HomeModuleStatus.failed;
+    data.status('movements').value = HomeModuleStatus.failed;
+    await settle(tester);
+
+    expect(find.text('static promo').hitTestable(), findsOneWidget);
+    expect(find.text('data balance: failed').hitTestable(), findsOneWidget);
+    expect(find.text('No pudimos conectarnos'), findsNothing);
+    expect(eventsNamed(HomeTelemetry.nothingToShow), isEmpty);
+  });
+
+  group('a module that draws nothing', () {
+    final withGhost = configDocument(
+      segments: {
+        'starting': [
+          moduleDocument('balance', 'data'),
+          moduleDocument('ghost', 'data'),
+          moduleDocument('movements', 'data'),
+        ],
+      },
+    );
+    final withoutGhost = configDocument(
+      segments: {
+        'starting': [
+          moduleDocument('balance', 'data'),
+          moduleDocument('movements', 'data'),
+        ],
+      },
+    );
+
+    testWidgets('leaves no gap where it would have been', (tester) async {
+      await pumpHome(tester, document: withoutGhost);
+      final expected = top(tester, 'data movements');
+
+      data.status('ghost').value = HomeModuleStatus.hidden;
+      await pumpHome(tester, document: withGhost);
+      await settle(tester);
+
+      expect(top(tester, 'data movements'), expected);
+    });
+
+    testWidgets('takes its place back when it has something to draw', (
+      tester,
+    ) async {
+      data.status('ghost').value = HomeModuleStatus.hidden;
+      await pumpHome(tester, document: withGhost);
+      await settle(tester);
+      final collapsed = top(tester, 'data movements');
+
+      data.status('ghost').value = HomeModuleStatus.ready;
+      await settle(tester);
+
+      expect(top(tester, 'data movements'), greaterThan(collapsed));
+      expect(find.text('data ghost: ready'), findsOneWidget);
+    });
+
+    testWidgets('does not count as a failure when it is the only one left', (
+      tester,
+    ) async {
+      data.status('balance').value = HomeModuleStatus.hidden;
+      await pumpHome(
+        tester,
+        document: configDocument(
+          segments: {
+            'starting': [moduleDocument('balance', 'data')],
+          },
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Estamos preparando tu inicio'), findsOneWidget);
+      expect(find.text('No pudimos conectarnos'), findsNothing);
+    });
+  });
+
+  testWidgets('tells each module which types share the home with it', (
+    tester,
+  ) async {
+    Set<String>? seen;
+    registry.register('curious', (context, module) {
+      seen = module.composedTypes;
+      return const SizedBox.shrink();
+    });
+
+    await pumpHome(
+      tester,
+      document: configDocument(
+        segments: {
+          'starting': [
+            moduleDocument('balance', 'data'),
+            moduleDocument('who', 'curious'),
+            moduleDocument('services', 'serviceRecommendations'),
+          ],
+        },
+      ),
+    );
+
+    expect(seen, {'data', 'curious'});
+  });
+
   group('when no module has anything to show', () {
+    final onlyData = configDocument(
+      segments: {
+        'starting': [
+          moduleDocument('balance', 'data'),
+          moduleDocument('movements', 'data'),
+        ],
+      },
+    );
+
     Future<void> failEverything(WidgetTester tester) async {
-      await pumpHome(tester);
+      await pumpHome(tester, document: onlyData);
       data.status('balance').value = HomeModuleStatus.failed;
       data.status('movements').value = HomeModuleStatus.failed;
       await settle(tester);
@@ -235,7 +384,7 @@ void main() {
       await failEverything(tester);
 
       expect(find.text('No pudimos conectarnos'), findsOneWidget);
-      expect(find.text('static promo').hitTestable(), findsNothing);
+      expect(find.text('data balance: failed').hitTestable(), findsNothing);
       expect(eventsNamed(HomeTelemetry.nothingToShow), hasLength(1));
     });
 
@@ -278,6 +427,46 @@ void main() {
     expect(eventsNamed(HomeTelemetry.refreshRequested).single.parameters, {
       HomeTelemetry.modulesKey: 2,
     });
+  });
+
+  testWidgets('a refresh that one module never answers does not block the '
+      'next one', (tester) async {
+    registry.register('stuck', (context, module) {
+      return HomeModuleBinding(
+        module: module,
+        status: HomeModuleStatus.ready,
+        onRefresh: () => Completer<void>().future,
+        child: const Text('stuck'),
+      );
+    });
+    await pumpHome(
+      tester,
+      document: configDocument(
+        segments: {
+          'starting': [
+            moduleDocument('balance', 'data'),
+            moduleDocument('never', 'stuck'),
+          ],
+        },
+      ),
+    );
+
+    await tester.fling(
+      find.text('data balance: ready'),
+      const Offset(0, 400),
+      1000,
+    );
+    await tester.pump(HomeHostController.refresherTimeout);
+    await tester.pumpAndSettle();
+    await tester.fling(
+      find.text('data balance: ready'),
+      const Offset(0, 400),
+      1000,
+    );
+    await tester.pump(HomeHostController.refresherTimeout);
+    await tester.pumpAndSettle();
+
+    expect(data.refreshed, ['balance', 'balance']);
   });
 
   testWidgets('says it is offline and that what it shows was saved', (

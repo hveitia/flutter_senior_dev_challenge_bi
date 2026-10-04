@@ -22,7 +22,7 @@ class PromoBannerModule extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = module.text(titleProp);
-    if (title == null) return const SizedBox.shrink();
+    if (title == null) return HomeModuleBinding.hidden(module: module);
 
     final body = module.text(bodyProp);
     final action = _action();

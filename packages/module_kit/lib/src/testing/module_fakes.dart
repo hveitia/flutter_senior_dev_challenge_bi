@@ -30,12 +30,21 @@ final class RecordingModuleHost implements HomeModuleHost {
   /// Every report, in order.
   final List<(String moduleId, HomeModuleStatus status)> reports = [];
 
+  /// The modules that took their report back, in order.
+  final List<String> withdrawn = [];
+
   final List<Future<void> Function()> refreshers = [];
 
   @override
   void report(String moduleId, HomeModuleStatus status) {
     statuses[moduleId] = status;
     reports.add((moduleId, status));
+  }
+
+  @override
+  void withdraw(String moduleId) {
+    statuses.remove(moduleId);
+    withdrawn.add(moduleId);
   }
 
   @override
@@ -57,6 +66,7 @@ HomeModuleContext moduleContext({
   Map<String, Object?> props = const {},
   DestinationResolver? destinations,
   HomeModuleHost? host,
+  Set<String>? composedTypes,
 }) {
   return HomeModuleContext(
     id: id,
@@ -64,5 +74,6 @@ HomeModuleContext moduleContext({
     props: props,
     destinations: destinations ?? FakeDestinationResolver(),
     host: host ?? RecordingModuleHost(),
+    composedTypes: composedTypes ?? {type},
   );
 }

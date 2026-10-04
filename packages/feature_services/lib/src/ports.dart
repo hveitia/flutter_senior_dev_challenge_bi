@@ -3,10 +3,11 @@ import 'package:flutter/widgets.dart';
 
 /// What the container hears from the surface that shows a partner's page.
 abstract interface class MiniAppEvents {
-  /// The page wants to go to [target], by a link, a redirect or a script.
+  /// The page wants to go to [target], by a link, a redirect or a script:
+  /// the page itself or, when [isMainFrame] is false, a frame inside it.
   /// The surface only goes there when the answer is
   /// [NavigationVerdict.stay].
-  NavigationVerdict onNavigation(Uri target);
+  NavigationVerdict onNavigation(Uri target, {bool isMainFrame = true});
 
   /// The page finished loading.
   void onPageFinished();

@@ -15,6 +15,7 @@ const _domain = ImportBoundary(
   allowedPackages: {'app_platform'},
   closedDirectories: {
     _adaptersDirectory,
+    'lib/src/data/',
     'lib/src/presentation/',
     'lib/src/testing/',
   },
@@ -78,13 +79,11 @@ void main() {
   });
 
   test('the public barrel does not export the adapters', () {
-    final barrel = File('lib/$_package.dart');
-    if (!barrel.existsSync()) return;
-
+    final barrel = File('lib/$_package.dart').readAsStringSync();
     final exportsOfAdapters = RegExp(
       r'^\s*export\b[^;]*adapters[^;]*;',
       multiLine: true,
-    ).allMatches(barrel.readAsStringSync());
+    ).allMatches(barrel);
 
     expect(exportsOfAdapters, isEmpty);
   });

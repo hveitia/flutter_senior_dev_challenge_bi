@@ -193,7 +193,7 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
   }
 
   @override
-  NavigationVerdict onNavigation(Uri target) {
+  NavigationVerdict onNavigation(Uri target, {bool isMainFrame = true}) {
     final origin = _origin;
     if (origin == null) return NavigationVerdict.refuse;
 
@@ -206,10 +206,14 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
       ServicesTelemetry.originKey:
           originOf(target) ?? ServicesTelemetry.noOrigin,
     });
-    if (verdict == NavigationVerdict.offerOutside && !isClosed) {
+    // Only what the customer asked for is offered outside. A frame that
+    // points elsewhere is something the page embedded: it is kept out and
+    // nobody is asked.
+    final isOffered = verdict == NavigationVerdict.offerOutside && isMainFrame;
+    if (isOffered && !isClosed) {
       emit(state._with(outsideLink: () => target));
     }
-    return verdict;
+    return isOffered ? verdict : NavigationVerdict.refuse;
   }
 
   @override

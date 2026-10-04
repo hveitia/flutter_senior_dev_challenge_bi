@@ -405,6 +405,35 @@ void main() {
       });
     });
 
+    test('keeps a frame of another site out without asking anybody', () {
+      _started((async, harness) {
+        final verdict = harness.surface.events.onNavigation(
+          Uri.parse('https://ads.example.org/banner'),
+          isMainFrame: false,
+        );
+
+        expect(verdict, NavigationVerdict.refuse);
+        expect(harness.cubit.state.outsideLink, isNull);
+        expect(
+          harness.parametersOf(
+            ServicesTelemetry.navigationBlocked,
+          )[ServicesTelemetry.originKey],
+          'https://ads.example.org',
+        );
+      });
+    });
+
+    test('lets a frame load partner content', () {
+      _started((async, harness) {
+        final verdict = harness.surface.events.onNavigation(
+          Uri.parse('https://partners.example.com/partners/widget'),
+          isMainFrame: false,
+        );
+
+        expect(verdict, NavigationVerdict.stay);
+      });
+    });
+
     test('forgets the outside link once the customer decided', () {
       _started((async, harness) {
         harness.surface.events.onNavigation(

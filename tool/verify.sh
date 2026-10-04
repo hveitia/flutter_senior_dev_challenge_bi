@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Single definition of "green" for the workspace. Used by the pre-commit hook
-# and by CI so both always check exactly the same things.
+# Single definition of "green" for the workspace.
+#
+#   tool/verify.sh             everything: what CI runs on every push
+#   tool/verify.sh --affected  what the staged changes can break: what the
+#                              pre-commit hook runs
+#
+# Both modes check the format and the analysis of the whole repository,
+# which are fast. They differ only in which tests run.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -9,6 +15,13 @@ fail() {
   echo "verify: $1" >&2
   exit 1
 }
+
+mode=all
+case "${1:-}" in
+  "") ;;
+  --affected) mode=affected ;;
+  *) fail "unknown argument: $1" ;;
+esac
 
 # The root pubspec.yaml is the list of what gets tested. Globbing directories
 # instead would silently skip a package that has no tests yet.
@@ -28,6 +41,8 @@ for dir in "${members[@]}"; do
   [ -d "$dir/test" ] || fail "workspace member $dir has no test/ directory"
 done
 
+# A directory under apps/ without a pubspec.yaml is not a Dart package (the
+# web console, for one) and is verified by its own step, not by this loop.
 for dir in apps/* packages/*; do
   [ -f "$dir/pubspec.yaml" ] || continue
   case " ${members[*]} " in
@@ -56,8 +71,159 @@ markers=$(grep -rnE --include='*_test.dart' \
 [ -z "$markers" ] || fail "focused or unexplained skipped tests:
 $markers"
 
+# --- Which tests run ---------------------------------------------------------
+
+selected=()
+run_firebase=false
+
+is_selected() {
+  local chosen
+  for chosen in ${selected[@]+"${selected[@]}"}; do
+    [ "$chosen" = "$1" ] && return 0
+  done
+  return 1
+}
+
+# pick <member> <reason>
+pick() {
+  is_selected "$1" && return 0
+  selected+=("$1")
+  echo "    $1: $2"
+}
+
+package_name() {
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      name:*)
+        line=${line#name:}
+        echo "${line// /}"
+        return 0
+        ;;
+    esac
+  done < "$1/pubspec.yaml"
+}
+
+# depends_on <member> <package name>: whether the member lists the package
+# among its dependencies, of any kind.
+depends_on() {
+  grep -qE "^  $2:" "$1/pubspec.yaml"
+}
+
+if [ "$mode" = all ]; then
+  selected=("${members[@]}")
+else
+  echo "==> Affected by the staged changes"
+  staged=$(git diff --cached --name-only --diff-filter=ACMRD)
+
+  # Files that configure every package: after them nothing can be assumed
+  # to still work.
+  affects_all=""
+  while IFS= read -r path; do
+    case "$path" in
+      pubspec.yaml | pubspec.lock | analysis_options.yaml | tool/* | .githooks/*)
+        affects_all=$path
+        ;;
+      firebase/*) run_firebase=true ;;
+    esac
+  done <<< "$staged"
+
+  if [ -n "$affects_all" ]; then
+    for dir in "${members[@]}"; do
+      pick "$dir" "$affects_all configures every package"
+    done
+  else
+    while IFS= read -r path; do
+      case "$path" in
+        # Not a Dart package: its own lint, type check and tests cover it.
+        apps/backoffice/*) continue ;;
+        # The platform package parses the published contract in its tests.
+        contracts/*) pick packages/app_platform "reads $path" ;;
+      esac
+      for dir in "${members[@]}"; do
+        case "$path" in
+          "$dir"/*) pick "$dir" "changed" ;;
+        esac
+      done
+    done <<< "$staged"
+
+    # A package is also affected by a change in anything it depends on,
+    # however far down. Repeated until a pass adds nothing.
+    grew=true
+    while $grew; do
+      grew=false
+      for dir in "${members[@]}"; do
+        is_selected "$dir" && continue
+        for chosen in ${selected[@]+"${selected[@]}"}; do
+          if depends_on "$dir" "$(package_name "$chosen")"; then
+            pick "$dir" "depends on $chosen"
+            grew=true
+            break
+          fi
+        done
+      done
+    done
+  fi
+
+  if [ "${#selected[@]}" -eq 0 ]; then
+    echo "    no Dart package is affected: no Flutter tests to run"
+  fi
+fi
+
 echo "==> Test"
 for dir in "${members[@]}"; do
+  is_selected "$dir" || continue
   echo "--> $dir"
   (cd "$dir" && flutter test)
 done
+
+# --- Firebase rules and seed --------------------------------------------------
+# CI runs them in a job of their own on every push. Locally they run when
+# the commit touches firebase/, if the machine can.
+
+# The Firestore emulator refuses a Java older than this.
+minimum_java=21
+
+java_major() {
+  "$1" -version 2>&1 | awk -F'"' '/version/ { split($2, v, "."); print v[1]; exit }'
+}
+
+recent_java() {
+  local candidate major
+  for candidate in \
+    "${JAVA_HOME:+$JAVA_HOME/bin/java}" \
+    "$(command -v java || true)" \
+    /opt/homebrew/opt/openjdk/bin/java \
+    /usr/local/opt/openjdk/bin/java; do
+    [ -n "$candidate" ] && [ -x "$candidate" ] || continue
+    major=$(java_major "$candidate" || true)
+    case "$major" in
+      '' | *[!0-9]*) continue ;;
+    esac
+    if [ "$major" -ge "$minimum_java" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if $run_firebase; then
+  echo "==> Firebase"
+  if [ ! -d firebase/node_modules ]; then
+    echo "    firebase/node_modules is missing (run 'npm ci' in firebase/)."
+    echo "    The rules and seed tests were NOT run here; CI runs them."
+  else
+    echo "--> seed data"
+    (cd firebase && npm run --silent test:seed)
+
+    if java=$(recent_java); then
+      echo "--> rules, on the emulator"
+      java_home=$(dirname "$(dirname "$java")")
+      (cd firebase && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" npm test --silent)
+    else
+      echo "    no Java $minimum_java or later was found for the emulator."
+      echo "    The rules tests were NOT run here; CI runs them."
+    fi
+  fi
+fi

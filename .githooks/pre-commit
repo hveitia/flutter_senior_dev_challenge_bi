@@ -23,4 +23,6 @@ if [ -n "$unstaged" ] || [ -n "$untracked" ]; then
   exit 1
 fi
 
-exec tool/verify.sh
+# Format and analysis cover the whole repository; tests run for what the
+# commit can break. CI runs everything on every push.
+exec tool/verify.sh --affected

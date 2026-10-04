@@ -113,7 +113,15 @@ Quien evalúe el proyecto no la necesitará cuando el registro abra las cuentas 
 tool/verify.sh
 ```
 
-Ejecuta, en este orden, la comprobación de formato, el análisis estático y las pruebas de cada paquete del workspace. Es exactamente lo mismo que ejecutan el hook `pre-commit` y la integración continua.
+Ejecuta, en este orden, la comprobación de formato, el análisis estático y las pruebas de cada paquete del workspace. Es exactamente lo que ejecuta la integración continua en cada push.
+
+El hook `pre-commit` usa el mismo script en modo acotado:
+
+```bash
+tool/verify.sh --affected
+```
+
+El formato y el análisis siguen cubriendo todo el repositorio. Las pruebas se limitan a los paquetes que el commit toca y a los que dependen de ellos, y el script imprime cuáles eligió y por qué.
 
 Para ejecutar solo las pruebas de un paquete:
 
@@ -154,7 +162,13 @@ El repositorio sigue Trunk Based Development ([ADR 0006](docs/adr/0006-trunk-bas
 
 - Existe una única rama de larga vida: `main`. Siempre debe poder desplegarse.
 - Los cambios son pequeños y frecuentes. Cada commit deja el workspace en verde.
-- El hook `pre-commit` ejecuta `tool/verify.sh` y bloquea el commit si algo falla.
+- El hook `pre-commit` ejecuta `tool/verify.sh --affected` y bloquea el commit si algo falla. La verificación local se acota a lo que el commit puede romper:
+  - Un cambio en un paquete ejecuta sus pruebas y las de todo paquete que dependa de él, directa o indirectamente.
+  - Un cambio en la configuración común (`pubspec.yaml` y `pubspec.lock` de la raíz, `analysis_options.yaml`, `tool/`, `.githooks/`) ejecuta todo.
+  - Un cambio en `contracts/` ejecuta el paquete de plataforma, que lee el contrato, y sus dependientes.
+  - Un cambio en `firebase/` ejecuta las pruebas de reglas y de datos de carga si hay Java 21 o posterior; si no, lo avisa.
+  - Un cambio solo en documentación no ejecuta pruebas.
+- La puerta completa es la integración continua: ejecuta todas las pruebas en cada push a `main`. Lo que el hook deja sin ejecutar es lo que el commit no toca, y ya estaba en verde.
 - El hook rechaza el commit cuando hay cambios sin preparar o archivos sin seguimiento en `apps/`, `packages/`, `contracts/`, `firebase/` o `tool/`. La verificación lee el directorio de trabajo, así que solo es válida si este coincide con lo que se confirma. No se puede preparar una parte de un archivo: lo que no entra en el commit se guarda antes con `git stash`.
 - La integración continua repite la misma verificación en cada push a `main`.
 - El trabajo incompleto se integra desactivado mediante configuración, no en ramas largas.

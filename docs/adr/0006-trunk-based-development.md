@@ -19,9 +19,11 @@ La prueba exige Trunk Based Development y evalúa la frecuencia de los commits y
 
 La opción 4, apoyada en tres mecanismos:
 
-- **`tool/verify.sh`** es la única definición de "verde": formato, análisis estático y pruebas de todo el workspace.
-- **El hook `pre-commit`** ejecuta ese script y bloquea el commit si falla. Antes comprueba que el directorio de trabajo coincide con lo que se confirma: rechaza el commit si hay cambios sin preparar o archivos sin seguimiento en las carpetas de código.
-- **La integración continua** ejecuta el mismo script en cada push a `main`.
+- **`tool/verify.sh`** es la única definición de "verde": formato, análisis estático y pruebas de todo el workspace. Con `--affected` mantiene el formato y el análisis de todo el repositorio y limita las pruebas a los paquetes que tocan los cambios preparados y a los que dependen de ellos, leyendo las dependencias de cada `pubspec.yaml`.
+- **El hook `pre-commit`** ejecuta ese script en modo acotado y bloquea el commit si falla. Antes comprueba que el directorio de trabajo coincide con lo que se confirma: rechaza el commit si hay cambios sin preparar o archivos sin seguimiento en las carpetas de código.
+- **La integración continua** ejecuta el script completo en cada push a `main`. Es la puerta que decide si `main` está en verde.
+
+**Por qué acotar el hook no debilita la garantía.** Un paquete que el commit no toca, y que no depende de nada que el commit toque, no puede cambiar de comportamiento: sus pruebas darían el mismo resultado que en el commit anterior, que ya estaba en verde. El grafo de dependencias se lee de los `pubspec.yaml`, que son los que el compilador respeta; un cambio en la configuración común ejecuta todo. Lo que el análisis de dependencias no ve (un contrato leído como archivo, por ejemplo) se declara de forma explícita en el script, y la integración continua cubre cualquier omisión en el push siguiente.
 
 Reglas de trabajo:
 
@@ -35,12 +37,13 @@ Reglas de trabajo:
 
 - **Se gana:** integración continua real, sin conflictos de fusión y con un historial lineal que muestra cómo se construyó la solución.
 - **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con una revisión independiente asistida por IA de cada etapa antes de subirla al repositorio remoto. Los hallazgos de cada revisión quedan anotados en el [registro de uso de IA](../ia/registro-uso-ia.md).
-- **Se paga:** el hook añade unos segundos a cada commit, y ese tiempo crecerá con el número de pruebas.
+- **Se paga:** el hook añade tiempo a cada commit. Con el modo acotado, un commit de documentación tarda unos 4 s, uno en un paquete de dominio unos 16 s, y uno en el sistema de diseño o en la configuración común más de 30 s, porque ejecuta casi todo (medido en la máquina de desarrollo con unas 1000 pruebas).
+- **Se paga:** la selección de pruebas es código que puede equivocarse. Si omite un paquete afectado, el error llega a `main` en local y lo detecta la integración continua en el push, no el hook.
 - **Se paga:** no se puede preparar solo una parte de un archivo. El script verifica el directorio de trabajo, y durante la etapa 5 eso dejó pasar un commit cuyo contenido no compilaba por sí solo, porque el archivo que le faltaba ya existía en disco sin estar preparado. El hook exige ahora que ambos coincidan; lo que no entra en el commit se aparta con `git stash`.
-- **Limitación:** la integración continua cancela las ejecuciones en curso cuando llega un push nuevo, por lo que no todos los commits intermedios quedan verificados en el servidor. Todos lo están en local por el hook.
+- **Limitación:** la integración continua cancela las ejecuciones en curso cuando llega un push nuevo, por lo que no todos los commits intermedios quedan verificados en el servidor. En local, el hook verifica en cada uno lo que ese commit afecta.
 
 ## Impacto a largo plazo
 
 Con un equipo, el flujo pasa a la opción 3 sin cambiar las herramientas: ramas de menos de un día, pull request con la misma verificación en verde y revisión de una persona. La regla de integrar trabajo incompleto detrás de configuración ya está en la arquitectura.
 
-Convendría revisar la decisión en cuanto haya más de un autor, o si la verificación local supera el tiempo que un desarrollador está dispuesto a esperar por commit; en ese caso el hook se limita a los paquetes afectados y la verificación completa queda en la integración continua.
+Convendría revisar la decisión en cuanto haya más de un autor, o si la verificación local, ya acotada a los paquetes afectados, vuelve a superar el tiempo que un desarrollador está dispuesto a esperar por commit; en ese caso el hook se reduciría a formato y análisis, y las pruebas quedarían en la integración continua.

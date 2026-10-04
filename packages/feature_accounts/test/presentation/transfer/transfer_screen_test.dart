@@ -74,9 +74,17 @@ void main() {
     matching: find.byType(EditableText),
   );
 
-  Future<void> typeAmount(WidgetTester tester, String digits) async {
-    await tester.enterText(field('Monto'), digits);
-    await tester.pump();
+  /// Presses the keys of [amount] on the keypad, `.` being the point.
+  Future<void> typeAmount(WidgetTester tester, String amount) async {
+    for (final key in amount.split('')) {
+      final finder = find.descendant(
+        of: find.byType(NumericKeypad),
+        matching: find.text(key),
+      );
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
+      await tester.pump();
+    }
   }
 
   Future<void> tap(WidgetTester tester, String label) async {
@@ -96,12 +104,59 @@ void main() {
     expect(find.textContaining('Fondo de inversión'), findsNothing);
   });
 
-  testWidgets('the amount is shown large as it is typed, cents last', (
+  testWidgets('typing one is one dollar, and the cents come after the point', (
+    tester,
+  ) async {
+    final cubit = await pump(tester);
+
+    await typeAmount(tester, '1');
+
+    expect(find.text(r'$1.00', findRichText: true), findsOneWidget);
+    expect(cubit.state.amountCents, 100);
+
+    await typeAmount(tester, '.5');
+
+    expect(find.text(r'$1.50', findRichText: true), findsOneWidget);
+    expect(cubit.state.amountCents, 150);
+  });
+
+  testWidgets('the amount is typed on keys of the screen, with no text field '
+      'that would open the keyboard of the device', (tester) async {
+    await pump(tester);
+
+    expect(find.byType(NumericKeypad), findsOneWidget);
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(field('Concepto (opcional)'), findsOneWidget);
+  });
+
+  testWidgets('delete removes the last key and holding it clears the amount', (
+    tester,
+  ) async {
+    final cubit = await pump(tester);
+    await typeAmount(tester, '12.5');
+    final delete = find.bySemanticsLabel('Borrar');
+    await tester.ensureVisible(delete);
+
+    await tester.tap(delete);
+    await tester.pump();
+
+    expect(cubit.state.typedAmount, '12.');
+
+    await tester.longPress(delete);
+    await tester.pump();
+
+    expect(cubit.state.typedAmount, isEmpty);
+    expect(find.text(r'$0.00', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('back from the confirmation the amount is as it was typed', (
     tester,
   ) async {
     await pump(tester);
+    await typeAmount(tester, '150.10');
+    await tap(tester, 'Continuar');
 
-    await typeAmount(tester, '15010');
+    await tap(tester, 'Volver a editar');
 
     expect(find.text(r'$150.10', findRichText: true), findsOneWidget);
   });
@@ -117,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cuenta de ahorros ****4821').last);
     await tester.pumpAndSettle();
-    await typeAmount(tester, '125001');
+    await typeAmount(tester, '1250.01');
 
     await tap(tester, 'Continuar');
 
@@ -152,7 +207,7 @@ void main() {
     final answer = Completer<TransferOutcome>();
     repository.onSend = (_) => answer.future;
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tester.enterText(field('Concepto (opcional)'), 'Arriendo');
     await tap(tester, 'Continuar');
 
@@ -182,7 +237,7 @@ void main() {
       'to see', (tester) async {
     repository.onSend = (_) async => const TransferQueued();
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -200,7 +255,7 @@ void main() {
     repository.onSend = (_) async =>
         const TransferRejected(TransferRejection.insufficientFunds);
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -225,7 +280,7 @@ void main() {
       isNotNull,
     );
 
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
 
@@ -249,7 +304,7 @@ void main() {
     repository.onSend = (_) async =>
         const TransferRejected(TransferRejection.accountNotEligible);
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -266,7 +321,7 @@ void main() {
     repository.onSend = (_) async =>
         const TransferStopped(TransferStop.sessionExpired);
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -289,7 +344,7 @@ void main() {
     repository.onSend = (_) async =>
         const TransferStopped(TransferStop.orderChanged);
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -314,7 +369,7 @@ void main() {
     repository.onSend = (_) async =>
         const TransferStopped(TransferStop.notAccepted);
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -366,7 +421,7 @@ void main() {
       'order', (tester) async {
     repository.onSend = (_) async => const TransferNotSent(TimeoutFailure());
     await pump(tester);
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();
@@ -402,7 +457,7 @@ void main() {
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     await expectLater(tester, meetsGuideline(textContrastGuideline));
 
-    await typeAmount(tester, '15010');
+    await typeAmount(tester, '150.10');
     await tap(tester, 'Continuar');
     await tap(tester, 'Confirmar transferencia');
     await tester.pump();

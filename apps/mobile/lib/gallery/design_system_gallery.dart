@@ -55,6 +55,9 @@ class _DesignSystemGalleryState extends State<DesignSystemGallery> {
   bool _biometricUnlock = true;
   bool _termsAccepted = false;
   bool _isBusy = false;
+  String _typedAmount = '1250.5';
+
+  void _typeAmount(String typed) => setState(() => _typedAmount = typed);
 
   void _toggleInterest(String interest, {required bool selected}) {
     setState(() {
@@ -130,6 +133,24 @@ class _DesignSystemGalleryState extends State<DesignSystemGallery> {
                   cents: -6480,
                   size: AmountTextSize.body,
                   signDisplay: AmountSignDisplay.always,
+                ),
+              ],
+            ),
+            _Section(
+              title: 'Ingreso de importes',
+              children: [
+                Center(child: AmountEntryText(typed: _typedAmount)),
+                NumericKeypad(
+                  onDigit: (digit) => _typeAmount(
+                    TypedAmount.withDigit(_typedAmount, digit),
+                  ),
+                  onDecimalPoint: () => _typeAmount(
+                    TypedAmount.withDecimalPoint(_typedAmount),
+                  ),
+                  onDelete: () => _typeAmount(
+                    TypedAmount.withoutLast(_typedAmount),
+                  ),
+                  onClear: () => _typeAmount(''),
                 ),
               ],
             ),

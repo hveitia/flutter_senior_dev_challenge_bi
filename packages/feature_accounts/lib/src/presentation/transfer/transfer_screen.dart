@@ -81,26 +81,19 @@ class _TransferForm extends StatefulWidget {
 }
 
 class _TransferFormState extends State<_TransferForm> {
-  late final TextEditingController _amount;
   late final TextEditingController _concept;
-
-  /// Digits a customer can type as an amount: up to $99,999.99.
-  static const int _maxAmountDigits = 7;
 
   @override
   void initState() {
     super.initState();
-    final state = context.read<TransferCubit>().state;
     // Coming back from the confirmation keeps what was typed.
-    _amount = TextEditingController(
-      text: state.amountCents == 0 ? '' : '${state.amountCents}',
+    _concept = TextEditingController(
+      text: context.read<TransferCubit>().state.concept,
     );
-    _concept = TextEditingController(text: state.concept);
   }
 
   @override
   void dispose() {
-    _amount.dispose();
     _concept.dispose();
     super.dispose();
   }
@@ -186,24 +179,8 @@ class _TransferFormState extends State<_TransferForm> {
         ),
       ),
       SizedBox(height: context.metrics.moduleGap),
-      Center(
-        child: AmountText(
-          cents: state.amountCents,
-          size: AmountTextSize.display,
-        ),
-      ),
-      SizedBox(height: context.metrics.componentGap),
-      AppTextField(
-        label: TransferStrings.amount,
-        controller: _amount,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(_maxAmountDigits),
-        ],
-        helperText: from == null
-            ? null
-            : TransferStrings.available(from.availableCents),
+      _AmountEntry(
+        typed: state.typedAmount,
         errorText: switch (error) {
           TransferFormError.missingAmount ||
           TransferFormError.overLimit ||
@@ -213,7 +190,17 @@ class _TransferFormState extends State<_TransferForm> {
           ),
           _ => null,
         },
-        onChanged: cubit.amountChanged,
+      ),
+      SizedBox(height: context.metrics.componentGap),
+      // The amount is typed on these keys, not on the keyboard of the
+      // device: whole dollars first and the cents after the point, with
+      // nothing covering the form.
+      NumericKeypad(
+        autofocus: true,
+        onDigit: cubit.amountDigitPressed,
+        onDecimalPoint: cubit.amountDecimalPointPressed,
+        onDelete: cubit.amountDeletePressed,
+        onClear: cubit.amountCleared,
       ),
       SizedBox(height: context.metrics.componentGap),
       AppTextField(
@@ -238,6 +225,62 @@ class _TransferFormState extends State<_TransferForm> {
         onPressed: cubit.continueRequested,
       ),
     ];
+  }
+}
+
+/// The amount as it is being typed, under its label and over what is wrong
+/// with it.
+class _AmountEntry extends StatelessWidget {
+  const _AmountEntry({required this.typed, required this.errorText});
+
+  final String typed;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final errorText = this.errorText;
+
+    return Column(
+      children: [
+        Text(
+          TransferStrings.amount,
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
+        AmountEntryText(typed: typed),
+        if (errorText != null) ...[
+          const SizedBox(height: AppSpacing.x1),
+          // The icon says it is an error to someone who cannot tell the
+          // color apart.
+          Semantics(
+            container: true,
+            liveRegion: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    size: AppSizes.iconSmall,
+                    color: colors.danger,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.x2),
+                Flexible(
+                  child: Text(
+                    errorText,
+                    style: AppTypography.caption.copyWith(
+                      color: colors.danger,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 

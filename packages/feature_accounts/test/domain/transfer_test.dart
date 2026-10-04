@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:design_system/design_system.dart' show TypedAmount;
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -87,43 +88,9 @@ void main() {
     });
   });
 
-  group('amountCentsFromDigits', () {
-    test('reads the last two digits as the cents', () {
-      expect(amountCentsFromDigits('1501'), 1501);
-      expect(amountCentsFromDigits('5'), 5);
-      expect(amountCentsFromDigits('007'), 7);
-    });
-
-    test('is zero for nothing typed', () {
-      expect(amountCentsFromDigits(''), 0);
-    });
-
-    test('ignores anything that is not a digit', () {
-      expect(amountCentsFromDigits(r'$15.01'), 1501);
-      expect(amountCentsFromDigits('-100'), 100);
-    });
-
-    test('is zero when nothing typed is a digit', () {
-      expect(amountCentsFromDigits('abc'), 0);
-      expect(amountCentsFromDigits(' '), 0);
-    });
-
-    test(
-      'reads a paste with leading zeros by its value, not by its length',
-      () {
-        expect(amountCentsFromDigits('0000005000'), 5000);
-        expect(amountCentsFromDigits('0' * 30), 0);
-        expect(amountCentsFromDigits('${'0' * 30}1'), 1);
-      },
-    );
-
-    test('an amount too long to be real is held at the largest one shown, '
-        'never cut to its first digits', () {
-      expect(amountCentsFromDigits('9' * 40), maxTypedCents);
-      // Cutting to nine digits would have read this as 123456789.
-      expect(amountCentsFromDigits('12345678901'), maxTypedCents);
-      expect(maxTypedCents, greaterThan(TransferLimits.maxCents));
-    });
+  test('the amount entry holds more than any transfer allowed, so the limit '
+      'is what stops a large amount, not the keys', () {
+    expect(TypedAmount.maxCents, greaterThan(TransferLimits.maxCents));
   });
 
   group('newTransferId', () {

@@ -1,4 +1,5 @@
 import 'package:app_platform/app_platform.dart';
+import 'package:design_system/design_system.dart' show TypedAmount;
 import 'package:equatable/equatable.dart';
 import 'package:feature_accounts/src/domain/account.dart';
 import 'package:feature_accounts/src/domain/transfer.dart';
@@ -13,7 +14,7 @@ final class TransferState extends Equatable {
   const TransferState({
     this.fromAccountId,
     this.toAccountId,
-    this.amountCents = 0,
+    this.typedAmount = '',
     this.concept = '',
     this.step = TransferStep.editing,
     this.showsErrors = false,
@@ -22,7 +23,12 @@ final class TransferState extends Equatable {
 
   final String? fromAccountId;
   final String? toAccountId;
-  final int amountCents;
+
+  /// The amount as it was typed: whole dollars, then optionally a point
+  /// and up to two decimals. It is kept as typed so the form shows `1.`
+  /// after the point, and still shows it on the way back from the
+  /// confirmation.
+  final String typedAmount;
   final String concept;
   final TransferStep step;
 
@@ -33,10 +39,13 @@ final class TransferState extends Equatable {
   /// How the last attempt ended. Set when [step] is [TransferStep.done].
   final TransferOutcome? outcome;
 
+  /// What [typedAmount] stands for. The order carries this, never the text.
+  int get amountCents => TypedAmount.cents(typedAmount);
+
   TransferState copyWith({
     String? fromAccountId,
     String? toAccountId,
-    int? amountCents,
+    String? typedAmount,
     String? concept,
     TransferStep? step,
     bool? showsErrors,
@@ -44,7 +53,7 @@ final class TransferState extends Equatable {
   }) => TransferState(
     fromAccountId: fromAccountId ?? this.fromAccountId,
     toAccountId: toAccountId ?? this.toAccountId,
-    amountCents: amountCents ?? this.amountCents,
+    typedAmount: typedAmount ?? this.typedAmount,
     concept: concept ?? this.concept,
     step: step ?? this.step,
     showsErrors: showsErrors ?? this.showsErrors,
@@ -55,7 +64,7 @@ final class TransferState extends Equatable {
   List<Object?> get props => [
     fromAccountId,
     toAccountId,
-    amountCents,
+    typedAmount,
     concept,
     step,
     showsErrors,
@@ -108,7 +117,7 @@ final class TransferCubit extends Cubit<TransferState> {
       return TransferState(
         fromAccountId: unresolved.fromAccountId,
         toAccountId: unresolved.toAccountId,
-        amountCents: unresolved.amountCents,
+        typedAmount: TypedAmount.fromCents(unresolved.amountCents),
         concept: unresolved.concept,
         step: TransferStep.done,
         outcome: const TransferNotSent(TimeoutFailure()),
@@ -157,7 +166,7 @@ final class TransferCubit extends Cubit<TransferState> {
         fromAccountId: accountId,
         // The same account cannot be on both sides.
         toAccountId: state.toAccountId == accountId ? null : state.toAccountId,
-        amountCents: state.amountCents,
+        typedAmount: state.typedAmount,
         concept: state.concept,
         showsErrors: state.showsErrors,
       ),
@@ -169,10 +178,22 @@ final class TransferCubit extends Cubit<TransferState> {
     emit(state.copyWith(toAccountId: accountId));
   }
 
-  /// [digits] is what the customer typed, the last two being the cents.
-  void amountChanged(String digits) {
+  /// A digit key: `1` alone is one dollar.
+  void amountDigitPressed(int digit) =>
+      _amountTyped(TypedAmount.withDigit(state.typedAmount, digit));
+
+  /// The decimal point key: what follows are the cents.
+  void amountDecimalPointPressed() =>
+      _amountTyped(TypedAmount.withDecimalPoint(state.typedAmount));
+
+  void amountDeletePressed() =>
+      _amountTyped(TypedAmount.withoutLast(state.typedAmount));
+
+  void amountCleared() => _amountTyped('');
+
+  void _amountTyped(String typed) {
     if (!_isEditable) return;
-    emit(state.copyWith(amountCents: amountCentsFromDigits(digits)));
+    emit(state.copyWith(typedAmount: typed));
   }
 
   void conceptChanged(String concept) {
@@ -229,7 +250,7 @@ final class TransferCubit extends Cubit<TransferState> {
       TransferState(
         fromAccountId: state.fromAccountId,
         toAccountId: state.toAccountId,
-        amountCents: state.amountCents,
+        typedAmount: state.typedAmount,
         concept: state.concept,
       ),
     );

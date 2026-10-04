@@ -104,13 +104,20 @@ void main() {
       await tap(tester, find.text(from));
       await tap(tester, find.widgetWithText(AppButton, 'Transferir'));
 
-      await waitFor(tester, field('Monto'));
-      await tester.enterText(field('Monto'), '100');
+      await waitFor(tester, find.byType(NumericKeypad));
       await tester.enterText(field('Concepto (opcional)'), concept);
-      // On a real device the keyboard covers the button below; it is put
-      // away as a customer would, and the layout given time to settle.
-      FocusManager.instance.primaryFocus?.unfocus();
+      // One dollar is the key 1, on the keys of the screen. Pressing it
+      // takes the focus from the concept, so the keyboard of the device
+      // closes; the layout is given time to settle before going on.
+      await tap(
+        tester,
+        find.descendant(
+          of: find.byType(NumericKeypad),
+          matching: find.text('1'),
+        ),
+      );
       await tester.pump(keyboardTime);
+      expect(find.text(r'$1.00', findRichText: true), findsOneWidget);
       await tap(tester, find.widgetWithText(AppButton, 'Continuar'));
       await tap(
         tester,

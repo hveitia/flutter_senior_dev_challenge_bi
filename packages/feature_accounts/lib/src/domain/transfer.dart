@@ -198,23 +198,6 @@ TransferFormError? validateTransfer({
 List<Account> transferableAccounts(Iterable<Account> accounts) =>
     cashAccounts(accounts);
 
-/// The largest amount the entry field holds. It is far above any transfer
-/// limit: it only keeps a long paste from overflowing a number.
-const int maxTypedCents = 999999999;
-
-/// Reads an amount typed as digits, where the last two are the cents:
-/// `1501` is $15.01. Anything that is not a digit is ignored, and so are
-/// leading zeros. An amount too long to be real is held at [maxTypedCents]:
-/// cutting it to its first digits would show a different, plausible amount.
-int amountCentsFromDigits(String input) {
-  final digits = input
-      .replaceAll(RegExp('[^0-9]'), '')
-      .replaceFirst(RegExp('^0+'), '');
-  if (digits.isEmpty) return 0;
-  if (digits.length > '$maxTypedCents'.length) return maxTypedCents;
-  return min(int.parse(digits), maxTypedCents);
-}
-
 /// Produces the id of a new order: 32 characters the server accepts as a
 /// document id, random enough not to be guessed or repeated.
 String newTransferId([Random? random]) {

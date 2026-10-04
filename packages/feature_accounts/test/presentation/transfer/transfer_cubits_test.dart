@@ -9,6 +9,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fixtures.dart';
 
+extension on TransferCubit {
+  /// Presses the keys of [amount] one by one, `.` being the decimal point.
+  void type(String amount) {
+    for (final key in amount.split('')) {
+      if (key == '.') {
+        amountDecimalPointPressed();
+      } else {
+        amountDigitPressed(int.parse(key));
+      }
+    }
+  }
+}
+
 void main() {
   late FakeTransfersRepository repository;
 
@@ -36,7 +49,7 @@ void main() {
 
     Future<TransferCubit> readyToConfirm() async {
       final created = cubit()
-        ..amountChanged('15010')
+        ..type('150.10')
         ..continueRequested();
       expect(created.state.step, TransferStep.confirming);
       return created;
@@ -65,9 +78,49 @@ void main() {
       expect(created.state.toAccountId, isNull);
     });
 
+    test('one typed is one dollar', () {
+      final created = cubit()..type('1');
+
+      expect(created.state.typedAmount, '1');
+      expect(created.state.amountCents, 100);
+    });
+
+    test('the decimal point starts the cents', () {
+      final created = cubit()..type('1.5');
+
+      expect(created.state.typedAmount, '1.5');
+      expect(created.state.amountCents, 150);
+    });
+
+    test('delete removes the last key, and clearing removes them all', () {
+      final created = cubit()
+        ..type('12.5')
+        ..amountDeletePressed();
+
+      expect(created.state.typedAmount, '12.');
+      expect(created.state.amountCents, 1200);
+
+      created.amountCleared();
+
+      expect(created.state.typedAmount, isEmpty);
+      expect(created.state.amountCents, 0);
+    });
+
+    test('back from the confirmation, the amount is still as it was typed '
+        'and can be edited', () {
+      final created = cubit()
+        ..type('150.1')
+        ..continueRequested()
+        ..editRequested()
+        ..amountDeletePressed()
+        ..type('25');
+
+      expect(created.state.typedAmount, '150.25');
+    });
+
     test('does not continue with an error, and shows it from then on', () {
       final created = cubit()
-        ..amountChanged('99999999')
+        ..type('999999.99')
         ..continueRequested();
 
       expect(created.state.step, TransferStep.editing);
@@ -76,14 +129,14 @@ void main() {
     });
 
     test('says insufficient funds for one cent over the available balance', () {
-      final created = cubit()..amountChanged('357036');
+      final created = cubit()..type('3570.36');
 
       expect(created.error, TransferFormError.insufficientFunds);
     });
 
     test('sends the order as typed, with the concept trimmed', () async {
       final created = cubit()
-        ..amountChanged('15010')
+        ..type('150.10')
         ..conceptChanged('  Arriendo ')
         ..continueRequested();
 
@@ -261,7 +314,7 @@ void main() {
       final created = await readyToConfirm();
 
       created
-        ..amountChanged('1')
+        ..type('1')
         ..toSelected('fund');
 
       expect(created.state.amountCents, 15010);

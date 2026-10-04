@@ -1,8 +1,8 @@
 # Comportamiento con conectividad degradada
 
-Qué hace la aplicación cuando la conexión falta, es lenta o un servicio no responde. Primera versión, escrita al cerrar la etapa 5: cubre el acceso y las cuentas y movimientos. El inicio dinámico, las transferencias y los servicios de aliados añadirán sus apartados en sus etapas.
+Qué hace la aplicación cuando la conexión falta, es lenta o un servicio no responde. Actualizado al cerrar la etapa 6: cubre el acceso, las cuentas y movimientos y el inicio. Las transferencias y los servicios de aliados añadirán sus apartados en sus etapas.
 
-Cada apartado separa lo **implementado y visto en un dispositivo**, lo **implementado y cubierto solo por pruebas automáticas** y lo **planificado**. Las decisiones están en el [ADR 0009](../adr/0009-politica-de-resiliencia.md) (política de resiliencia) y el [ADR 0012](../adr/0012-lectura-de-cuentas-y-movimientos.md) (lectura y caché).
+Cada apartado separa lo **implementado y visto en un dispositivo**, lo **implementado y cubierto solo por pruebas automáticas** y lo **planificado**. Las decisiones están en el [ADR 0009](../adr/0009-politica-de-resiliencia.md) (política de resiliencia), el [ADR 0012](../adr/0012-lectura-de-cuentas-y-movimientos.md) (lectura y caché) y el [ADR 0013](../adr/0013-registro-de-modulos-y-motor-del-inicio.md) (un estado por módulo del inicio).
 
 ## Principios
 
@@ -35,6 +35,7 @@ flowchart TB
 |---|---|---|
 | Cuentas o movimientos ya vistos antes | Aviso «Sin conexión. Mostrando datos guardados», los datos y «Actualizado hace N min» | Visto en un teléfono, también tras cerrar y abrir la aplicación en modo avión |
 | Cuentas o movimientos nunca vistos en este dispositivo | Aviso «Sin conexión», el mensaje «No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.» y «Reintentar» | Pruebas automáticas |
+| Inicio, con la aplicación abierta o al abrirla sin conexión | El mismo aviso; el inicio se arma con la última configuración guardada y cada módulo con datos muestra los suyos con «Actualizado hace N min». Las acciones rápidas y el banner, que no tienen datos, no llevan antigüedad | Visto en un teléfono, en modo avión y abriendo la aplicación en modo avión |
 | Sesión ya iniciada, al abrir la aplicación | La sesión se restaura y el cliente entra | Visto en un teléfono |
 | Después de cerrar sesión | No queda nada guardado del cliente: la copia local y las horas de sincronización se borran al terminar la sesión. Iniciar sesión exige conexión | Visto en un teléfono: tras cerrar sesión no quedan archivos de la base local ni horas de sincronización, y volver a iniciar sesión carga los datos del servidor |
 | Formularios de inicio de sesión y registro | Aviso «Sin conexión. Revisa tu red e intenta de nuevo» en el formulario | Visto en un emulador (etapa 4) |
@@ -49,7 +50,8 @@ Sin conexión no se intenta la llamada: la política responde de inmediato con u
 |---|---|---|
 | Vuelve la conexión con una pantalla de cuentas o movimientos abierta | Aviso «Conexión restablecida. Datos actualizados» durante unos segundos; las escuchas se resincronizan solas, los datos pasan a estar confirmados y desaparece la antigüedad | Visto en un teléfono |
 | El cliente toca «Reintentar» | El error permanece en pantalla con indicación de progreso hasta que hay respuesta | Pruebas automáticas |
-| El cliente desliza hacia abajo | Se vuelve a preguntar al servidor por cuentas y movimientos | Pruebas automáticas |
+| El cliente desliza hacia abajo | Se vuelve a preguntar al servidor por cuentas y movimientos. En el inicio, cada módulo con datos se actualiza y el indicador espera a todos | Visto en un teléfono en el inicio; pruebas automáticas en las demás pantallas |
+| Vuelve la conexión con el inicio abierto | El aviso «Conexión restablecida. Datos actualizados» y los módulos pasan a datos confirmados | Visto en un teléfono |
 
 Hay dos casos distintos:
 
@@ -60,7 +62,7 @@ Hay dos casos distintos:
 
 | Situación | Qué ve el cliente | Estado |
 |---|---|---|
-| Una petición tarda más de 3 s | Aviso «Conexión lenta. Seguimos intentando», con una línea de progreso | Pruebas automáticas |
+| Una petición tarda más de 3 s | Aviso «Conexión lenta. Seguimos intentando», con una línea de progreso, que desaparece cuando llega la respuesta | Visto en un teléfono, con 5 s de latencia publicados desde la configuración |
 | Hay datos guardados y el servidor tarda | Los datos guardados se muestran de inmediato, con su antigüedad, mientras llega la respuesta | Pruebas automáticas |
 | No hay datos guardados y el servidor tarda | Marcadores con la forma del contenido | Pruebas automáticas |
 | Se agotan los tres intentos | Con datos guardados: los datos y un aviso con «Reintentar». Sin datos: «No pudimos conectarnos. Lo intentamos 3 veces sin éxito.» | Pruebas automáticas |
@@ -71,16 +73,49 @@ El peor caso de una lectura que nunca responde ronda los 25 s (tres intentos de 
 
 | Situación | Qué ve el cliente | Estado |
 |---|---|---|
-| Los movimientos fallan y las cuentas responden | El saldo y los datos de la cuenta en pantalla; en el lugar de los movimientos, «No pudimos cargar tus movimientos» con «Reintentar» | Pruebas automáticas |
+| Los movimientos fallan y las cuentas responden, sin movimientos en pantalla | El saldo y las cuentas en pantalla; en el lugar de los movimientos, «No pudimos cargar tus movimientos» con «Reintentar» | Visto en un teléfono en el inicio, abriendo la aplicación con el servicio dado por caído; pruebas automáticas en el detalle de una cuenta |
+| Los movimientos fallan con movimientos ya en pantalla | Los movimientos se conservan, con el aviso «No pudimos actualizar tus movimientos. Mostramos los últimos datos guardados.» y «Reintentar» | Visto en un teléfono en el inicio |
+| El servicio de movimientos vuelve | «Reintentar» crea de nuevo la escucha, pregunta al servidor y el módulo se recupera | Visto en un teléfono: mientras el fallo seguía publicado el reintento volvió a fallar, y tras retirarlo se recuperó |
+| Ningún módulo del inicio tiene nada que mostrar | Un único mensaje para toda la pantalla, «No pudimos conectarnos», con un «Reintentar» que actualiza todos los módulos. El inicio vuelve en cuanto uno tiene datos | Pruebas automáticas |
+| La configuración publica un tipo de módulo que esta versión no conoce | Se omite y el resto del inicio se dibuja | Visto en un teléfono: el segmento del cliente de prueba publica un módulo de servicios recomendados que aún no existe |
 | Las cuentas fallan y nunca se vieron | Mensaje de error a pantalla completa con «Reintentar» | Pruebas automáticas |
 | Un documento con un formato que la aplicación no entiende | Ese elemento se omite; el resto se muestra | Pruebas automáticas |
 | Una categoría, un canal o un estado desconocidos | El movimiento se muestra como «Otros» o «Pendiente» | Pruebas automáticas |
 
-Cuentas y movimientos se identifican como servicios distintos (`accounts` y `movements`) ante la política de resiliencia, de modo que el laboratorio de resiliencia de la consola podrá desactivar los movimientos sin tocar las cuentas.
+Cuentas y movimientos se identifican como servicios distintos (`accounts` y `movements`) ante la política de resiliencia, y en el inicio cada uno tiene su propio estado: el saldo y el carrusel leen las cuentas, y los últimos movimientos tienen un Bloc aparte.
+
+## Laboratorio de resiliencia
+
+La configuración publicada lleva un bloque `resilience` con la latencia añadida y los servicios dados por caídos. La aplicación lo aplica en un único lugar, la política de resiliencia, y solo si se compiló con `--dart-define=ALLOW_FAULT_INJECTION=true`.
+
+```mermaid
+sequenceDiagram
+  participant H as Herramienta o consola
+  participant F as Firestore config/home
+  participant A as Aplicación
+  participant P as Política de resiliencia
+  H->>F: publica resilience
+  F-->>A: entrega el documento (escucha en tiempo real)
+  A->>P: fallos de la configuración en uso
+  Note over P: solo los lee una compilación de demostración
+  A->>P: actualizar movimientos
+  P-->>A: no disponible, tras 3 intentos
+```
+
+| Fallo publicado | Efecto | Estado |
+|---|---|---|
+| Latencia | Cada intento espera ese tiempo antes de consultar. La señal de lentitud y el tiempo límite cuentan esa espera, así que la latencia recorre el mismo camino que una red lenta real | Visto en un teléfono |
+| Movimientos no disponibles | Las consultas de movimientos responden «no disponible» y se reintentan como una caída real. La escucha en tiempo real de movimientos deja de entregar datos: una caída que siguiera actualizando la pantalla no sería una caída | Visto en un teléfono |
+| Los mismos fallos, en una compilación sin la opción | Ninguno. Los movimientos se mostraron y la actualización respondió sin demora | Visto en un teléfono |
+| Al cerrar sesión | Los fallos se retiran: fuera de una sesión no se lee la configuración | Pruebas automáticas |
+
+Los fallos no se aplican solos a lo que ya está en pantalla: surten efecto en la siguiente consulta, es decir, al deslizar para actualizar, al reintentar o al abrir una pantalla.
 
 ## Qué no está hecho
 
-- **La demostración en vivo de latencia y caída parcial.** La inyección de fallos existe en la política y solo actúa en compilaciones con `ALLOW_FAULT_INJECTION`, pero la aplicación todavía no escucha la configuración publicada que la activa (etapa 6) ni existe la consola que la publica (etapa 7). Hoy esos dos escenarios solo están cubiertos por pruebas automáticas.
+- **La consola que publica los fallos.** Hoy se publican con la herramienta de desarrollo `firebase/seed/publish-config.mjs`; la consola llega en la etapa 7.
+- **El inicio de un cliente de otro segmento en un dispositivo.** La recomposición por segmento está cubierta por pruebas automáticas. La aplicación no ofrece cambiar de segmento después del registro, así que no se pudo mostrar con el cliente de prueba.
+- **El aviso de conexión como aviso flotante.** El diseño muestra «Conexión restablecida» como un aviso flotante; la aplicación lo muestra como un aviso bajo el encabezado.
 - **Transferencias sin conexión.** La cola con identificador de idempotencia llega con la etapa 8.
 - **Micro aplicativos de aliados no disponibles.** Etapa 10.
 - **El contador «Intento 2 de 3» del diseño.** La pantalla indica que está reintentando y, al terminar, cuántos intentos hubo.

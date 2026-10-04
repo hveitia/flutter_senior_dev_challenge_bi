@@ -20,8 +20,14 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0010](adr/0010-observabilidad.md) | Observabilidad detrás de una interfaz, sin datos del cliente en los registros | Aceptada |
 | [0011](adr/0011-autenticacion-y-perfil.md) | Autenticación con Firebase Auth y perfil escrito por el cliente bajo reglas | Aceptada |
 | [0012](adr/0012-lectura-de-cuentas-y-movimientos.md) | Lectura de cuentas y movimientos en tiempo real, con la copia local de Firestore como caché | Aceptada |
+| [0013](adr/0013-registro-de-modulos-y-motor-del-inicio.md) | Registro de módulos y motor del inicio, con un estado por conjunto de datos | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
+
+## Arquitectura
+
+- [Componentes y dependencias](arquitectura/componentes.md): los paquetes de la aplicación móvil, de qué depende cada uno y qué aporta cada dominio al inicio.
+- [Flujo: publicar la configuración y recomponer el inicio](arquitectura/publicar-configuracion.md): la secuencia desde que se publica un documento hasta que cambia la pantalla.
 
 ## Operación
 
@@ -36,7 +42,7 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 
 Estos documentos se escriben cuando exista lo que describen:
 
-- Diagramas de componentes, flujos y dependencias.
+- Diagramas de la consola web, de la API de servidor y de los flujos de transferencias y notificaciones.
 - Estrategia de despliegue.
 - Comportamiento ante conectividad limitada, alta latencia e indisponibilidad parcial del inicio, las transferencias y los servicios de aliados (el de acceso, cuentas y movimientos ya está escrito).
 - Supuestos, riesgos técnicos y estrategia de escalamiento.

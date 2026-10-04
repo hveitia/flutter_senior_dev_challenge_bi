@@ -1,6 +1,6 @@
 # Monitoreo en producción
 
-Cómo se sabría que la aplicación falla o que la experiencia empeora, y con qué se diagnosticaría. Primera versión: describe la base instalada en la etapa 3 y lo que se añadirá sobre ella.
+Cómo se sabría que la aplicación falla o que la experiencia empeora, y con qué se diagnosticaría. Describe lo instalado hasta la etapa 6 y lo que se añadirá sobre ello.
 
 Cada apartado separa lo **implementado** de lo **planificado**. La aplicación ya se ejecutó en un emulador y en un teléfono contra el proyecto real, pero **nada de lo descrito se ha observado todavía en la consola de Firebase**: no se comprobó que los eventos y los informes llegaran.
 
@@ -49,7 +49,15 @@ Un valor distinto de cero en `accounts_data_documents_skipped` significa que alg
 - **Eventos de la política de resiliencia** (`resilience_timeout`, `resilience_retry`, `resilience_attempts_exhausted`) para los servicios `auth`, `profile`, `accounts` y `movements`, que ya la usan.
 - **Errores inesperados del proveedor de identidad**, con el motivo `auth_unexpected` y solo el tipo del error, porque su mensaje puede citar el correo.
 
-**Implementado en la biblioteca, aún sin emitirse.** El repositorio de configuración no se instancia todavía en la aplicación, así que sus señales no llegan hoy a Firebase. Las de la política de resiliencia sí se emiten, para el acceso:
+- **Eventos del inicio** ([ADR 0013](../adr/0013-registro-de-modulos-y-motor-del-inicio.md)), con tipos de módulo y cantidades, nunca datos del cliente:
+
+| Nombre | Cuándo se emite | Datos |
+|---|---|---|
+| `home_module_skipped` | La configuración publica como visible un tipo de módulo que esta versión no registra. Una vez por tipo y sesión | Tipo del módulo |
+| `home_refresh_requested` | El cliente desliza para actualizar el inicio, o reintenta desde el error de pantalla completa | Cantidad de módulos que se actualizan |
+| `home_nothing_to_show` | Todos los módulos con datos fallaron sin nada guardado | Ninguno |
+
+- **Señales de la configuración.** Desde la etapa 6 la aplicación escucha la configuración publicada mientras hay una sesión iniciada, así que emite las señales de la tabla siguiente. Los movimientos más recientes del inicio usan los mismos eventos y el mismo servicio (`movements`) que los del detalle de una cuenta.
 
 | Nombre | Tipo | Cuándo se emite | Datos |
 |---|---|---|---|
@@ -65,6 +73,8 @@ Un valor distinto de cero en `accounts_data_documents_skipped` significa que alg
 | `resilience_attempts_exhausted` | Evento | Falla también el último intento permitido | Servicio e intento |
 | `resilience_fault_injection_enabled` | Evento | Una compilación con la inyección de fallos permitida ejecuta su primera operación | Ninguno |
 
+Al cerrar sesión, la escucha de la configuración se cancela. Como la sesión termina un instante antes, el servidor puede denegar la escucha y la aplicación emitir un `config_source_failed` de más; es un falso positivo conocido de ese momento.
+
 **Planificado**, en la etapa de cada funcionalidad:
 
 - Trazas de rendimiento con nombre.
@@ -78,11 +88,11 @@ Un valor distinto de cero en `accounts_data_documents_skipped` significa que alg
 | Porcentaje de usuarios sin fallos | Estabilidad general. Una caída tras una publicación señala esa versión | Crashlytics | La aplicación envía los errores; no se ha comprobado que lleguen. Alerta planificada |
 | Alerta de velocidad | Un mismo fallo afecta de pronto a muchos usuarios | Crashlytics | Planificada |
 | Fallos nuevos y regresiones | Un defecto que aparece o reaparece en una versión | Crashlytics | Planificada |
-| Fallos agrupados por `config_version` | Un fallo causado por una configuración publicada, no por el código | Clave personalizada | En la biblioteca; aún no se emite |
-| Eventos `config_rejected` | La consola publicó un documento que las aplicaciones instaladas no entienden | Evento de Analytics | En la biblioteca; aún no se emite |
-| Eventos y errores `config_source_failed` | La aplicación no puede leer la configuración (permisos, red). El número de fallo distingue un corte puntual de uno sostenido | Analytics y Crashlytics | En la biblioteca; aún no se emite |
-| Eventos `config_applied` con origen `lastResort` o `bundled` en usuarios que no son nuevos | Dispositivos que no reciben la configuración publicada | Evento de Analytics | En la biblioteca; aún no se emite |
-| Cualquier evento `resilience_fault_injection_enabled` | Una compilación de demostración llegó a usuarios reales | Evento de Analytics | En la biblioteca; aún no se emite |
+| Fallos agrupados por `config_version` | Un fallo causado por una configuración publicada, no por el código | Clave personalizada | La aplicación lo emite desde la etapa 6 |
+| Eventos `config_rejected` | La consola publicó un documento que las aplicaciones instaladas no entienden | Evento de Analytics | La aplicación lo emite desde la etapa 6 |
+| Eventos y errores `config_source_failed` | La aplicación no puede leer la configuración (permisos, red). El número de fallo distingue un corte puntual de uno sostenido | Analytics y Crashlytics | La aplicación lo emite desde la etapa 6 |
+| Eventos `config_applied` con origen `lastResort` o `bundled` en usuarios que no son nuevos | Dispositivos que no reciben la configuración publicada | Evento de Analytics | La aplicación lo emite desde la etapa 6 |
+| Cualquier evento `resilience_fault_injection_enabled` | Una compilación de demostración llegó a usuarios reales | Evento de Analytics | La aplicación lo emite desde la etapa 6 |
 
 El caso que más interesa en esta arquitectura es el cuarto. La experiencia cambia sin publicar la aplicación, así que un fallo puede empezar sin que haya una versión nueva a la que atribuirlo. Con la versión de configuración en cada informe, la pregunta «¿qué cambió?» tiene respuesta: se compara la versión de configuración de los informes anteriores y posteriores al inicio del problema, y la consola permite volver a publicar la anterior.
 
@@ -92,14 +102,15 @@ Un fallo es visible. Una pantalla que tarda, un reintento constante o un módulo
 
 | Señal | Qué indica | Fuente | Estado |
 |---|---|---|---|
-| Duración de `home_load` | Cuánto tarda el inicio en ser útil, por origen de datos (red o caché) | Traza de Performance | Planificada, etapa 6 |
+| Duración de `home_load` | Cuánto tarda el inicio en ser útil, por origen de datos (red o caché) | Traza de Performance | No construida. Hoy lo aproximan `accounts_first_load` y los eventos de carga de movimientos |
 | Duración de `transfer_submit` | Latencia de la operación más sensible | Traza de Performance | Planificada, etapa 8 |
 | Eventos `resilience_timeout`, `resilience_retry` y `resilience_attempts_exhausted`, por servicio | El servicio responde mal aunque no haya fallos | Evento de Analytics | La aplicación los emite para acceso, cuentas y movimientos |
 | Duración de `accounts_first_load` y `movements_first_load`, por origen | Cuánto tarda el cliente en ver su saldo y sus movimientos, y cuántas veces los ve desde la copia | Traza de Performance | La aplicación las emite |
 | Proporción de `accounts_data_load_failed` por servicio y clase de fallo | Indisponibilidad parcial: los movimientos fallan mientras las cuentas responden, o al revés | Evento de Analytics | La aplicación emite el evento |
 | Proporción de `accounts_data_served_from_cache` | Cuánto se usa la aplicación con datos guardados | Evento de Analytics | La aplicación emite el evento |
 | Eventos `accounts_data_retry_requested` | Clientes que insisten ante un error: mide la fricción que deja una falla | Evento de Analytics | La aplicación emite el evento |
-| Eventos de módulo con error | Indisponibilidad parcial: qué módulo falla y con qué frecuencia | Evento de Analytics | Planificada, etapa 6 |
+| Eventos `home_nothing_to_show` | Clientes que abrieron el inicio y no vieron nada: la peor experiencia posible del inicio | Evento de Analytics | La aplicación emite el evento |
+| Eventos `home_module_skipped`, por tipo | Cuántas aplicaciones instaladas no conocen un módulo ya publicado: mide cuándo conviene publicarlo | Evento de Analytics | La aplicación emite el evento |
 | Transferencias en cola y su tiempo hasta enviarse | Cuánto se usa la aplicación sin conexión | Evento de Analytics | Planificada, etapa 8 |
 | Abandono en el registro, por paso | Fricción en el alta: cuántos superan cada paso y cuántos omiten los intereses | Embudo de Analytics sobre `auth_sign_up_step_completed` y `auth_sign_up_succeeded` | La aplicación emite los eventos; el embudo no está configurado |
 | Proporción de `auth_sign_in_failed` por clase de fallo | Distingue credenciales rechazadas de problemas de red o del proveedor | Evento de Analytics | La aplicación emite el evento |

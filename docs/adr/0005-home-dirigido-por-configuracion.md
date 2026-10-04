@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** planificada. El contrato, el motor del inicio y el registro de módulos se construyen en las etapas 3 y 6.
+- **Implementación:** construida. El contrato y su lectura llegaron en la etapa 3 ([ADR 0008](0008-contrato-de-configuracion.md)); el registro de módulos y el motor del inicio, en la etapa 6 ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md)). La consola web que publica la configuración es de la etapa 7; hasta entonces publica una herramienta de desarrollo.
 
 ## Problema a resolver
 

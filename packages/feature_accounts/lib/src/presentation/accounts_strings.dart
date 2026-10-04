@@ -1,0 +1,105 @@
+import 'package:feature_accounts/src/domain/load_state.dart';
+import 'package:feature_accounts/src/domain/movement.dart';
+import 'package:feature_accounts/src/domain/movement_filter.dart';
+
+/// Everything the accounts screens say to the customer.
+abstract final class AccountsStrings {
+  static const String accountsTitle = 'Cuentas';
+  static const String totalBalance = 'Saldo total';
+  static const String available = 'Disponible';
+  static const String ledger = 'Contable';
+  static const String accountNumber = 'Cuenta';
+  static const String copyAccountNumber = 'Copiar número de cuenta';
+  static const String accountNumberCopied = 'Número de cuenta copiado';
+
+  static const String searchLabel = 'Buscar movimientos';
+  static const String searchHint = 'Nombre o descripción';
+  static const String more = 'Ver más';
+  static const String retry = 'Reintentar';
+  static const String refresh = 'Actualizar';
+  static const String back = 'Volver';
+
+  static const String preparingTitle = 'Estamos preparando tu cuenta';
+  static const String preparingMessage =
+      'Tus cuentas aparecerán aquí en cuanto estén listas.';
+
+  static const String noMovementsTitle = 'Aún no tienes movimientos';
+  static const String noMovementsMessage =
+      'Cuando uses esta cuenta, verás aquí cada movimiento.';
+  static const String noMatchesTitle = 'No hay movimientos';
+  static const String noMatchesMessage = 'Prueba con otro nombre o filtro.';
+
+  static const String accountMissingTitle = 'No encontramos esta cuenta';
+  static const String accountMissingMessage =
+      'Vuelve a tus cuentas y elige una de la lista.';
+
+  static const String connectionFailedTitle = 'No pudimos conectarnos';
+  static const String checkConnection =
+      'Revisa tu conexión e intenta de nuevo.';
+  static const String unexpectedFailure =
+      'Algo no salió como esperábamos. Intenta de nuevo.';
+  static const String offlineWithoutData = 'Sin conexión';
+
+  static const String movementsFailed = 'No pudimos cargar tus movimientos';
+  static const String accountsOutdated =
+      'No pudimos actualizar tus cuentas. Mostramos los últimos datos '
+      'guardados.';
+  static const String movementsOutdated =
+      'No pudimos actualizar tus movimientos. Mostramos los últimos datos '
+      'guardados.';
+
+  static const String movementDetailTitle = 'Detalle del movimiento';
+  static const String close = 'Cerrar';
+  static const String dateAndTime = 'Fecha y hora';
+  static const String account = 'Cuenta';
+  static const String reference = 'Referencia';
+  static const String category = 'Categoría';
+  static const String channel = 'Canal';
+  static const String copyReference = 'Copiar referencia';
+  static const String referenceCopied = 'Referencia copiada';
+
+  /// Why the screen has nothing to show. After the allowed attempts it says
+  /// how many were made, so the customer knows the app already insisted.
+  static String loadFailure(LoadFailure failure, {required int attempts}) {
+    return switch (failure) {
+      LoadFailure.timeout ||
+      LoadFailure.unavailable => 'Lo intentamos $attempts veces sin éxito.',
+      LoadFailure.offline => checkConnection,
+      LoadFailure.unexpected => unexpectedFailure,
+    };
+  }
+
+  static String filter(MovementFilter filter) => switch (filter) {
+    MovementFilter.all => 'Todos',
+    MovementFilter.income => 'Ingresos',
+    MovementFilter.expenses => 'Egresos',
+    MovementFilter.thisMonth => 'Este mes',
+  };
+
+  static String categoryName(MovementCategory category) => switch (category) {
+    MovementCategory.salary => 'Nómina',
+    MovementCategory.transfer => 'Transferencia',
+    MovementCategory.groceries => 'Supermercado',
+    MovementCategory.dining => 'Restaurantes y cafés',
+    MovementCategory.transport => 'Transporte',
+    MovementCategory.services => 'Servicios',
+    MovementCategory.entertainment => 'Entretenimiento',
+    MovementCategory.health => 'Salud',
+    MovementCategory.cash => 'Efectivo',
+    MovementCategory.other => 'Otros',
+  };
+
+  static String channelName(MovementChannel channel) => switch (channel) {
+    MovementChannel.debitCard => 'Tarjeta de débito',
+    MovementChannel.transfer => 'Transferencia',
+    MovementChannel.payroll => 'Acreditación de nómina',
+    MovementChannel.atm => 'Cajero automático',
+    MovementChannel.app => 'Aplicación',
+    MovementChannel.other => 'Otro',
+  };
+
+  static String status(MovementStatus status) => switch (status) {
+    MovementStatus.completed => 'Completado',
+    MovementStatus.pending => 'Pendiente',
+  };
+}

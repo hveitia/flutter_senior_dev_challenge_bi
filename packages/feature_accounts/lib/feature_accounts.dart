@@ -13,4 +13,5 @@ export 'src/domain/load_state.dart';
 export 'src/domain/movement.dart';
 export 'src/domain/movement_filter.dart';
 export 'src/presentation/accounts/accounts_bloc.dart';
+export 'src/presentation/accounts/accounts_screen.dart';
 export 'src/presentation/detail/movements_bloc.dart';

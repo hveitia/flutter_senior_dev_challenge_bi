@@ -104,6 +104,28 @@ final class FirestoreAccountsSource implements AccountsSource {
       .orderBy(MovementFields.postedAt, descending: true)
       .limit(limit);
 
+  /// A range and an order on the same field, so it needs no index of its
+  /// own either.
+  @override
+  Future<SourceSnapshot<Movement>> fetchMovementsSince(
+    DateTime since, {
+    required int limit,
+  }) => _translating(
+    AccountsTelemetry.movementsService,
+    () async => _delivery(
+      await _customer
+          .collection(movementsCollection)
+          .where(
+            MovementFields.postedAt,
+            isGreaterThanOrEqualTo: Timestamp.fromDate(since),
+          )
+          .orderBy(MovementFields.postedAt, descending: true)
+          .limit(limit)
+          .get(_fromServer),
+      decodeMovement,
+    ),
+  );
+
   @override
   Stream<SourceSnapshot<Movement>> watchRecentMovements({required int limit}) =>
       _latestMovements(limit)

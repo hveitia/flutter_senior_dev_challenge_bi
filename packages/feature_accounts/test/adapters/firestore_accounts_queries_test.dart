@@ -188,6 +188,34 @@ void main() {
     });
   });
 
+  group('movements since a day', () {
+    test('a fetch asks the server for the movements posted from that moment '
+        'on, across accounts, newest first, up to the limit', () async {
+      final since = DateTime(2026, 9, 4);
+      final fromThen = _MockQuery();
+      final ordered = _MockQuery();
+      final capped = _MockQuery();
+      when(
+        () => movements.where(
+          'postedAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(since),
+        ),
+      ).thenReturn(fromThen);
+      when(
+        () => fromThen.orderBy('postedAt', descending: true),
+      ).thenReturn(ordered);
+      when(() => ordered.limit(200)).thenReturn(capped);
+      final answer = snapshot([('m1', movementDocument())]);
+      when(() => capped.get(any())).thenAnswer((_) async => answer);
+
+      final fetched = await source.fetchMovementsSince(since, limit: 200);
+
+      expect(fetched.items.map((movement) => movement.id), ['m1']);
+      final options = verify(() => capped.get(captureAny())).captured.single;
+      expect((options as GetOptions).source, Source.server);
+    });
+  });
+
   group('accounts', () {
     test('a fetch asks the server for the accounts of the customer', () async {
       final answer = snapshot([('savings', accountDocument())]);

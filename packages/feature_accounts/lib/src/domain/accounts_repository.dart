@@ -34,4 +34,12 @@ abstract interface class AccountsRepository {
   Future<Result<DataSnapshot<List<Movement>>>> refreshRecentMovements({
     required int limit,
   });
+
+  /// The movements posted from [since] on across every account, newest
+  /// first, at most [limit]. Asked once, for working out how the balance
+  /// moved: it is not followed.
+  Future<Result<DataSnapshot<List<Movement>>>> movementsSince(
+    DateTime since, {
+    required int limit,
+  });
 }

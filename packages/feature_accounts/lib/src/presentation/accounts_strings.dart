@@ -21,6 +21,17 @@ abstract final class AccountsStrings {
   static const String investmentsFailed = 'No pudimos cargar tus inversiones';
   static const String balanceWithInvestmentsCaption =
       'Tus cuentas y tus inversiones';
+
+  static String trendCaption(int days) => 'Tus cuentas, últimos $days días';
+  static const String trendNotEnough =
+      'Aún no hay suficientes movimientos para mostrar la tendencia';
+  static String trendLabel(int days) =>
+      'Tendencia de tus cuentas en los últimos $days días';
+  static String trendLabelWithAmounts(
+    int days, {
+    required String from,
+    required String to,
+  }) => '${trendLabel(days)}: de $from a $to';
   static const String hideAmounts = 'Ocultar montos';
   static const String showAmounts = 'Mostrar montos';
   static const String recentMovementsTitle = 'Últimos movimientos';

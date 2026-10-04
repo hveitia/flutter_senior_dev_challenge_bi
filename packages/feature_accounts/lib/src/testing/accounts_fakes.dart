@@ -87,6 +87,22 @@ final class FakeAccountsSource implements AccountsSource {
     recentLimits.add(limit);
     return _fetched(await onFetchRecentMovements());
   }
+
+  /// How `fetchMovementsSince` ends.
+  Future<List<Movement>> Function() onFetchMovementsSince = () async =>
+      const [];
+
+  /// The moment and limit of every fetch of movements since a day.
+  final List<(DateTime since, int limit)> sinceRequests = [];
+
+  @override
+  Future<SourceSnapshot<Movement>> fetchMovementsSince(
+    DateTime since, {
+    required int limit,
+  }) async {
+    sinceRequests.add((since, limit));
+    return _fetched(await onFetchMovementsSince());
+  }
 }
 
 /// [SyncTimes] kept in memory. Set [failsToRecord] to simulate storage that
@@ -196,5 +212,21 @@ final class FakeAccountsRepository implements AccountsRepository {
   }) {
     recentRefreshes++;
     return onRefreshRecentMovements();
+  }
+
+  /// How `movementsSince` ends.
+  Future<Result<DataSnapshot<List<Movement>>>> Function() onMovementsSince =
+      () async => const Failed(OfflineFailure());
+
+  /// The moment and limit of every request of movements since a day.
+  final List<(DateTime since, int limit)> sinceRequests = [];
+
+  @override
+  Future<Result<DataSnapshot<List<Movement>>>> movementsSince(
+    DateTime since, {
+    required int limit,
+  }) {
+    sinceRequests.add((since, limit));
+    return onMovementsSince();
   }
 }

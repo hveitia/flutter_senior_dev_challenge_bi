@@ -44,6 +44,13 @@ abstract interface class AccountsSource {
   Stream<SourceSnapshot<Movement>> watchRecentMovements({required int limit});
 
   Future<SourceSnapshot<Movement>> fetchRecentMovements({required int limit});
+
+  /// The movements posted from [since] on across every account, newest
+  /// first, at most [limit].
+  Future<SourceSnapshot<Movement>> fetchMovementsSince(
+    DateTime since, {
+    required int limit,
+  });
 }
 
 /// Remembers when each data set was last confirmed by the backend, so data

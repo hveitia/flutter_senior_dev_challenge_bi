@@ -2,6 +2,7 @@ import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/feature_accounts.dart';
+import 'package:feature_accounts/src/presentation/home/total_balance_module.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -455,6 +456,153 @@ void main() {
       await settle(tester);
 
       expect(find.text('Aún no tienes movimientos'), findsOneWidget);
+    });
+  });
+
+  group('balance trend', () {
+    const types = [AccountsModuleTypes.totalBalance];
+    const withTrend = {'trendDays': 30};
+
+    // Today +$1,850.00 and -$64.80: yesterday closed $1,785.20 lower.
+    Future<Result<MovementsSnapshot>> twoToday() async =>
+        Success(movementsSnapshot([salary, groceries]));
+
+    testWidgets('is not asked for, nor drawn, unless the configuration '
+        'publishes a period', (tester) async {
+      repository.onRefreshAccounts = bothAccounts;
+
+      await pumpModules(tester, types);
+      await settle(tester);
+
+      expect(find.byType(TrendLine), findsNothing);
+      expect(repository.sinceRequests, isEmpty);
+    });
+
+    testWidgets('draws how the money that can be spent moved over the '
+        'period, ending at the balance on screen', (tester) async {
+      repository
+        ..onRefreshAccounts = bothAccounts
+        ..onMovementsSince = twoToday;
+
+      await pumpModules(tester, types, props: withTrend);
+      await settle(tester);
+
+      final line = tester.widget<TrendLine>(find.byType(TrendLine));
+      expect(line.values, hasLength(30));
+      expect(line.values.last, 482035);
+      expect(line.values[28], 482035 - 185000 + 6480);
+      expect(find.text('Tus cuentas, últimos 30 días'), findsOneWidget);
+    });
+
+    testWidgets('leaves the investments out of the line even when the total '
+        'includes them: nothing says how they moved', (tester) async {
+      repository
+        ..onRefreshAccounts = () async {
+          return Success(accountsSnapshot(const [savings, checking, fund]));
+        }
+        ..onMovementsSince = twoToday;
+
+      await pumpModules(
+        tester,
+        types,
+        props: const {'trendDays': 30, 'includesInvestments': true},
+      );
+      await settle(tester);
+
+      expect(find.text(r'$29,420.35', findRichText: true), findsOneWidget);
+      expect(
+        tester.widget<TrendLine>(find.byType(TrendLine)).values.last,
+        482035,
+      );
+    });
+
+    testWidgets('says the amounts it runs between to a screen reader, and '
+        'not when the customer hid the amounts', (tester) async {
+      repository
+        ..onRefreshAccounts = bothAccounts
+        ..onMovementsSince = twoToday;
+
+      await pumpModules(tester, types, props: withTrend);
+      await settle(tester);
+      expect(
+        tester.widget<TrendLine>(find.byType(TrendLine)).semanticLabel,
+        'Tendencia de tus cuentas en los últimos 30 días: de 3035 dólares '
+        'con 15 centavos a 4820 dólares con 35 centavos',
+      );
+
+      await tester.tap(find.byTooltip('Ocultar montos'));
+      await tester.pump();
+      expect(
+        tester.widget<TrendLine>(find.byType(TrendLine)).semanticLabel,
+        'Tendencia de tus cuentas en los últimos 30 días',
+      );
+    });
+
+    testWidgets('draws nothing and keeps the balance when its movements '
+        'cannot be read', (tester) async {
+      repository
+        ..onRefreshAccounts = bothAccounts
+        ..onMovementsSince = () async {
+          return const Failed(ServiceUnavailableFailure(ServiceIds.movements));
+        };
+
+      await pumpModules(tester, types, props: withTrend);
+      await settle(tester);
+
+      expect(find.byType(TrendLine), findsNothing);
+      expect(find.text(r'$4,820.35', findRichText: true), findsOneWidget);
+      expect(find.text('Reintentar'), findsNothing);
+      expect(
+        host.statuses[AccountsModuleTypes.totalBalance],
+        HomeModuleStatus.ready,
+      );
+    });
+
+    testWidgets('reads the movements again when the home is refreshed', (
+      tester,
+    ) async {
+      repository
+        ..onRefreshAccounts = bothAccounts
+        ..onMovementsSince = twoToday;
+      await pumpModules(tester, types, props: withTrend);
+      await settle(tester);
+
+      await host.refreshAll();
+
+      expect(repository.sinceRequests, hasLength(2));
+    });
+
+    for (final MapEntry(key: description, value: published) in {
+      'a text': '30',
+      'a single day': 1,
+      'negative': -30,
+      'a fraction': 7.5,
+    }.entries) {
+      testWidgets('is not drawn when the published period is $description', (
+        tester,
+      ) async {
+        repository.onRefreshAccounts = bothAccounts;
+
+        await pumpModules(tester, types, props: {'trendDays': published});
+        await settle(tester);
+
+        expect(find.byType(TrendLine), findsNothing);
+        expect(repository.sinceRequests, isEmpty);
+      });
+    }
+
+    testWidgets('caps a huge published period', (tester) async {
+      repository
+        ..onRefreshAccounts = bothAccounts
+        ..onMovementsSince = twoToday;
+
+      await pumpModules(tester, types, props: const {'trendDays': 5000});
+      await settle(tester);
+
+      expect(
+        tester.widget<TrendLine>(find.byType(TrendLine)).values,
+        hasLength(TotalBalanceModule.maxTrendDays),
+      );
     });
   });
 

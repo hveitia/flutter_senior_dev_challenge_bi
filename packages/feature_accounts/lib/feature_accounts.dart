@@ -9,6 +9,7 @@ library;
 export 'src/accounts_telemetry.dart';
 export 'src/domain/account.dart';
 export 'src/domain/accounts_repository.dart';
+export 'src/domain/balance_trend.dart';
 export 'src/domain/data_snapshot.dart';
 export 'src/domain/load_state.dart';
 export 'src/domain/movement.dart';

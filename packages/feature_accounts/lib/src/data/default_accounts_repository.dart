@@ -35,6 +35,7 @@ final class DefaultAccountsRepository implements AccountsRepository {
   /// The latest movements across accounts. No account id can collide with
   /// it: it has no underscore after `movements`.
   static const String _recentMovementsDataSet = 'movements.recent';
+  static const String _movementsSinceDataSet = 'movements.since';
 
   final AccountsSource _source;
   final SyncTimes _syncTimes;
@@ -93,6 +94,16 @@ final class DefaultAccountsRepository implements AccountsRepository {
   }) => _refresh(
     () => _source.fetchRecentMovements(limit: limit),
     dataSet: _recentMovementsDataSet,
+    service: AccountsTelemetry.movementsService,
+  );
+
+  @override
+  Future<Result<DataSnapshot<List<Movement>>>> movementsSince(
+    DateTime since, {
+    required int limit,
+  }) => _refresh(
+    () => _source.fetchMovementsSince(since, limit: limit),
+    dataSet: _movementsSinceDataSet,
     service: AccountsTelemetry.movementsService,
   );
 

@@ -1,0 +1,31 @@
+name: feature_services
+description: >-
+  The services of Banca Digital: the catalog of what the bank and its
+  partners offer, and the container a partner's mini app runs in.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+resolution: workspace
+
+dependencies:
+  app_platform: ^0.1.0
+  bloc: ^9.2.0
+  design_system: ^0.1.0
+  equatable: ^2.0.7
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  go_router: ^17.5.0
+  module_kit: ^0.1.0
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  fake_async: ^1.3.3
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

@@ -17,8 +17,13 @@ class AccountsScreen extends StatelessWidget {
   const AccountsScreen({
     required this.onOpenAccount,
     this.now = DateTime.now,
+    this.notices = const [],
     super.key,
   });
+
+  /// Shown above the accounts: what the route wants said that is not about
+  /// the list itself, such as transfers waiting to be sent.
+  final List<Widget> notices;
 
   /// Called with the id of the account the customer tapped.
   final ValueChanged<String> onOpenAccount;
@@ -36,6 +41,7 @@ class AccountsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConnectionNotice(hasSavedData: _showable(accounts) != null),
+          ...notices,
           Expanded(child: _content(context, accounts)),
         ],
       ),

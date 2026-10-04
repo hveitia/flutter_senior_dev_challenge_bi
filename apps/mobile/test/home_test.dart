@@ -123,11 +123,12 @@ void main() {
       );
     });
 
-    testWidgets('offers only the actions this build can open', (tester) async {
+    testWidgets('offers the actions this build can open, transfers among '
+        'them', (tester) async {
       await pumpApp(tester);
 
       expect(find.text('Pagar'), findsOneWidget);
-      expect(find.text('Transferir'), findsNothing);
+      expect(find.text('Transferir'), findsOneWidget);
 
       await tester.tap(find.text('Pagar'));
       await tester.pumpAndSettle();

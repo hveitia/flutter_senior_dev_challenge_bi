@@ -13,6 +13,7 @@ abstract final class AccountsStrings {
   static const String accountNumberCopied = 'Número de cuenta copiado';
 
   static const String totalWithoutInvestments = 'Sin contar tus inversiones';
+  static const String transfer = 'Transferir';
   static const String balanceCaption = 'Todo tu dinero, en un solo lugar';
   static const String balanceFailed = 'No pudimos cargar tu saldo';
   static const String carouselFailed = 'No pudimos cargar tus cuentas';

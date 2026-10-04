@@ -81,6 +81,7 @@ GoRouter createAppRouter({
       ShellRoute(
         builder: (context, state, child) => CustomerScope(
           accountsRepositoryFor: dependencies.accountsRepositoryFor,
+          transfersRepositoryFor: dependencies.transfersRepositoryFor,
           configRepository: dependencies.configRepository,
           publishedFaults: dependencies.publishedFaults,
           child: child,
@@ -102,7 +103,10 @@ GoRouter createAppRouter({
                   registry: dependencies.homeModules,
                 ),
               ),
-              accountsTabRoute(),
+              accountsTabRoute(
+                // --- transfers (stage 8) ---
+                notices: const [QueuedTransfersNotice(), ProvisioningNotice()],
+              ),
               GoRoute(
                 path: AppPaths.services,
                 builder: (context, state) => const SectionPlaceholderScreen(
@@ -118,7 +122,20 @@ GoRouter createAppRouter({
               ),
             ],
           ),
-          accountDetailRoute(),
+          // --- transfers (stage 8) ---
+          accountDetailRoute(
+            // Offered only while the published configuration has transfers
+            // on for the customer's segment; watched, so it follows live.
+            canTransfer: (context) =>
+                context
+                    .watch<RemoteConfigCubit>()
+                    .state
+                    .segment
+                    ?.features
+                    .transfers ??
+                false,
+          ),
+          transferRoute(onDone: (context) => context.go(AppPaths.home)),
           preferencesRoute(),
         ],
       ),

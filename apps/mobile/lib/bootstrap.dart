@@ -11,6 +11,15 @@ abstract final class BuildFlags {
   static const bool allowFaultInjection = bool.fromEnvironment(
     'ALLOW_FAULT_INJECTION',
   );
+
+  /// Where the customer API lives (`docs/operacion/api.md`), set with
+  /// `--dart-define=API_BASE_URL=https://…/`. The default is the API
+  /// running on the developer's machine, which a phone reaches through
+  /// `adb reverse tcp:3210 tcp:3210`.
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3210/',
+  );
 }
 
 /// Reasons attached to errors that no feature caught.

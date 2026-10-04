@@ -28,11 +28,16 @@ class AccountDetailScreen extends StatelessWidget {
   const AccountDetailScreen({
     required this.accountId,
     required this.onBack,
+    this.onTransfer,
     this.now = DateTime.now,
     super.key,
   });
 
   final String accountId;
+
+  /// Starts a transfer from this account. Null while transfers are not
+  /// available: the action is then left out rather than shown disabled.
+  final VoidCallback? onTransfer;
 
   /// Leaves the screen when the account cannot be shown.
   final VoidCallback onBack;
@@ -46,8 +51,23 @@ class AccountDetailScreen extends StatelessWidget {
     final accounts = accountsState.accounts;
     final account = accountsState.byId(accountId);
 
+    final onTransfer = this.onTransfer;
+    // Money leaves only from an account that holds spendable money.
+    final canTransfer = onTransfer != null && (account?.kind.isCash ?? false);
+
     return Scaffold(
       appBar: AppBar(title: Text(account?.name ?? '')),
+      bottomNavigationBar: canTransfer
+          ? SafeArea(
+              child: Padding(
+                padding: EdgeInsets.all(context.metrics.screenMargin),
+                child: AppButton(
+                  label: AccountsStrings.transfer,
+                  onPressed: onTransfer,
+                ),
+              ),
+            )
+          : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

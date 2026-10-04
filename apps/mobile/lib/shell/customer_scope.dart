@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class CustomerScope extends StatelessWidget {
   const CustomerScope({
     required this.accountsRepositoryFor,
+    required this.transfersRepositoryFor,
     required this.configRepository,
     required this.publishedFaults,
     required this.child,
@@ -24,6 +25,7 @@ class CustomerScope extends StatelessWidget {
   });
 
   final AccountsRepository Function(String uid) accountsRepositoryFor;
+  final TransfersRepository Function(String uid) transfersRepositoryFor;
   final ConfigRepository configRepository;
   final PublishedFaults publishedFaults;
   final Widget child;
@@ -38,11 +40,36 @@ class CustomerScope extends StatelessWidget {
     final uid = session.profile.uid;
     final segmentId = session.profile.segment.id;
 
-    return RepositoryProvider<AccountsRepository>(
+    return MultiRepositoryProvider(
       key: ValueKey(uid),
-      create: (context) => accountsRepositoryFor(uid),
+      providers: [
+        RepositoryProvider<AccountsRepository>(
+          create: (context) => accountsRepositoryFor(uid),
+        ),
+        // --- transfers (stage 8) ---
+        RepositoryProvider<TransfersRepository>(
+          create: (context) => transfersRepositoryFor(uid),
+        ),
+      ],
       child: MultiBlocProvider(
         providers: [
+          // --- transfers (stage 8) ---
+          BlocProvider<TransferOutboxCubit>(
+            // Runs for the whole session: orders queued without a
+            // connection are sent when it returns and when the app starts.
+            create: (context) {
+              final connectivity = context.read<ConnectivityCubit>();
+              return TransferOutboxCubit(
+                repository: context.read<TransfersRepository>(),
+                onlineChanges: connectivity.stream.map(
+                  (status) => status != ConnectivityStatus.offline,
+                ),
+                isOnline: () async =>
+                    connectivity.state != ConnectivityStatus.offline,
+              );
+            },
+            lazy: false,
+          ),
           BlocProvider<AccountsBloc>(
             create: (context) => AccountsBloc(
               repository: context.read<AccountsRepository>(),
@@ -51,6 +78,20 @@ class CustomerScope extends StatelessWidget {
             // Started with the session rather than with the first screen
             // that shows accounts, so they are ready when the customer gets
             // there.
+            lazy: false,
+          ),
+          // --- transfers (stage 8) ---
+          BlocProvider<AccountProvisioningCubit>(
+            // A new customer has no accounts: the server opens them the
+            // first time it confirms there are none.
+            create: (context) {
+              final accounts = context.read<AccountsBloc>();
+              return AccountProvisioningCubit(
+                repository: context.read<TransfersRepository>(),
+                accounts: accounts.stream,
+                initial: accounts.state,
+              );
+            },
             lazy: false,
           ),
           BlocProvider<AmountVisibilityCubit>(

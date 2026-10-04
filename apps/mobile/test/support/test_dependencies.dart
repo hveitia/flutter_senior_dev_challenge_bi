@@ -94,6 +94,7 @@ final class TestDependencies {
       biometrics: biometrics ?? FakeBiometricAuthenticator(),
       accountsRepositoryFor:
           accountsRepositoryFor ?? (_) => FakeAccountsRepository(),
+      transfersRepositoryFor: (_) => transfers,
       savedCustomerData: savedData ?? FakeSavedCustomerData(),
       configRepository: ConfigRepository(
         source: config,
@@ -113,6 +114,9 @@ final class TestDependencies {
   /// Publishes documents as the backoffice would.
   final FakeConfigSource config = FakeConfigSource();
   final PublishedFaults faults = PublishedFaults();
+
+  /// The customer API as the test scripts it.
+  final FakeTransfersRepository transfers = FakeTransfersRepository();
 
   late final AppDependencies dependencies;
 }

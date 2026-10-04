@@ -12,6 +12,7 @@ import 'package:feature_auth/adapters.dart';
 import 'package:feature_home/feature_home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:local_auth/local_auth.dart';
 import 'package:module_kit/module_kit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -49,6 +50,10 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
     slowChanges: policy.slowChanges,
   )..start();
 
+  // One HTTP client for the life of the app: it keeps connections open
+  // between calls.
+  final apiClient = http.Client();
+
   return AppDependencies(
     telemetry: telemetry,
     connectivity: connectivity,
@@ -67,6 +72,24 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
       syncTimes: SharedPreferencesSyncTimes(preferences, uid: uid),
       policy: policy,
       telemetry: telemetry,
+    ),
+    // Money moves on the server. The app asks through the customer API with
+    // the session's identity token, and leaves the order as a pending
+    // document when there is no connection to ask with.
+    transfersRepositoryFor: (uid) => DefaultTransfersRepository(
+      api: HttpTransfersApi(
+        baseUrl: Uri.parse(BuildFlags.apiBaseUrl),
+        idToken: () async => FirebaseAuth.instance.currentUser?.getIdToken(),
+        client: apiClient,
+      ),
+      queue: FirestoreTransferQueue(
+        FirebaseFirestore.instance,
+        uid: uid,
+        telemetry: telemetry,
+      ),
+      policy: policy,
+      telemetry: telemetry,
+      isOnline: () async => connectivity.state != ConnectivityStatus.offline,
     ),
     configRepository: ConfigRepository(
       source: FirestoreConfigSource(FirebaseFirestore.instance),

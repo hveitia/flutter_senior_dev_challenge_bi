@@ -4,6 +4,7 @@ import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/shell/diagnostics_card.dart';
 import 'package:design_system/design_system.dart';
+import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,6 +21,12 @@ abstract final class ShellStrings {
   static const String servicesComing =
       'Pronto encontrarás aquí productos del banco y de nuestros aliados.';
   static const String signOut = 'Cerrar sesión';
+  static const String unsentTransfersTitle = 'Tienes transferencias sin enviar';
+  static const String unsentTransfersMessage =
+      'Están en cola hasta que recuperes la conexión. Si cierras sesión '
+      'ahora, se descartan y no se enviarán.';
+  static const String staySignedIn = 'Seguir aquí';
+  static const String signOutAndDiscard = 'Cerrar sesión y descartar';
   static const String personalization = 'Personalización';
   static const String interests = 'Mis intereses';
 }
@@ -136,7 +143,32 @@ class ProfileScreen extends StatelessWidget {
   ///
   /// Asking the listener to stop is enough, without waiting for it to
   /// finish: from that call on it delivers nothing, errors included.
-  static void _signOut(BuildContext context) {
+  ///
+  /// Closing the session wipes what the device saved, and that includes
+  /// transfers queued without a connection: they would never be sent. So
+  /// while there are any, the session stays open unless the customer says
+  /// in so many words that they are to be discarded.
+  static Future<void> _signOut(BuildContext context) async {
+    if (context.read<TransferOutboxCubit>().state.hasUnsent) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(ShellStrings.unsentTransfersTitle),
+          content: const Text(ShellStrings.unsentTransfersMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(ShellStrings.signOutAndDiscard),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(ShellStrings.staySignedIn),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !context.mounted) return;
+    }
     unawaited(context.read<RemoteConfigCubit>().stop());
     context.read<SessionBloc>().add(const SessionSignOutRequested());
   }

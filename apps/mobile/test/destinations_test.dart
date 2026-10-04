@@ -59,9 +59,17 @@ void main() {
     expect(await open(tester, Destinations.profile), AppPaths.profile);
   });
 
+  test('opens a transfer only while the published features have transfers '
+      'on', () {
+    expect(resolver().resolve(Destinations.transfer), isNotNull);
+
+    features = const FeatureFlags(transfers: false, partnerServices: true);
+
+    expect(resolver().resolve(Destinations.transfer), isNull);
+  });
+
   test('cannot open what has no screen yet, even with its feature on', () {
     for (final destination in [
-      Destinations.transfer,
       Destinations.inbox,
       '${Destinations.partnerPrefix}travelInsurance',
       '${Destinations.partnerPrefix}recharge',

@@ -29,6 +29,7 @@ final class AppDependencies {
     required this.authRepository,
     required this.biometrics,
     required this.accountsRepositoryFor,
+    required this.transfersRepositoryFor,
     required this.savedCustomerData,
     required this.configRepository,
     required this.publishedFaults,
@@ -47,6 +48,10 @@ final class AppDependencies {
   /// signed-in session: each customer gets a repository of their own, so
   /// nothing read for one can be shown to the next.
   final AccountsRepository Function(String uid) accountsRepositoryFor;
+
+  /// Transfers and account opening for the customer with the given uid,
+  /// through the customer API. One per signed-in session, like the accounts.
+  final TransfersRepository Function(String uid) transfersRepositoryFor;
 
   /// Cleared whenever the session ends, so nothing of a customer stays on
   /// the device after they sign out.

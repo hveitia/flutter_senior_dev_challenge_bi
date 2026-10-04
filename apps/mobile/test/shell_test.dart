@@ -196,6 +196,44 @@ void main() {
     expect(auth.signOutCalls, 1);
   });
 
+  group('with transfers queued without a connection', () {
+    Future<void> askToSignOut(WidgetTester tester) async {
+      await pumpSignedIn(tester);
+      app.transfers.queued.add(const [
+        QueuedTransfer(id: 'order-0000000000000001', amountCents: 15010),
+      ]);
+      await tester.pump();
+      await tester.tap(destination('Perfil'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Cerrar sesión'));
+      await tester.tap(find.text('Cerrar sesión'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('closing the session warns that they would be discarded, and '
+        'staying keeps the session open', (tester) async {
+      await askToSignOut(tester);
+
+      expect(find.text('Tienes transferencias sin enviar'), findsOneWidget);
+
+      await tester.tap(find.text('Seguir aquí'));
+      await tester.pumpAndSettle();
+
+      expect(auth.signOutCalls, 0);
+      expect(find.byType(AppBottomNavigation), findsOneWidget);
+    });
+
+    testWidgets('the session closes only when the customer says to discard '
+        'them', (tester) async {
+      await askToSignOut(tester);
+
+      await tester.tap(find.text('Cerrar sesión y descartar'));
+      await tester.pumpAndSettle();
+
+      expect(auth.signOutCalls, 1);
+    });
+  });
+
   testWidgets('stops following the accounts once signed out', (tester) async {
     await pumpSignedIn(tester);
     expect(accounts.accounts.hasListener, isTrue);

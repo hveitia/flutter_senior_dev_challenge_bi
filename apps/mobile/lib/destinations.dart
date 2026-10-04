@@ -31,10 +31,15 @@ final class AppDestinationResolver implements DestinationResolver {
   }) : _features = features,
        _routes = routes;
 
-  /// The destinations with a screen today. `transfer`, `inbox` and the
-  /// partners' mini apps join this table when their stages are built, each
-  /// behind its feature flag.
+  /// The destinations with a screen today. `inbox` and the partners' mini
+  /// apps join this table when their stages are built, each behind its
+  /// feature flag.
   static const Map<String, AppDestination> builtRoutes = {
+    // --- transfers (stage 8) ---
+    Destinations.transfer: AppDestination(
+      open: _openTransfer,
+      isEnabled: _transfersOn,
+    ),
     Destinations.accounts: AppDestination(open: _openAccounts),
     Destinations.services: AppDestination(open: _openServices),
     Destinations.profile: AppDestination(open: _openProfile),
@@ -49,6 +54,12 @@ final class AppDestinationResolver implements DestinationResolver {
     if (route == null || !route.isEnabled(_features())) return null;
     return route.open;
   }
+
+  // --- transfers (stage 8) ---
+  static bool _transfersOn(FeatureFlags features) => features.transfers;
+
+  static void _openTransfer(BuildContext context) =>
+      context.push(AccountsPaths.transfer);
 
   static void _openAccounts(BuildContext context) =>
       context.go(AccountsPaths.accounts);

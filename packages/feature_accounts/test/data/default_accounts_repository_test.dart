@@ -402,4 +402,143 @@ void main() {
       });
     });
   });
+
+  group('a listener whose service was taken down', () {
+    const movementsDown = ResilienceSettings(
+      latency: Duration.zero,
+      unavailableServices: {ServiceIds.movements},
+    );
+
+    /// What the listener emits, with errors kept in their place.
+    Future<List<Object>> outcomes<T>(
+      Stream<DataSnapshot<List<T>>> stream,
+      void Function() push,
+    ) async {
+      final received = <Object>[];
+      final subscription = stream.listen(
+        received.add,
+        onError: received.add,
+      );
+      push();
+      await pumpEventQueue();
+      await subscription.cancel();
+      return received;
+    }
+
+    test('fails as unavailable instead of delivering', () async {
+      faults = movementsDown;
+
+      final received = await outcomes(
+        repository().watchMovements('savings', limit: 20),
+        () => source.movements.add(SourceSnapshot([salary], fromCache: false)),
+      );
+
+      expect(received.single, isA<ServiceUnavailableFailure>());
+      expect(syncTimes.times, isEmpty);
+    });
+
+    test('delivers again once the service is back', () async {
+      faults = movementsDown;
+      final received = <Object>[];
+      final subscription = repository()
+          .watchMovements('savings', limit: 20)
+          .listen(
+            received.add,
+            onError: received.add,
+          );
+
+      source.movements.add(SourceSnapshot([salary], fromCache: false));
+      await pumpEventQueue();
+      faults = ResilienceSettings.none;
+      source.movements.add(SourceSnapshot([salary], fromCache: false));
+      await pumpEventQueue();
+      await subscription.cancel();
+
+      expect(received, [
+        isA<ServiceUnavailableFailure>(),
+        isA<DataSnapshot<List<Movement>>>(),
+      ]);
+    });
+
+    test('leaves the listeners of other services alone', () async {
+      faults = movementsDown;
+
+      final received = await outcomes(
+        repository().watchAccounts(),
+        () => source.accounts.add(
+          const SourceSnapshot([savings], fromCache: false),
+        ),
+      );
+
+      expect(received.single, isA<DataSnapshot<List<Account>>>());
+    });
+  });
+
+  group('recent movements', () {
+    test('are followed across accounts, up to the limit', () async {
+      final received = await emitted(
+        repository().watchRecentMovements(limit: 4),
+        () => source.recentMovements.add(
+          SourceSnapshot([salary, coffee], fromCache: false),
+        ),
+      );
+
+      expect(source.recentLimits, [4]);
+      expect(received.single.value, [salary, coffee]);
+      expect(received.single.origin, DataOrigin.server);
+    });
+
+    test('keep a synchronization time of their own', () async {
+      final repo = repository();
+      await emitted(
+        repo.watchMovements('savings', limit: 20),
+        () => source.movements.add(SourceSnapshot([salary], fromCache: false)),
+      );
+
+      final recent = await emitted(
+        repo.watchRecentMovements(limit: 4),
+        () => source.recentMovements.add(
+          SourceSnapshot([salary], fromCache: true),
+        ),
+      );
+
+      expect(recent.single.syncedAt, isNull);
+    });
+
+    test('refresh asks the backend through the movements service', () async {
+      source.onFetchRecentMovements = () async => [salary, groceries];
+
+      final result = await repository().refreshRecentMovements(limit: 4);
+
+      expect(
+        result,
+        isA<Success<DataSnapshot<List<Movement>>>>().having(
+          (success) => success.value.value,
+          'movements',
+          [salary, groceries],
+        ),
+      );
+      expect(source.recentLimits, [4]);
+    });
+
+    test('go down with the movements service', () async {
+      faults = const ResilienceSettings(
+        latency: Duration.zero,
+        unavailableServices: {ServiceIds.movements},
+      );
+      source.onFetchRecentMovements = () async => [salary];
+
+      final result = await repository().refreshRecentMovements(limit: 4);
+
+      expect(
+        result,
+        isA<Failed<DataSnapshot<List<Movement>>>>().having(
+          (failed) => failed.failure,
+          'failure',
+          isA<ServiceUnavailableFailure>(),
+        ),
+      );
+      expect(source.recentFetches, 0);
+    });
+  });
 }

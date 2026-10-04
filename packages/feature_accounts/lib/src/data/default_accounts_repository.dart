@@ -32,6 +32,10 @@ final class DefaultAccountsRepository implements AccountsRepository {
   static const String _accountsDataSet = 'accounts';
   static String _movementsDataSet(String accountId) => 'movements_$accountId';
 
+  /// The latest movements across accounts. No account id can collide with
+  /// it: it has no underscore after `movements`.
+  static const String _recentMovementsDataSet = 'movements.recent';
+
   final AccountsSource _source;
   final SyncTimes _syncTimes;
   final ResiliencePolicy _policy;
@@ -74,6 +78,24 @@ final class DefaultAccountsRepository implements AccountsRepository {
     service: AccountsTelemetry.movementsService,
   );
 
+  @override
+  Stream<DataSnapshot<List<Movement>>> watchRecentMovements({
+    required int limit,
+  }) => _watch(
+    _source.watchRecentMovements(limit: limit),
+    dataSet: _recentMovementsDataSet,
+    service: AccountsTelemetry.movementsService,
+  );
+
+  @override
+  Future<Result<DataSnapshot<List<Movement>>>> refreshRecentMovements({
+    required int limit,
+  }) => _refresh(
+    () => _source.fetchRecentMovements(limit: limit),
+    dataSet: _recentMovementsDataSet,
+    service: AccountsTelemetry.movementsService,
+  );
+
   Stream<DataSnapshot<List<T>>> _watch<T>(
     Stream<SourceSnapshot<T>> deliveries, {
     required String dataSet,
@@ -86,6 +108,13 @@ final class DefaultAccountsRepository implements AccountsRepository {
     var reportedSkipped = 0;
 
     return deliveries.expand((delivery) {
+      // A service the resilience lab took down does not deliver through its
+      // listener either: an outage that kept the data live would not be one.
+      // Thrown here, it reaches the listener as an error of the stream.
+      if (_policy.isTakenDown(service)) {
+        throw ServiceUnavailableFailure(service);
+      }
+
       final items = arrange?.call(delivery.items) ?? delivery.items;
       final skipped = delivery.skipped;
       if (skipped != reportedSkipped) {

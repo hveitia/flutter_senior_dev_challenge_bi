@@ -25,4 +25,13 @@ abstract interface class AccountsRepository {
     String accountId, {
     required int limit,
   });
+
+  /// The latest [limit] movements across every account, newest first.
+  Stream<DataSnapshot<List<Movement>>> watchRecentMovements({
+    required int limit,
+  });
+
+  Future<Result<DataSnapshot<List<Movement>>>> refreshRecentMovements({
+    required int limit,
+  });
 }

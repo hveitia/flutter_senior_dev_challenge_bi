@@ -140,6 +140,54 @@ void main() {
     });
   });
 
+  group('recent movements', () {
+    const recentLimit = 4;
+    late _MockQuery allNewestFirst;
+    late _MockQuery latest;
+
+    setUp(() {
+      allNewestFirst = _MockQuery();
+      latest = _MockQuery();
+      when(
+        () => movements.orderBy('postedAt', descending: true),
+      ).thenReturn(allNewestFirst);
+      when(() => allNewestFirst.limit(recentLimit)).thenReturn(latest);
+    });
+
+    test('a fetch asks the server for the latest of every account', () async {
+      final answer = snapshot([('m1', movementDocument())]);
+      when(() => latest.get(any())).thenAnswer((_) async => answer);
+
+      final fetched = await source.fetchRecentMovements(limit: recentLimit);
+
+      expect(fetched.items.map((movement) => movement.id), ['m1']);
+      verify(() => movements.orderBy('postedAt', descending: true));
+      verify(() => allNewestFirst.limit(recentLimit));
+      verifyNever(
+        () => movements.where(any(), isEqualTo: any(named: 'isEqualTo')),
+      );
+      final options = verify(() => latest.get(captureAny())).captured.single;
+      expect((options as GetOptions).source, Source.server);
+    });
+
+    test('the listener follows the same query', () async {
+      when(
+        () => latest.snapshots(includeMetadataChanges: true),
+      ).thenAnswer(
+        (_) => Stream.value(
+          snapshot([('m1', movementDocument())], fromCache: true),
+        ),
+      );
+
+      final deliveries = await source
+          .watchRecentMovements(limit: recentLimit)
+          .toList();
+
+      expect(deliveries.single.fromCache, isTrue);
+      expect(deliveries.single.items.single.id, 'm1');
+    });
+  });
+
   group('accounts', () {
     test('a fetch asks the server for the accounts of the customer', () async {
       final answer = snapshot([('savings', accountDocument())]);

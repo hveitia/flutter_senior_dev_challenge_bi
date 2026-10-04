@@ -39,6 +39,11 @@ abstract interface class AccountsSource {
     String accountId, {
     required int limit,
   });
+
+  /// The latest [limit] movements across every account, newest first.
+  Stream<SourceSnapshot<Movement>> watchRecentMovements({required int limit});
+
+  Future<SourceSnapshot<Movement>> fetchRecentMovements({required int limit});
 }
 
 /// Remembers when each data set was last confirmed by the backend, so data

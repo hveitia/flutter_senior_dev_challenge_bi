@@ -98,6 +98,28 @@ final class FirestoreAccountsSource implements AccountsSource {
     ),
   );
 
+  /// Ordered by a single field, so it needs no index of its own.
+  Query<Map<String, dynamic>> _latestMovements(int limit) => _customer
+      .collection(movementsCollection)
+      .orderBy(MovementFields.postedAt, descending: true)
+      .limit(limit);
+
+  @override
+  Stream<SourceSnapshot<Movement>> watchRecentMovements({required int limit}) =>
+      _latestMovements(limit)
+          .snapshots(includeMetadataChanges: true)
+          .map((snapshot) => _delivery(snapshot, decodeMovement));
+
+  @override
+  Future<SourceSnapshot<Movement>> fetchRecentMovements({required int limit}) =>
+      _translating(
+        AccountsTelemetry.movementsService,
+        () async => _delivery(
+          await _latestMovements(limit).get(_fromServer),
+          decodeMovement,
+        ),
+      );
+
   /// Reads an account leniently: unknown fields are ignored, but an account
   /// it cannot state truthfully (no whole-cent balance, no number, a kind
   /// this version does not know) is left out instead of being guessed.

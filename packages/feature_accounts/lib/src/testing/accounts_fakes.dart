@@ -21,11 +21,23 @@ final class FakeAccountsSource implements AccountsSource {
   /// How `fetchMovements` ends.
   Future<List<Movement>> Function() onFetchMovements = () async => const [];
 
+  /// What the listener of the latest movements across accounts delivers.
+  final StreamController<SourceSnapshot<Movement>> recentMovements =
+      StreamController.broadcast();
+
+  /// How `fetchRecentMovements` ends.
+  Future<List<Movement>> Function() onFetchRecentMovements = () async =>
+      const [];
+
   /// How many documents each fetch reports as unreadable.
   int skippedOnFetch = 0;
 
   int accountFetches = 0;
   int movementFetches = 0;
+  int recentFetches = 0;
+
+  /// The limit of every listener and fetch of the latest movements.
+  final List<int> recentLimits = [];
 
   /// The account and limit of every movements listener and fetch, in order.
   final List<(String accountId, int limit)> movementRequests = [];
@@ -59,6 +71,21 @@ final class FakeAccountsSource implements AccountsSource {
     movementFetches++;
     movementRequests.add((accountId, limit));
     return _fetched(await onFetchMovements());
+  }
+
+  @override
+  Stream<SourceSnapshot<Movement>> watchRecentMovements({required int limit}) {
+    recentLimits.add(limit);
+    return recentMovements.stream;
+  }
+
+  @override
+  Future<SourceSnapshot<Movement>> fetchRecentMovements({
+    required int limit,
+  }) async {
+    recentFetches++;
+    recentLimits.add(limit);
+    return _fetched(await onFetchRecentMovements());
   }
 }
 
@@ -97,8 +124,20 @@ final class FakeAccountsRepository implements AccountsRepository {
   Future<Result<DataSnapshot<List<Movement>>>> Function() onRefreshMovements =
       () async => const Failed(OfflineFailure());
 
+  /// What the listener of the latest movements across accounts delivers.
+  final StreamController<DataSnapshot<List<Movement>>> recentMovements =
+      StreamController.broadcast();
+
+  /// How `refreshRecentMovements` ends.
+  Future<Result<DataSnapshot<List<Movement>>>> Function()
+  onRefreshRecentMovements = () async => const Failed(OfflineFailure());
+
   int accountRefreshes = 0;
   int movementRefreshes = 0;
+  int recentRefreshes = 0;
+
+  /// The limit of every listener of the latest movements, in order.
+  final List<int> recentListeners = [];
 
   /// How many times the accounts were asked to be followed.
   int accountListeners = 0;
@@ -141,5 +180,21 @@ final class FakeAccountsRepository implements AccountsRepository {
   }) {
     movementRefreshes++;
     return onRefreshMovements();
+  }
+
+  @override
+  Stream<DataSnapshot<List<Movement>>> watchRecentMovements({
+    required int limit,
+  }) {
+    recentListeners.add(limit);
+    return recentMovements.stream;
+  }
+
+  @override
+  Future<Result<DataSnapshot<List<Movement>>>> refreshRecentMovements({
+    required int limit,
+  }) {
+    recentRefreshes++;
+    return onRefreshRecentMovements();
   }
 }

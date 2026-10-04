@@ -263,6 +263,37 @@ void main() {
     expect(rows(), findsWidgets);
   });
 
+  testWidgets('a saved balance says how old it is, apart from the '
+      'movements', (tester) async {
+    harness.repository
+      ..onRefreshAccounts = (() async => const Failed(TimeoutFailure()))
+      ..onRefreshMovements = () async => Success(movementsSnapshot(movements));
+    await harness.pump(tester, screen(), accountId: 'savings');
+    await harness.deliverAccounts(
+      tester,
+      accountsSnapshot(const [savings, checking], origin: DataOrigin.cache),
+    );
+
+    // The movements were just confirmed, so the only age on screen is the
+    // one of the balance.
+    expect(find.text('Actualizado hace 8 min'), findsOneWidget);
+    final caption = tester.getTopLeft(find.text('Actualizado hace 8 min'));
+    final search = tester.getTopLeft(find.text('Buscar movimientos'));
+    expect(caption.dy, lessThan(search.dy));
+  });
+
+  testWidgets('a balance the backend just confirmed shows no age', (
+    tester,
+  ) async {
+    await open(tester, movementsAnswer: Success(movementsSnapshot(movements)));
+    await tester.pump();
+
+    expect(
+      find.textContaining('Actualizado', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('offline, saved movements show their age without a second '
       'notice: the banner already explains it', (tester) async {
     await open(tester, movementsAnswer: const Failed(OfflineFailure()));

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/src/domain/account.dart';
 import 'package:feature_accounts/src/domain/data_snapshot.dart';
+import 'package:feature_accounts/src/domain/load_state.dart';
 import 'package:feature_accounts/src/domain/movement_filter.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
@@ -10,6 +11,7 @@ import 'package:feature_accounts/src/presentation/detail/movement_detail_sheet.d
 import 'package:feature_accounts/src/presentation/detail/movements_bloc.dart';
 import 'package:feature_accounts/src/presentation/formatting/time_labels.dart';
 import 'package:feature_accounts/src/presentation/widgets/connection_banner.dart';
+import 'package:feature_accounts/src/presentation/widgets/freshness_caption.dart';
 import 'package:feature_accounts/src/presentation/widgets/load_failure_view.dart';
 import 'package:feature_accounts/src/presentation/widgets/movement_icons.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +54,11 @@ class AccountDetailScreen extends StatelessWidget {
           ConnectionBanner(hasSavedData: account != null),
           Expanded(
             child: switch (account) {
-              final account? => _AccountContent(account: account, now: now),
+              final account? => _AccountContent(
+                account: account,
+                accounts: accounts,
+                now: now,
+              ),
               null when accounts.isWaiting => const _BalanceSkeleton(),
               null when accounts.hasFailed => _Centered(
                 child: LoadFailureView(
@@ -81,9 +87,17 @@ class AccountDetailScreen extends StatelessWidget {
 }
 
 class _AccountContent extends StatelessWidget {
-  const _AccountContent({required this.account, required this.now});
+  const _AccountContent({
+    required this.account,
+    required this.accounts,
+    required this.now,
+  });
 
   final Account account;
+
+  /// Where the balances came from. They are loaded apart from the
+  /// movements, so they have an age of their own.
+  final LoadState<List<Account>> accounts;
   final DateTime Function() now;
 
   Future<void> _copyNumber(BuildContext context) async {
@@ -129,6 +143,12 @@ class _AccountContent extends StatelessWidget {
                   cents: account.availableCents,
                   size: AmountTextSize.display,
                 ),
+                // Data the backend just confirmed needs no age next to it.
+                if (accounts.origin == DataOrigin.cache ||
+                    accounts.isOutdated) ...[
+                  const SizedBox(height: AppSpacing.x1),
+                  FreshnessCaption(syncedAt: accounts.syncedAt, now: now),
+                ],
                 const SizedBox(height: AppSpacing.x2),
                 DetailRow(
                   label: AccountsStrings.ledger,
@@ -231,9 +251,7 @@ class _AccountContent extends StatelessWidget {
         box(
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.x2),
-            child: FreshnessCaption(
-              TimeLabels.freshness(movements.syncedAt, now: now()),
-            ),
+            child: FreshnessCaption(syncedAt: movements.syncedAt, now: now),
           ),
         ),
       if (days.isEmpty)

@@ -4,8 +4,8 @@ import 'package:feature_accounts/src/domain/data_snapshot.dart';
 import 'package:feature_accounts/src/domain/load_state.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
-import 'package:feature_accounts/src/presentation/formatting/time_labels.dart';
 import 'package:feature_accounts/src/presentation/widgets/connection_banner.dart';
+import 'package:feature_accounts/src/presentation/widgets/freshness_caption.dart';
 import 'package:feature_accounts/src/presentation/widgets/load_failure_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -116,9 +116,7 @@ class AccountsScreen extends StatelessWidget {
           ],
           if (showsAge) ...[
             const SizedBox(height: AppSpacing.x1),
-            FreshnessCaption(
-              TimeLabels.freshness(accounts.syncedAt, now: now()),
-            ),
+            FreshnessCaption(syncedAt: accounts.syncedAt, now: now),
           ],
           SizedBox(height: context.metrics.moduleGap),
           for (final (index, account) in data.indexed) ...[

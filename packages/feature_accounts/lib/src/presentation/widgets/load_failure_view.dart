@@ -88,21 +88,3 @@ class OutdatedNotice extends StatelessWidget {
     );
   }
 }
-
-/// How old the data under it is. Shown only for data that did not just come
-/// from the backend.
-class FreshnessCaption extends StatelessWidget {
-  const FreshnessCaption(this.text, {super.key});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: AppTypography.caption.copyWith(
-        color: context.colors.textSecondary,
-      ),
-    );
-  }
-}

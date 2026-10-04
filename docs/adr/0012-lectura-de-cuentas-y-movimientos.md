@@ -117,7 +117,7 @@ Sin conexión no se añade el aviso de «no pudimos actualizar»: el aviso gener
   - **El filtro y la búsqueda solo ven lo cargado.** Buscar un movimiento antiguo exige pedir más páginas primero. Filtrar en el servidor requeriría un índice por combinación de filtros.
   - **Ampliar el límite vuelve a leer la página anterior.** Con cursores se leería menos.
   - **«Ver más» puede aparecer de más.** Si la cuenta tiene exactamente un número de movimientos múltiplo de la página, el botón se muestra una vez sin que haya nada más.
-  - **La antigüedad no avanza sola.** «Actualizado hace 8 min» se recalcula cuando la pantalla se redibuja, no cada minuto.
+  - **La antigüedad se mide con el reloj del dispositivo.** La hora de sincronización es la del teléfono en el momento en que el servidor confirmó los datos, no una hora del servidor. Si el cliente cambia el reloj, la antigüedad mostrada cambia con él; una hora de sincronización posterior a la actual se muestra como «hace un momento», nunca como un valor negativo. El texto se reescribe solo cada minuto, y el saldo del detalle de una cuenta lleva su propia antigüedad, separada de la de los movimientos.
   - **Un índice que mantener.** La consulta de movimientos falla si el índice no está desplegado.
   - **«Intento 2 de 3» no se muestra.** El diseño lo incluye; la pantalla solo indica el progreso del reintento y, al agotarse, cuántos intentos hubo.
   - **Una lectura puntual además de la escucha.** `refresh` lee del servidor lo que la escucha también traerá. Es el precio de saber, con tiempo límite, si el servidor responde.

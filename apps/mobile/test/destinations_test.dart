@@ -70,12 +70,15 @@ void main() {
 
   test('cannot open what has no screen yet, even with its feature on', () {
     for (final destination in [
-      Destinations.inbox,
       '${Destinations.partnerPrefix}travelInsurance',
       '${Destinations.partnerPrefix}recharge',
     ]) {
       expect(resolver().resolve(destination), isNull, reason: destination);
     }
+  });
+
+  test('the inbox has a screen', () {
+    expect(resolver().resolve(Destinations.inbox), isNotNull);
   });
 
   test('cannot open a destination the contract does not name', () {

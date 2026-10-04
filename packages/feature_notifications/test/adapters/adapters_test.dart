@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:feature_notifications/adapters.dart';
 import 'package:feature_notifications/feature_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -124,6 +125,25 @@ void main() {
         NotificationPermission.denied,
       );
     });
+  });
+
+  test('asks the native side for the notification settings by name', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final calls = <String>[];
+    const channel = MethodChannel(ChannelSystemSettings.channelName);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call.method);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    await const ChannelSystemSettings().openNotificationSettings();
+
+    expect(calls, ['openNotificationSettings']);
   });
 
   group('device identity and primer memory', () {

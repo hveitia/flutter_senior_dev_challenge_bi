@@ -1,4 +1,5 @@
 import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/notifications_wiring.dart';
 import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
 import 'package:feature_accounts/feature_accounts.dart';
@@ -35,7 +36,12 @@ final class AppDependencies {
     required this.publishedFaults,
     required this.homeModules,
     required this.appInfo,
+    required this.notifications,
   });
+
+  /// The customer's inbox, this device's registration and the messaging
+  /// service.
+  final NotificationsDependencies notifications;
 
   final Telemetry telemetry;
 

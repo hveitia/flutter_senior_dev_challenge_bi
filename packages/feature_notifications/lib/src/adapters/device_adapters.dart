@@ -1,9 +1,9 @@
 import 'dart:math';
 
-import 'package:app_settings/app_settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:feature_notifications/src/data/ports.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Field names of a device document. The console's sender reads `token` and
@@ -87,11 +87,21 @@ final class SharedPreferencesPrimerMemory implements PrimerMemory {
   Future<void> rememberAnswered() => _preferences.setBool(_key, true);
 }
 
-/// Opens the notification settings of this app in the system.
-final class AppSystemSettings implements SystemSettings {
-  const AppSystemSettings();
+/// Opens the notification settings of this app in the system, through a
+/// channel the app's own native code answers. A plugin for one screen of the
+/// system settings was not worth another dependency.
+final class ChannelSystemSettings implements SystemSettings {
+  const ChannelSystemSettings([
+    this._channel = const MethodChannel(channelName),
+  ]);
+
+  /// The native side registers a handler under this name.
+  static const String channelName = 'banca_digital/system_settings';
+  static const String openMethod = 'openNotificationSettings';
+
+  final MethodChannel _channel;
 
   @override
   Future<void> openNotificationSettings() =>
-      AppSettings.openAppSettings(type: AppSettingsType.notification);
+      _channel.invokeMethod<void>(openMethod);
 }

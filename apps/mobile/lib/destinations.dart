@@ -1,6 +1,7 @@
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_router.dart';
 import 'package:feature_accounts/feature_accounts.dart';
+import 'package:feature_notifications/feature_notifications.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:module_kit/module_kit.dart';
@@ -31,9 +32,8 @@ final class AppDestinationResolver implements DestinationResolver {
   }) : _features = features,
        _routes = routes;
 
-  /// The destinations with a screen today. `inbox` and the partners' mini
-  /// apps join this table when their stages are built, each behind its
-  /// feature flag.
+  /// The destinations with a screen today. The partners' mini apps join
+  /// this table when their stage is built, behind their feature flag.
   static const Map<String, AppDestination> builtRoutes = {
     // --- transfers (stage 8) ---
     Destinations.transfer: AppDestination(
@@ -43,6 +43,7 @@ final class AppDestinationResolver implements DestinationResolver {
     Destinations.accounts: AppDestination(open: _openAccounts),
     Destinations.services: AppDestination(open: _openServices),
     Destinations.profile: AppDestination(open: _openProfile),
+    Destinations.inbox: AppDestination(open: openInbox),
   };
 
   final FeatureFlags Function() _features;

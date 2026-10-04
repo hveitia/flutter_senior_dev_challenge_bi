@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/destinations.dart';
+import 'package:banca_digital/notifications_wiring.dart';
 import 'package:banca_digital/shell/app_shell.dart';
 import 'package:banca_digital/shell/customer_scope.dart';
 import 'package:banca_digital/shell/section_screens.dart';
@@ -10,6 +11,7 @@ import 'package:banca_digital/splash_screen.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_home/feature_home.dart';
+import 'package:feature_notifications/feature_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -84,7 +86,10 @@ GoRouter createAppRouter({
           transfersRepositoryFor: dependencies.transfersRepositoryFor,
           configRepository: dependencies.configRepository,
           publishedFaults: dependencies.publishedFaults,
-          child: child,
+          child: CustomerNotifications(
+            dependencies: dependencies.notifications,
+            child: child,
+          ),
         ),
         routes: [
           ShellRoute(
@@ -137,6 +142,7 @@ GoRouter createAppRouter({
           ),
           transferRoute(onDone: (context) => context.go(AppPaths.home)),
           preferencesRoute(),
+          ...notificationsRoutes(destinations: destinationsFor),
         ],
       ),
     ],
@@ -164,6 +170,7 @@ Widget _home(
     productName: productName,
     firstName: profile?.firstName ?? '',
     fullName: profile?.fullName ?? '',
+    headerAction: NotificationsBell(onOpen: () => openInbox(context)),
   );
 }
 

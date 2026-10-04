@@ -103,5 +103,18 @@ final class PermissionCubit extends Cubit<PermissionState> {
     emit(PermissionState(permission: state.permission));
   }
 
-  Future<void> openSystemSettings() => _settings.openNotificationSettings();
+  /// Takes the customer to the system's settings for this app. A system
+  /// that cannot open them is reported, never an error on screen: the
+  /// customer can still get there by hand.
+  Future<void> openSystemSettings() async {
+    try {
+      await _settings.openNotificationSettings();
+    } on Object catch (error, stackTrace) {
+      _telemetry.recordError(
+        RedactedError(error.runtimeType),
+        stackTrace,
+        reason: NotificationsTelemetry.unexpectedError,
+      );
+    }
+  }
 }

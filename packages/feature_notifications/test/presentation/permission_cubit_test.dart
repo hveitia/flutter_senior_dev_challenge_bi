@@ -93,6 +93,24 @@ void main() {
     expect(settings.opened, 1);
   });
 
+  test(
+    'a system that cannot open its settings is reported, not thrown',
+    () async {
+      settings.failing = true;
+
+      await cubit.openSystemSettings();
+
+      expect(
+        telemetry.errors.single.reason,
+        NotificationsTelemetry.unexpectedError,
+      );
+      expect(
+        telemetry.errors.single.error.toString(),
+        isNot(contains('settings')),
+      );
+    },
+  );
+
   test('reports each step of the invitation with the result only', () async {
     await cubit.check();
     cubit.primerShown();

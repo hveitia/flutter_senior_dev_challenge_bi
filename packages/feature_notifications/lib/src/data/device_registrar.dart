@@ -75,7 +75,8 @@ final class DeviceRegistrar {
   Future<void> forget() {
     final forgotten = _enqueue(() async {
       _isForgotten = true;
-      await _tokenChanges?.cancel();
+      // Not waited for: from here on a new address is ignored anyway.
+      unawaited(_tokenChanges?.cancel());
       _tokenChanges = null;
 
       if (_topic case final topic?) {

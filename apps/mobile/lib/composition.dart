@@ -3,6 +3,7 @@ import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/api_base_url.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/bootstrap.dart';
+import 'package:banca_digital/notifications_composition.dart';
 import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -109,6 +110,11 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
     publishedFaults: publishedFaults,
     homeModules: composeHomeModules(),
     appInfo: AppInfo(version: package.version, build: package.buildNumber),
+    notifications: composeNotifications(
+      preferences: preferences,
+      policy: policy,
+      telemetry: telemetry,
+    ),
     savedCustomerData: StepwiseSavedCustomerData(
       telemetry: telemetry,
       steps: [

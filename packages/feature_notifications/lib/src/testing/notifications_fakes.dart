@@ -200,7 +200,11 @@ final class FakePrimerMemory implements PrimerMemory {
 
 final class FakeSystemSettings implements SystemSettings {
   int opened = 0;
+  bool failing = false;
 
   @override
-  Future<void> openNotificationSettings() async => opened++;
+  Future<void> openNotificationSettings() async {
+    if (failing) throw StateError('settings');
+    opened++;
+  }
 }

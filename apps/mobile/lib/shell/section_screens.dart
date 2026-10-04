@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
+import 'package:banca_digital/notifications_wiring.dart';
 import 'package:banca_digital/shell/diagnostics_card.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/feature_accounts.dart';
@@ -174,6 +175,10 @@ class ProfileScreen extends StatelessWidget {
   /// Asking the listener to stop is enough, without waiting for it to
   /// finish: from that call on it delivers nothing, errors included.
   ///
+  /// The device is forgotten before the session closes too: removing its
+  /// registration needs the session, and a device left registered would keep
+  /// receiving the customer's notifications after they signed out.
+  ///
   /// Closing the session wipes what the device saved, and that includes
   /// transfers queued without a connection that have not left the phone:
   /// they would never be sent. One the bank already has is a different
@@ -212,7 +217,12 @@ class ProfileScreen extends StatelessWidget {
       if (discard != true || !context.mounted) return;
     }
     unawaited(context.read<RemoteConfigCubit>().stop());
-    context.read<SessionBloc>().add(const SessionSignOutRequested());
+    final session = context.read<SessionBloc>();
+    unawaited(
+      forgetDevice(
+        context,
+      ).whenComplete(() => session.add(const SessionSignOutRequested())),
+    );
   }
 }
 

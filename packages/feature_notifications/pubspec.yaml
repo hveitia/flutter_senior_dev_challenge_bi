@@ -10,7 +10,6 @@ resolution: workspace
 
 dependencies:
   app_platform: ^0.1.0
-  app_settings: ^9.0.0
   bloc: ^9.2.0
   cloud_firestore: ^6.10.0
   design_system: ^0.1.0

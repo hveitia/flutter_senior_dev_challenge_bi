@@ -8,6 +8,7 @@
 library;
 
 export 'src/data/device_registrar.dart';
+export 'src/data/ports.dart';
 export 'src/domain/inbox_item.dart';
 export 'src/domain/notifications_repository.dart';
 export 'src/domain/push_message.dart';

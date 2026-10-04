@@ -4,12 +4,14 @@ import 'package:app_platform/app_platform.dart';
 import 'package:app_platform/testing.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/composition.dart';
+import 'package:banca_digital/notifications_wiring.dart';
 import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_accounts/testing.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_auth/testing.dart';
+import 'package:feature_notifications/testing.dart';
 
 import 'fake_saved_customer_data.dart';
 
@@ -105,8 +107,26 @@ final class TestDependencies {
       publishedFaults: faults,
       homeModules: composeHomeModules(),
       appInfo: const AppInfo(version: '1.0.0', build: '12'),
+      notifications: NotificationsDependencies(
+        repositoryFor: (_) => inbox,
+        devicesFor: (_) => devices,
+        identity: const FakeDeviceIdentity(),
+        messaging: messaging,
+        memory: primerMemory,
+        settings: FakeSystemSettings(),
+      ),
     );
   }
+
+  /// The customer's inbox, driven by hand.
+  final FakeNotificationsRepository inbox = FakeNotificationsRepository();
+  final FakeDeviceStore devices = FakeDeviceStore();
+
+  /// The system has not asked about notifications, and the customer already
+  /// answered the app's invitation on this device: nothing interrupts a test
+  /// that is not about notifications.
+  final FakePushMessaging messaging = FakePushMessaging();
+  final FakePrimerMemory primerMemory = FakePrimerMemory(wasAnswered: true);
 
   final FakeAuthRepository auth;
   final InMemoryTelemetry telemetry;

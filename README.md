@@ -1,72 +1,73 @@
 # Banca Digital
 
-Plataforma financiera digital sin atención física: una aplicación móvil en Flutter cuya experiencia se compone a partir de configuración remota, y una consola web para cambiar esa experiencia sin publicar una nueva versión de la aplicación.
+Plataforma financiera digital sin atención física. Una aplicación móvil en Flutter cuyo inicio se compone en tiempo de ejecución a partir de una configuración publicada, una consola web que publica esa configuración sin lanzar una versión nueva de la aplicación, y una API de servidor que mueve el dinero.
 
-Este repositorio es la solución a la prueba técnica de Front-End Senior. Los datos son de demostración y no se ejecutan operaciones bancarias reales.
+Este repositorio es la solución a la prueba técnica de Front-End Senior. Los datos son de demostración: no se ejecutan operaciones bancarias reales y los saldos de apertura no tienen valor.
 
-## Estado del proyecto
+- **Qué se pidió y qué hay, requisito por requisito:** [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md)
+- **Decisiones de arquitectura (19):** [docs/adr/](docs/adr/)
+- **Guion de la demostración:** [docs/demo/guion.md](docs/demo/guion.md)
+- **Uso de IA durante el desarrollo:** [docs/ia/registro-uso-ia.md](docs/ia/registro-uso-ia.md)
 
-El proyecto se construye por etapas, con `main` siempre en verde. Esta sección se actualiza al cerrar cada etapa.
+## Arquitectura en una pantalla
 
-| Etapa | Alcance | Estado |
-|---|---|---|
-| 1. Cimientos | Monorepo, aplicación base, Firebase, CI, hook local, decisiones iniciales | Completa |
-| 2. Sistema de diseño | Tokens, tema, componentes base y pruebas de accesibilidad | Completa |
-| 3. Plataforma | Contrato de configuración, resiliencia, conectividad, observabilidad | Completa |
-| 4. Acceso | Bienvenida, registro en tres pasos, inicio de sesión, desbloqueo biométrico y reglas del perfil | Completa |
-| 5. Cuentas y movimientos | Navegación inferior, lectura en tiempo real, datos guardados sin conexión, filtros, búsqueda, paginación y estados degradados | Completa |
-| 6. Inicio dinámico | Inicio armado desde la configuración publicada, registro de módulos por dominio, personalización por segmento, laboratorio de resiliencia y diagnóstico | Completa |
-| 7. Consola web | Edición y publicación de la configuración con control de versión, acceso de administradores y envío de notificaciones | Completa, sin desplegar |
-| 8. Transferencias | API de servidor, transferencias entre cuentas propias, cola sin conexión, alta de cuentas y flujo de extremo a extremo | Completa y vista en un teléfono, cola sin conexión incluida; la prueba de extremo a extremo de ida y vuelta no tiene todavía una ejecución válida |
-| 9. Notificaciones | Bandeja escrita por el servidor, invitación previa al permiso, registro del dispositivo, tema por segmento y aviso de transferencia realizada | Completa y vista en un teléfono con entrega real; el texto oculto en la pantalla bloqueada solo se comprobó por la configuración del aviso |
-| 10. Servicios | Catálogo, contenedor de mini aplicaciones de aliados, módulo «Para ti» y dos aliados simulados | Completa y vista en un teléfono; la intercepción de marcos y formularios hacia otros sitios y el borrado de la vista web siguen sin comprobarse |
-| 11. Cierre | Diagramas, despliegue, operación y guion de demostración | Pendiente |
+```mermaid
+flowchart LR
+  subgraph App["Aplicación Flutter (apps/mobile)"]
+    raiz[Raíz de composición]
+    dominios["Dominios: acceso · cuentas · inicio · notificaciones · servicios"]
+    kit[module_kit: contrato entre dominios]
+    base["app_platform · design_system"]
+    raiz --> dominios --> kit
+    dominios --> base
+  end
+  subgraph Servidor["Servidor Next.js (apps/backoffice)"]
+    consola[Consola de experiencia]
+    api[API de clientes]
+    aliados[Aliados simulados]
+  end
+  contrato[["contracts/: esquema de la configuración"]]
+  fb[(Firebase: Auth · Firestore · Messaging)]
 
-Lo que existe hoy:
+  consola -- publica config/home --> fb
+  fb -- escucha en tiempo real --> App
+  App -- transferir, abrir cuentas --> api --> fb
+  App -. vista web .-> aliados
+  consola --- contrato
+  App --- contrato
+```
 
-- **Acceso completo.** Un cliente nuevo abre su cuenta en tres pasos (datos con validación real de la cédula, intereses y segmento, contraseña), y uno existente inicia sesión, restablece su contraseña o desbloquea con huella o rostro una sesión restaurada. La aplicación enruta según el estado de la sesión.
-- **Datos reales.** Las cuentas se crean en Firebase Authentication y el perfil se guarda en Firestore, en `users/{uid}`, bajo reglas de seguridad con pruebas automáticas.
-- **Cuentas y movimientos.** Tras iniciar sesión hay cuatro secciones con navegación inferior. En Cuentas se ven el saldo total y cada cuenta; el detalle muestra saldo disponible y contable, el número con opción de copiarlo, y los movimientos agrupados por día, con filtros, búsqueda, paginación y una ficha por movimiento. Los datos se leen de Firestore en tiempo real y solo en lectura: el cliente no puede escribir saldos.
-- **Inicio dirigido por configuración.** El inicio no tiene una composición fija: se arma en tiempo de ejecución con los módulos que la configuración publicada indica para el segmento del cliente, en el orden publicado. Al publicar otro orden u ocultar un módulo, la pantalla cambia sin reiniciar la aplicación. Cada dominio registra sus módulos y el inicio no conoce a ninguno ([ADR 0013](docs/adr/0013-registro-de-modulos-y-motor-del-inicio.md)). Un tipo de módulo que esta versión no conoce se omite.
-- **Personalización.** El cliente cambia sus intereses y su segmento en Perfil, en «Personalización», y el inicio se recompone para el segmento nuevo sin iniciar sesión otra vez. El segmento Patrimonio muestra el saldo con las inversiones, la tendencia del saldo de los últimos 30 días, calculada a partir de los movimientos reales, y un módulo con lo invertido.
-- **Consola de experiencia.** Una aplicación web interna edita la configuración por segmento (orden y visibilidad de los módulos, banner, funcionalidades, laboratorio de resiliencia), la valida contra el contrato y la publica con control de versión. Lo publicado cambia el inicio de los teléfonos sin publicar la aplicación. También envía notificaciones ([Consola de experiencia](#consola-de-experiencia)).
-- **Transferencias.** El cliente transfiere entre sus cuentas de ahorros y corriente. El dinero lo mueve el servidor, en una transacción, a través de la API de clientes; la aplicación solo lo pide. Cada orden lleva un identificador propio que el servidor liquida una sola vez, así que repetirla nunca mueve el dinero dos veces. Sin conexión, la orden queda en cola en el teléfono y se envía sola al volver la red. Una orden que pudo salir del teléfono nunca se encola: se repite con el mismo identificador. Un cliente recién registrado recibe sus dos cuentas, con un depósito de demostración, sin intervención de nadie.
-- **Notificaciones.** La bandeja la escribe el servidor cuando una notificación sale de verdad, y el cliente solo puede marcarla como leída. La aplicación invita a activar las notificaciones antes de mostrar el aviso del sistema, registra el dispositivo para el cliente y sigue el tema de su segmento. El dispositivo se limpia en toda vía de cierre de sesión y antes de registrar a otro cliente en el mismo teléfono. Una transferencia realizada deja su aviso en la bandeja, sin montos ni números de cuenta.
-- **Servicios y mini aplicaciones de aliados.** Servicios lista lo que ofrece el banco y lo que ofrecen sus aliados. Una mini aplicación de un aliado se abre en un contenedor con la barra del banco, solo desde el origen indicado en la compilación, con un contrato de mensajes mínimo (idioma y segmento; nunca nombre, identificador ni saldos). El módulo «Para ti» del inicio recomienda los servicios publicados. Los dos aliados (seguro de viaje y recargas) son simulados y calculan en el servidor.
-- **Degradación.** Los formularios avisan de la falta de conexión, cada llamada pasa por la política de resiliencia y una cuenta cuyo perfil no llegó a guardarse se completa en el siguiente inicio de sesión. Sin conexión, el inicio, las cuentas y los movimientos se muestran desde la copia guardada en el dispositivo, indicando desde cuándo. Cada módulo del inicio tiene su propio estado: si los movimientos fallan, el saldo y las cuentas siguen en pantalla. El detalle está en [`docs/operacion/conectividad-degradada.md`](docs/operacion/conectividad-degradada.md).
-- **Laboratorio de resiliencia.** La configuración publicada puede añadir latencia y dar por caído el servicio de movimientos. Solo tiene efecto en una compilación hecha para demostración; una compilación normal lo ignora.
-- **Diagnóstico.** Perfil muestra el estado de la conexión, la antigüedad de la última sincronización, la versión y el origen de la configuración en uso y la versión de la aplicación, con valores reales.
-- **Base.** El paquete `design_system` contiene los tokens, el tema y los componentes, con una galería para revisarlos. El paquete `app_platform` contiene la lectura de la configuración publicada, la política de resiliencia, el estado de conectividad y la observabilidad. El paquete `module_kit` es el contrato entre los dominios y el inicio.
+- **Un paquete por dominio.** Ningún dominio depende de otro; el compilador y una prueba de frontera por paquete lo impiden. Se encuentran en `module_kit` y en la raíz de composición ([ADR 0001](docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md)).
+- **Inicio dirigido por configuración.** La consola publica qué módulos ve cada segmento y en qué orden; cada dominio registra los suyos; un tipo desconocido se omite ([ADR 0013](docs/adr/0013-registro-de-modulos-y-motor-del-inicio.md)).
+- **El dinero se mueve en el servidor**, en una transacción, con el identificador de la orden como clave de idempotencia ([ADR 0016](docs/adr/0016-movimiento-de-dinero-en-el-servidor.md)).
+- **Un Bloc por conjunto de datos y una única política de resiliencia**: un servicio caído no tumba la pantalla ([ADR 0009](docs/adr/0009-politica-de-resiliencia.md)).
 
-Lo que todavía no hace la aplicación:
+Diagramas: [componentes y dependencias](docs/arquitectura/componentes.md), [flujos principales](docs/arquitectura/flujos.md), [de la consola al teléfono](docs/arquitectura/publicar-configuracion.md).
 
-- Notificaciones, Servicios y las mini aplicaciones se ejecutaron en un teléfono Android, con entrega real de notificaciones. Queda sin comprobar: que un marco o un formulario de la página de un aliado no pueda salir a otro sitio, y qué borra exactamente el cierre de sesión de lo que guarda la vista web (las páginas simuladas no guardan nada, así que el borrado no tuvo qué demostrar; en iOS, además, no cubre todo el almacenamiento).
-- Una compilación sin `PARTNER_BASE_URL` no ofrece ninguna mini aplicación. Perfil muestra el nombre, el correo y el segmento del cliente, la personalización, el diagnóstico y permite cerrar sesión.
-- Las acciones del inicio cuyo destino no tiene pantalla en la compilación instalada no se muestran, aunque la configuración las publique. Es el caso de las mini aplicaciones en una compilación sin origen de aliados.
-- La consola web no está desplegada: se ejecuta en local. La entrega real de una notificación exige `PUSH_DELIVERY=live` en el servidor; así se comprobó, desde la consola en local hasta un teléfono.
-- La API de clientes no está desplegada: se ejecuta en local, junto a la consola. Sin ella en marcha, la aplicación no puede transferir ni abrir las cuentas de un cliente nuevo; para ese caso sigue existiendo la herramienta que carga datos de demostración (ver [Datos de demostración](#datos-de-demostración-herramienta-de-desarrollo)).
-- Solo se transfiere entre cuentas propias de ahorros y corriente. No hay terceros, ni otros bancos, ni comprobante para compartir. Compartir los datos de la cuenta tampoco está: esas acciones del diseño no se muestran hasta que tengan algo detrás.
-- La cola de transferencias sin conexión, su envío al reconectar y el alta de un cliente nuevo están cubiertos por pruebas automáticas, pero no se han visto en un dispositivo.
+## Estado
 
-Qué se ha comprobado en ejecución:
+| Requisito del reto | Estado | Detalle |
+| --- | --- | --- |
+| Onboarding y autenticación | Cumplido | Biometría y correo de recuperación sin verificar en dispositivo |
+| Cuentas, saldos y movimientos | Cumplido | Transferencias solo entre cuentas propias |
+| Personalización dinámica | Cumplido | Por segmento e interruptores |
+| Servicio o micro aplicativo externo | Cumplido | Los dos aliados son simulados |
+| Notificaciones push | Cumplido en Android | iOS sin construir |
+| Monitoreo en producción | Explicado | Eventos y trazas emitidos; su llegada a la consola de Firebase no se comprobó |
+| Conectividad degradada, descrita y demostrada | Cumplido | Vista en un teléfono, con lo no visto señalado |
+| Pruebas unitarias, de widgets y E2E | Cumplido, E2E parcial | La versión repetible del E2E no tiene una ejecución válida |
+| Documentación del uso de IA | Cumplido | |
+| Trunk Based Development | Cumplido | |
 
-- **En un emulador de Android** contra el proyecto real de Firebase (etapa 4): el registro, el cierre de sesión, el rechazo de una contraseña incorrecta, el inicio de sesión, la restauración de la sesión y el aviso sin conexión, y que el documento del perfil quedó creado.
-- **En un teléfono Android real** contra el proyecto real (etapa 5): el inicio de sesión, la lista de cuentas, el detalle, los cuatro filtros, la búsqueda con y sin resultados, la ficha de un movimiento y la copia de su referencia, la paginación, los datos guardados en modo avión (también tras cerrar y abrir la aplicación sin conexión) y la recuperación al volver la conexión.
-- **En un teléfono Android real** contra el proyecto real (etapa 6), con la compilación de demostración: el inicio armado desde la configuración publicada; un cambio de orden y un módulo oculto publicados mientras la aplicación estaba abierta, reflejados sin reiniciarla; el servicio de movimientos dado por caído, con el saldo y las cuentas en pantalla, y su recuperación; la latencia añadida y el aviso de conexión lenta; el inicio en modo avión y al abrir la aplicación sin conexión; el aviso de conexión restablecida; el diagnóstico con la versión publicada; y una compilación sin la opción de demostración, que ignoró los fallos publicados.
-- **En el mismo teléfono, tras la revisión de la etapa 6:** el cambio de segmento desde Perfil, de Familia a Patrimonio y después a Estoy empezando, con el inicio recompuesto cada vez (el de Patrimonio con la tendencia, el saldo con inversiones y el módulo de inversiones); un inicio de acciones rápidas, banner y movimientos con el servicio de movimientos caído, en el que los módulos sin datos siguieron en pantalla; un fallo publicado y retirado con el inicio abierto, que surtió efecto sin deslizar ni reintentar; y el cierre y el nuevo inicio de sesión.
-- **De la consola al teléfono:** con la consola ejecutándose en local contra el proyecto real, un cambio de orden publicado desde ella cambió el inicio del teléfono sin tocarlo.
-- **No se han comprobado en un dispositivo:** el desbloqueo biométrico, el correo de restablecimiento de contraseña, el error único cuando ningún módulo tiene nada que mostrar, la entrega real de una notificación, la bandeja, el registro del dispositivo, las mini aplicaciones de aliados y el borrado de lo que guarda su vista web (cubiertos por pruebas automáticas), ni nada en iOS. La consola no está desplegada.
-
-La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado.
+La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). Nada está desplegado ni publicado en tiendas, e iOS no se compiló.
 
 ## Requisitos
 
-- Flutter 3.38.3 (Dart 3.10.1). La versión está fijada en `.fvmrc`; con [FVM](https://fvm.app) basta ejecutar `fvm use`.
-- Android SDK con un dispositivo o emulador (API 24 o superior), o Xcode para iOS.
+- **Flutter 3.38.3** (Dart 3.10.1). La versión está fijada en `.fvmrc`; con [FVM](https://fvm.app), `fvm use`.
+- **Android SDK** con un teléfono o un emulador (API 24 o superior) y `adb`.
+- **Node 22 o superior** (la CI usa 24) y **Java 21 o superior**, para el servidor, los emuladores de Firebase y las pruebas de reglas.
 - Git y Bash.
-- Opcional: [Firebase CLI](https://firebase.google.com/docs/cli) para desplegar reglas o usar los emuladores.
-- Opcional, para las pruebas de las reglas de Firestore: Node 22 o superior y Java 21 o superior.
-- Opcional, para la herramienta de datos de demostración: Node 22 o superior y la [CLI de gcloud](https://cloud.google.com/sdk/docs/install) con una cuenta que tenga acceso al proyecto.
+- Solo para trabajar contra el proyecto real de Firebase: la [CLI de gcloud](https://cloud.google.com/sdk/docs/install) con una cuenta que tenga acceso.
 
 ## Configuración
 
@@ -76,133 +77,99 @@ cd flutter_senior_dev_challenge_bi
 tool/setup.sh
 ```
 
-`tool/setup.sh` activa los hooks de Git versionados en `.githooks/` y resuelve las dependencias de todo el workspace.
+`tool/setup.sh` activa los hooks de Git de `.githooks/` y resuelve las dependencias del workspace de Dart.
 
-La aplicación apunta al proyecto de Firebase `flutter-challenge-bi`. Los archivos `firebase_options.dart`, `google-services.json` y `GoogleService-Info.plist` son identificadores de cliente, no secretos, y por eso están versionados. El acceso a los datos se protege con las reglas de `firebase/firestore.rules`.
+## Ejecutar todo en local
 
-## Ejecución
+Es la forma recomendada de evaluar el proyecto: no necesita acceso al proyecto de Firebase ni credenciales de ningún tipo. Todo corre en tu equipo, sobre los emuladores de Auth y Firestore.
 
 ```bash
+tool/local-stack.sh up      # emuladores y servidor (consola, API y aliados) en el puerto 3210
+tool/local-stack.sh seed    # configuración publicada, un administrador y un cliente con cuentas
+```
+
+`seed` imprime las dos identidades. Son ficticias, existen solo en tus emuladores y están en `firebase/seed/local-identities.mjs`:
+
+| Quién | Correo | Contraseña | Dónde entra |
+| --- | --- | --- | --- |
+| Administrador | `admin@banca-digital.test` | `Consola#Local1` | Consola: <http://localhost:3210> |
+| Cliente | `cliente@banca-digital.test` | `Cliente#Local1` | Aplicación |
+
+La aplicación, en un teléfono o en un emulador de Android:
+
+```bash
+adb reverse tcp:9099 tcp:9099   # Auth
+adb reverse tcp:8080 tcp:8080   # Firestore
+adb reverse tcp:3210 tcp:3210   # servidor
+
 cd apps/mobile
-flutter run
-```
-
-Para transferir y para que un cliente nuevo reciba sus cuentas, la aplicación necesita la API de clientes, que hoy se ejecuta en local dentro de `apps/backoffice`:
-
-```bash
-cd apps/backoffice
-npm ci
-npm run build
-npx next start -p 3210          # la API y la consola, en el puerto 3210
-adb reverse tcp:3210 tcp:3210   # el teléfono ve ese puerto como localhost
-```
-
-Una compilación de depuración o de perfil usa `http://localhost:3210/` si no se indica otra dirección. Para otra, `--dart-define=API_BASE_URL=https://…/`. Una compilación de publicación exige una dirección `https` y se niega a arrancar sin ella. El contrato y las reglas de la dirección están en [docs/operacion/api.md](docs/operacion/api.md).
-
-Para revisar el sistema de diseño (tokens y componentes en todos sus estados) sin iniciar Firebase ni ningún servicio:
-
-```bash
-cd apps/mobile
-flutter run -t lib/main_gallery.dart
-```
-
-Para una demostración de degradación (latencia añadida y servicios caídos desde la configuración publicada), la compilación tiene que permitirlo de forma explícita:
-
-```bash
-cd apps/mobile
-flutter run --dart-define=ALLOW_FAULT_INJECTION=true
-```
-
-Sin esa opción, la aplicación ignora el bloque `resilience` de la configuración: una compilación de producción no puede degradarse desde la consola ([ADR 0009](docs/adr/0009-politica-de-resiliencia.md)). Con ella, los fallos se aplican en cuanto se publican:
-
-- **Latencia añadida.** Cada consulta al servidor espera el tiempo publicado. Al deslizar para actualizar, pasados tres segundos aparece el aviso «Conexión lenta. Seguimos intentando».
-- **Movimientos no disponibles.** El módulo de últimos movimientos y el detalle de una cuenta dejan de recibir datos. Si ya había movimientos en pantalla, se conservan con un aviso; si la aplicación se abre con el servicio caído, el módulo muestra su error con «Reintentar» mientras el saldo y las cuentas siguen visibles. Al publicar de nuevo sin el fallo, «Reintentar» lo recupera.
-
-Para instalar esa compilación en un teléfono sin depender del modo de depuración:
-
-```bash
-cd apps/mobile
-flutter build apk --profile --dart-define=ALLOW_FAULT_INJECTION=true
-adb install -r build/app/outputs/flutter-apk/app-profile.apk
-```
-
-La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado.
-
-### Mini aplicaciones de aliados
-
-Las páginas de los aliados simulados se sirven desde `apps/backoffice`, bajo `/partners`, sin sesión ni variables de entorno: el mismo servidor local de la API. La aplicación solo las carga si la compilación indica su origen:
-
-```bash
-cd apps/backoffice && npm ci && npm run build && npx next start -p 3210
-adb reverse tcp:3210 tcp:3210
-cd ../mobile
-flutter build apk --profile \
+flutter run --dart-define=USE_FIREBASE_EMULATORS=true \
   --dart-define=ALLOW_FAULT_INJECTION=true \
   --dart-define=PARTNER_BASE_URL=http://localhost:3210 \
   --dart-define=PARTNER_DEV_ORIGIN=true
 ```
 
-El `http` exige tres cosas a la vez: `PARTNER_DEV_ORIGIN`, una compilación que no sea de publicación y un host local (`localhost`, `127.0.0.1` o `10.0.2.2`). Una compilación de publicación con un origen `http`, o cualquier compilación sin `PARTNER_BASE_URL`, no ofrece ninguna mini aplicación. Los aliados son simulados y se alojan junto a la consola solo para la demostración; uno real viviría en su propio origen ([ADR 0019](docs/adr/0019-mini-aplicaciones-de-aliados.md)).
-
-### Notificaciones
-
-La consola envía una notificación a un segmento o a un cliente y la deja en la bandeja de cada destinatario. Sin `PUSH_DELIVERY=live` en el servidor, el envío solo se valida: no se entrega ni se escribe en la bandeja. Un aviso no debe llevar montos, números de cuenta ni datos personales, porque puede verse con el teléfono bloqueado ([ADR 0018](docs/adr/0018-notificaciones-y-bandeja.md)).
-
-### Datos de demostración (herramienta de desarrollo)
-
-Un cliente recién registrado todavía no tiene cuentas: las abrirá la API de servidor, que llega en una etapa posterior. Hasta entonces la aplicación le muestra «Estamos preparando tu cuenta». Para ver cuentas y movimientos reales hay una herramienta que carga dos cuentas y unos treinta movimientos a un cliente ya registrado:
+Perfil > Diagnóstico muestra «Entorno: Emuladores locales». También puedes registrar un cliente nuevo desde la aplicación: recibe sus cuentas del servidor.
 
 ```bash
-cd firebase
-node seed/seed.mjs --email correo-del-cliente@example.com --dry-run   # muestra lo que escribiría
-node seed/seed.mjs --email correo-del-cliente@example.com             # lo escribe
-node seed/seed.mjs --email correo-del-cliente@example.com --segment wealth   # añade un producto de inversión
+tool/local-stack.sh status
+tool/local-stack.sh down    # los emuladores olvidan sus datos al detenerse
 ```
 
-- `--segment` elige qué datos se cargan, no el segmento del cliente: `wealth` añade a las dos cuentas un fondo de inversión, que es lo que muestra el módulo de inversiones. El segmento lo cambia el propio cliente en Perfil, en «Personalización».
+Qué significa cada opción de compilación:
 
-- Escribe con las credenciales de Google de quien la ejecuta (`gcloud auth login`), que deben tener acceso al proyecto. No lee ni guarda ningún secreto en el repositorio.
-- Solo escribe en `flutter-challenge-bi`; se niega a usar otro proyecto salvo que se le pase `--allow-other-project`.
-- Muestra lo que va a escribir antes de hacerlo, y volver a ejecutarla reescribe los mismos documentos.
-- Las fechas son relativas al día en que se ejecuta y los movimientos suman exactamente el saldo de cada cuenta.
+| Opción | Efecto | Candado |
+| --- | --- | --- |
+| `USE_FIREBASE_EMULATORS=true` | Auth y Firestore apuntan a los emuladores (`FIREBASE_EMULATOR_HOST`, por defecto `localhost`; puertos 9099 y 8080) | Una compilación de publicación se niega a arrancar con ella |
+| `ALLOW_FAULT_INJECTION=true` | La aplicación aplica la latencia y las caídas publicadas en el laboratorio de resiliencia | Sin ella se ignoran, aunque estén publicadas |
+| `PARTNER_BASE_URL`, `PARTNER_DEV_ORIGIN=true` | Origen de las mini aplicaciones de aliados; `http` solo en desarrollo y hacia el propio equipo | Sin origen, la aplicación no ofrece ninguna |
+| `API_BASE_URL` | Dirección de la API de clientes; por defecto `http://localhost:3210/` en depuración y perfil | Una compilación de publicación exige `https` |
 
-Quien evalúe el proyecto no la necesitará cuando el registro abra las cuentas a través de la API.
+**Qué se comprobó de este modo y qué no.** Partiendo de un directorio de usuario vacío (sin gcloud, sin sesión de Firebase y sin credenciales por defecto) se comprobó: emuladores y servidor en marcha, la carga de datos dos veces seguidas, inicio de sesión en el emulador de Auth, una transferencia, su repetición y un sobregiro por la API, el aviso de la transferencia en la bandeja, la sesión de la consola y la consola cargada, un envío de notificación validado y las páginas de los aliados; y `flutter build apk --debug` con las opciones. **No se ejecutó la aplicación en un dispositivo en este modo**: en un teléfono solo se probó contra el proyecto real. En particular, queda sin ver que Firestore vuelva a apuntar al emulador después de cerrar sesión, y publicar desde la consola local se comprobó solo hasta cargarla con sesión.
 
-### Publicar la configuración (herramienta de desarrollo)
+Diferencias con el proyecto real: las notificaciones no salen del equipo (quedan «Validado») y el servidor corre en modo de desarrollo.
 
-La aplicación escucha el documento `config/home` de Firestore. Lo publica la [consola de experiencia](#consola-de-experiencia); para hacerlo desde una terminal, sin levantar la consola, hay una herramienta que escribe el ejemplo del contrato (`contracts/home-config.example.json`) u otro archivo con la misma forma:
+## Ejecutar contra el proyecto real
 
-```bash
-cd firebase
-node seed/publish-config.mjs --dry-run                       # muestra lo que publicaría
-node seed/publish-config.mjs --bump                          # publica el ejemplo con la versión siguiente
-node seed/publish-config.mjs --bump --latency-ms 5000        # añade 5 s de latencia
-node seed/publish-config.mjs --bump --movements-unavailable  # da por caído el servicio de movimientos
-node seed/publish-config.mjs --bump --from mi-config.json    # publica otro documento
-```
+La aplicación apunta por defecto al proyecto de Firebase `flutter-challenge-bi`. Sin acceso a ese proyecto puedes registrarte, iniciar sesión y leer tus datos, pero no arrancar el servidor, así que no hay transferencias, alta de cuentas ni consola: para eso está el modo local.
 
-- El documento se reemplaza entero: publicar sin las opciones de fallo los retira.
-- `--bump` lee la versión publicada y publica la siguiente. La versión es informativa: la aplicación sigue siempre al último documento publicado.
-- Usa las credenciales de Google de quien la ejecuta (`gcloud auth application-default login` o `gcloud auth login`), se niega a escribir en otro proyecto y muestra lo que va a publicar antes de hacerlo.
-- Para cambiar el orden u ocultar un módulo, se copia el ejemplo, se edita la lista `modules` del segmento y se publica con `--from`. La pantalla de inicio cambia sin reiniciar la aplicación.
-- Un fallo publicado o retirado surte efecto en lo que ya está en pantalla, sin deslizar para actualizar.
-
-## Consola de experiencia
-
-Aplicación Next.js en `apps/backoffice`, fuera del workspace de Dart. Edita la configuración publicada del inicio por segmento, la valida contra `contracts/home-config.schema.json` y la publica con control de versión; también envía notificaciones. Requiere una sesión de administrador.
+Con acceso al proyecto:
 
 ```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project flutter-challenge-bi
+
 cd apps/backoffice
-npm ci
-npm run verify   # lint, compilación, tipos y pruebas
-npm run dev
+npm ci && npm run build
+npx next start -p 3210          # con las variables de docs/operacion/backoffice.md
+adb reverse tcp:3210 tcp:3210
+
+cd ../mobile
+flutter run --dart-define=ALLOW_FAULT_INJECTION=true \
+  --dart-define=PARTNER_BASE_URL=http://localhost:3210 \
+  --dart-define=PARTNER_DEV_ORIGIN=true
 ```
 
-Las notificaciones solo se entregan con `PUSH_DELIVERY=live`; sin esa variable se validan y no se envían. La configuración, el alta de administradores y el despliegue están en [docs/operacion/backoffice.md](docs/operacion/backoffice.md). No está desplegada.
+- Variables del servidor, alta de administradores y notificaciones reales (`PUSH_DELIVERY=live`): [docs/operacion/backoffice.md](docs/operacion/backoffice.md).
+- Contrato de la API: [docs/operacion/api.md](docs/operacion/api.md).
+- Herramientas de desarrollo, con las credenciales de gcloud del desarrollador y un candado que rechaza otro proyecto:
 
-El mismo servidor expone la API que usa la aplicación en nombre del cliente: alta de cuentas y transferencias entre cuentas propias, con el token de identidad del cliente. Una sesión de administrador no abre nada en esa API, ni un token de cliente en la consola. El contrato está en [docs/operacion/api.md](docs/operacion/api.md).
+  ```bash
+  cd firebase
+  npm run seed -- --email <correo del cliente> [--segment wealth]          # cuentas y movimientos
+  npm run publish-config -- --bump [--latency-ms 5000] [--movements-unavailable]
+  ```
 
-Para la demostración de «cambiar la experiencia sin publicar la aplicación»: con la consola en marcha y el inicio abierto en un teléfono, se mueve un módulo en «Módulos del inicio» y se pulsa «Publicar cambios». El inicio del teléfono cambia de orden en un par de segundos.
+Los archivos `firebase_options.dart`, `google-services.json` y `GoogleService-Info.plist` son identificadores de cliente, no secretos, y por eso están versionados.
+
+### Otras formas de ejecutar
+
+```bash
+cd apps/mobile
+flutter run -t lib/main_gallery.dart    # el sistema de diseño completo, sin ningún servicio
+```
+
+Para instalar una compilación de demostración sin depender del modo de depuración: `flutter build apk --profile` con las mismas opciones y `adb install -r build/app/outputs/flutter-apk/app-profile.apk`.
 
 ## Pruebas
 
@@ -210,129 +177,109 @@ Para la demostración de «cambiar la experiencia sin publicar la aplicación»:
 tool/verify.sh
 ```
 
-Ejecuta, en este orden, la comprobación de formato, el análisis estático, las pruebas de cada paquete del workspace y la verificación de la consola web. Requiere haber ejecutado `npm ci` en `apps/backoffice/`; si faltan esas dependencias, falla en lugar de omitir la consola. La integración continua ejecuta lo mismo en cada push, repartido en dos flujos: el del workspace usa `tool/verify.sh --without-console` y la consola tiene el suyo.
+Comprueba el formato, el análisis estático, que no quede ninguna prueba enfocada o saltada sin motivo, las pruebas de los nueve paquetes de Dart y la consola (lint, compilación, tipos y pruebas). Necesita `npm ci` en `apps/backoffice`; si falta, falla en lugar de omitir la consola. La integración continua ejecuta lo mismo en cada push, en dos flujos (`.github/workflows/ci.yml` y `backoffice.yml`).
 
-El hook `pre-commit` usa el mismo script en modo acotado:
+| Suite | Pruebas | Qué cubre | Cómo se ejecuta sola |
+| --- | --- | --- | --- |
+| `packages/design_system` | 359 | Tokens contra `tokens.json`, contraste WCAG de cada combinación permitida, formato de importes, estados y semántica de cada componente, texto al 130 % | `flutter test` en la carpeta |
+| `packages/app_platform` | 208 | Lectura tolerante de la configuración, esquema, orígenes de respaldo, política de resiliencia con reloj simulado, conectividad, telemetría sin datos del cliente | ídem |
+| `packages/feature_auth` | 286 | Cédula y demás validadores, sesión y sus carreras, registro, inicio de sesión, cuenta a medio crear, pantallas | ídem |
+| `packages/feature_accounts` | 418 | Cuentas y movimientos (origen, antigüedad, paginación), tendencia del saldo, transferencias (idempotencia, cola, resultados), pantallas en cada estado | ídem |
+| `packages/module_kit` | 19 | Registro de módulos, lectura de propiedades, aviso de estado, frontera del contrato | ídem |
+| `packages/feature_home` | 63 | Composición por segmento, tipos desconocidos, falla parcial frente a falla total, actualización | ídem |
+| `packages/feature_notifications` | 129 | Invitación al permiso, registro y olvido del dispositivo, teléfono compartido, bandeja, aviso tocado sin sesión | ídem |
+| `packages/feature_services` | 189 | Regla de origen, contrato de mensajes, contenedor (cargas reemplazadas, tiempo límite, caídas), borrado de datos, «Para ti» | ídem |
+| `apps/mobile` | 168 | Navegación por sesión, composición real con dependencias simuladas, orden del cierre de sesión, destinos, entorno y direcciones permitidas | ídem |
+| Servidor y consola | 538 | Edición y publicación con control de versión, sesión de administradores, API de clientes y liquidación, notificaciones, aliados | `npm run verify` en `apps/backoffice` |
+| Reglas de Firestore | 110 | Qué puede leer y escribir cada quien, caso permitido y casos denegados, contra el emulador | `npm test` en `firebase` (Node y Java 21) |
+| Herramientas de carga | 31 | Saldos que cuadran con sus movimientos, documento publicado, identidades locales | `npm run test:seed` en `firebase` |
 
-```bash
-tool/verify.sh --affected
-```
-
-El formato y el análisis siguen cubriendo todo el repositorio. Las pruebas se limitan a los paquetes que el commit toca y a los que dependen de ellos, y el script imprime cuáles eligió y por qué.
+En total, 1839 pruebas de Dart. No hay pruebas de imagen: las fuentes se dibujan distinto en macOS y en el Linux de la CI ([ADR 0007](docs/adr/0007-sistema-de-diseno.md)).
 
 ### Prueba de extremo a extremo
 
-El flujo crítico (iniciar sesión, transferir y ver el movimiento) se prueba con la aplicación real en un dispositivo, contra el proyecto de Firebase y la API de clientes en marcha. No usa dobles y no corre en la integración continua. Necesita un cliente de prueba propio, con cuenta de ahorros y cuenta corriente, cuyas credenciales se pasan al ejecutar y no se guardan en el repositorio:
+`apps/mobile/integration_test/transfer_flow_test.dart` maneja la aplicación real en un dispositivo, sin dobles: inicia sesión, transfiere un dólar de ahorros a corriente, comprueba que el movimiento lleva la referencia que devolvió el servidor y lo devuelve con una segunda orden, para dejar los saldos como estaban. No corre en la CI.
 
 ```bash
 cd apps/mobile
+# Contra el modo local (con tool/local-stack.sh up y seed, y los tres adb reverse):
 flutter test integration_test/transfer_flow_test.dart -d <dispositivo> \
-  --dart-define=E2E_EMAIL=<correo> --dart-define=E2E_PASSWORD=<contraseña> \
-  --dart-define=API_BASE_URL=http://localhost:3210/
+  --dart-define=USE_FIREBASE_EMULATORS=true \
+  --dart-define=E2E_EMAIL=cliente@banca-digital.test \
+  --dart-define=E2E_PASSWORD='Cliente#Local1'
+
+# Contra el proyecto real, con un cliente de prueba propio que no se guarda en el repositorio:
+flutter test integration_test/transfer_flow_test.dart -d <dispositivo> \
+  --dart-define=E2E_EMAIL=<correo> --dart-define=E2E_PASSWORD=<contraseña>
 ```
 
-Transfiere un dólar de la cuenta de ahorros a la corriente y lo devuelve con una segunda orden. En cada una comprueba que el movimiento que aparece en la cuenta lleva la referencia que devolvió el servidor. Los saldos terminan como empezaron, así que puede repetirse; cada ejecución deja cuatro movimientos reales en ese cliente. La primera versión, con un solo sentido, pasó en un teléfono; la versión con el viaje de vuelta aún no se ha ejecutado en un dispositivo.
-
-Para ejecutar solo las pruebas de un paquete:
-
-```bash
-cd apps/mobile            # o cualquier carpeta de packages/
-flutter test
-```
-
-Las reglas de seguridad de Firestore tienen sus propias pruebas, que se ejecutan contra el emulador. Necesitan Node 22 o superior y Java 21 o superior:
-
-```bash
-cd firebase
-npm ci
-npm test
-```
-
-No requieren credenciales: usan un proyecto de demostración que solo existe en el emulador. La integración continua las ejecuta en un trabajo aparte, junto con las pruebas de los datos de la herramienta de carga, que no necesitan emulador:
-
-```bash
-cd firebase
-npm run test:seed
-```
-
-Qué cubren hoy las pruebas:
-
-| Paquete | Qué se comprueba |
-|---|---|
-| `packages/design_system` | Deriva de los tokens respecto a `tokens/tokens.json`, contraste WCAG de cada combinación de color permitida, formato de importes, estados y semántica de cada componente, guías de accesibilidad de Flutter y ausencia de desbordamiento con texto al 130 % |
-| `packages/app_platform` | Reglas de tolerancia del contrato de configuración, validación del ejemplo contra el esquema y diferencias entre ambos, repositorio de configuración (remota, guardada, incluida y de último recurso, con reconexión), política de resiliencia sobre un reloj simulado (reintentos solo para operaciones idempotentes, candado de la inyección de fallos), estados de conectividad, ausencia de datos del cliente en la telemetría, adaptadores y límite entre código puro y adaptadores |
-| `packages/feature_auth` | Algoritmo de la cédula y demás validadores, repositorio de acceso (reintentos solo donde es seguro, cuenta a medio crear, errores tipados), Blocs de sesión, inicio de sesión y registro, pantallas con sus mensajes de error y guías de accesibilidad, redirección según la sesión, adaptadores y ausencia de datos personales en la telemetría |
-| `packages/feature_accounts` | Filtro, búsqueda y agrupación por día de los movimientos, textos de fecha y de antigüedad con reloj inyectado, estado de un conjunto de datos (guardado, cargando, desactualizado), repositorio (origen y antigüedad de cada entrega, copia vacía que no se muestra, reintentos, movimientos caídos con cuentas en pie), Blocs de cuentas y de movimientos, pantallas en cada estado y con texto al 130 %, rutas, lectura tolerante de los documentos, ausencia de importes y números de cuenta en la telemetría, y límites entre capas |
-| `packages/module_kit` | Registro de módulos (un dueño por tipo), lectura tolerante de las propiedades publicadas, aviso del estado de un módulo (incluido «no tengo nada que dibujar») y registro de su actualización, retirada del aviso al salir de pantalla, y que el contrato solo depende del framework |
-| `packages/feature_home` | Composición del inicio (orden publicado, módulos ocultos, tipos desconocidos omitidos), recomposición al publicarse otra configuración o cambiar el segmento, aviso único de un tipo omitido, pantalla de inicio (módulos que conservan su estado, falla de un módulo frente a falla de todos, deslizar para actualizar, sin conexión, texto al 130 %), acciones rápidas y banner que solo muestran lo que la aplicación puede abrir, y que el paquete no depende de otro dominio |
-| `packages/feature_notifications` | Invitación previa al permiso, registro y olvido del dispositivo (pasos que fallan o se cuelgan, cambio de segmento, permiso retirado, teléfono que cambia de cliente), bandeja con sus estados y marcado como leído, aviso tocado sin sesión o con la sesión bloqueada, y que el dominio no importa Firebase fuera de sus adaptadores |
-| `packages/feature_services` | Catálogo, regla de origen de los aliados (incluido el `http` solo en desarrollo), contrato de mensajes con la página, contenedor de la mini aplicación (cargas reemplazadas, tiempo límite, fallos, servicio caído por el laboratorio, enlaces fuera del origen), borrado por pasos de lo que guarda la vista web y módulo «Para ti» |
-| `apps/mobile` | Navegación según el estado de la sesión con dependencias simuladas, navegación inferior y secciones, repositorio de cuentas creado para el cliente que inicia sesión y liberado al cerrarla, inicio armado desde la configuración y recompuesto al publicar otra, configuración escuchada solo durante la sesión, fallos del laboratorio entregados a la política y retirados al cerrar sesión, resolución de destinos según pantallas existentes y funcionalidades activas, diagnóstico, pantalla de carga, galería del sistema de diseño, manejadores globales de errores, arranque sin telemetría cuando Firebase falla y validez de la configuración incluida |
-| `firebase` | Reglas de seguridad: qué puede leer y escribir un cliente en su perfil, que puede leer y consultar sus cuentas y movimientos pero no los de otro, y que cuentas, movimientos y configuración no admiten escrituras de clientes. Datos de la herramienta de carga: saldos, sumas e identificadores estables. Documento que publica la herramienta de configuración: fallos pedidos, límites del contrato y conversión al formato de Firestore |
+Estado, sin adornos: la primera versión, de un solo sentido, pasó en un teléfono contra el proyecto real. La versión actual de ida y vuelta **no tiene todavía una ejecución válida** (el único intento coincidió con el teléfono bloqueado), y no se ha ejecutado contra el modo local.
 
 ## Cómo colaborar
 
 El repositorio sigue Trunk Based Development ([ADR 0006](docs/adr/0006-trunk-based-development.md)).
 
-- Existe una única rama de larga vida: `main`. Siempre debe poder desplegarse.
-- Los cambios son pequeños y frecuentes. Cada commit deja el workspace en verde.
-- El hook `pre-commit` ejecuta `tool/verify.sh --affected` y bloquea el commit si algo falla. La verificación local se acota a lo que el commit puede romper:
-  - Un cambio en un paquete ejecuta sus pruebas y las de todo paquete que dependa de él, directa o indirectamente.
-  - Un cambio en la configuración común (`pubspec.yaml` y `pubspec.lock` de la raíz, `analysis_options.yaml`, `tool/`, `.githooks/`) ejecuta todo.
-  - Un cambio en `contracts/` ejecuta el paquete de plataforma, que lee el contrato, y sus dependientes, y además la verificación de la consola, que valida contra él.
-  - Un cambio en `apps/backoffice/` ejecuta la verificación de la consola (lint, compilación, tipos y pruebas) si sus dependencias están instaladas; si no, lo avisa. No ejecuta pruebas de Flutter.
-  - Un cambio en `firebase/` ejecuta las pruebas de reglas y de datos de carga si hay Java 21 o posterior; si no, lo avisa.
-  - Un cambio solo en documentación no ejecuta pruebas.
-- La puerta completa es la integración continua: ejecuta todas las pruebas en cada push a `main`. Lo que el hook deja sin ejecutar es lo que el commit no toca, y ya estaba en verde.
-- El hook rechaza el commit cuando hay cambios sin preparar o archivos sin seguimiento en `apps/`, `packages/`, `contracts/`, `firebase/` o `tool/`. La verificación lee el directorio de trabajo, así que solo es válida si este coincide con lo que se confirma. No se puede preparar una parte de un archivo: lo que no entra en el commit se guarda antes con `git stash`.
-- El hook funciona también en una copia de trabajo enlazada (`git worktree`), que es como se trabaja en paralelo sobre partes que no se tocan entre sí; los commits se integran después en `main` en orden, sin commits de fusión.
-- La integración continua repite la misma verificación en cada push a `main`.
-- El trabajo incompleto se integra desactivado mediante configuración, no en ramas largas.
-- Si `main` se rompe, repararlo o revertir el cambio es la prioridad.
-- Los mensajes siguen [Conventional Commits](https://www.conventionalcommits.org) y se escriben en inglés.
+- Una única rama de larga vida, `main`, que siempre debe poder publicarse. Historial lineal, sin commits de fusión.
+- Cambios pequeños y frecuentes; cada commit compila y pasa sus pruebas. Mensajes en inglés con [Conventional Commits](https://www.conventionalcommits.org).
 - Las pruebas se escriben antes que el código que verifican.
-
-En un equipo, el mismo flujo se mantiene con ramas de vida corta (menos de un día) integradas mediante pull request con la verificación en verde.
+- El trabajo incompleto se integra apagado mediante la configuración publicada, no en ramas largas.
+- El hook `pre-commit` ejecuta `tool/verify.sh --affected`: formato y análisis de todo, y las pruebas de lo que el commit toca y de lo que depende de ello. Imprime qué eligió y por qué.
+  - Un cambio en la configuración común (`pubspec` de la raíz, `analysis_options.yaml`, `tool/`, `.githooks/`) lo ejecuta todo; uno en `contracts/`, la plataforma y la consola; uno en `apps/backoffice/`, la consola; uno en `firebase/`, las reglas y las herramientas; uno solo de documentación, nada.
+  - Rechaza el commit si hay cambios sin preparar o archivos sin seguimiento en `apps/`, `packages/`, `contracts/`, `firebase/` o `tool/`: lo que se verifica tiene que ser lo que se confirma. Lo que no entra se guarda antes con `git stash`.
+- La puerta completa es la integración continua, que lo ejecuta todo en cada push. Si `main` se rompe, repararlo o revertir es la prioridad.
+- En un equipo, el mismo flujo con ramas de menos de un día integradas por pull request con la verificación en verde. El trabajo en paralelo sobre partes que no se tocan se hace en copias de trabajo (`git worktree`) y se integra en orden.
 
 ## Mapa del repositorio
 
 ```
 apps/
-  mobile/            Aplicación Flutter. Raíz de composición: rutas, inyección y tema.
-  backoffice/        Consola web de experiencia (Next.js): edita y publica la
-                     configuración del inicio y envía notificaciones.
+  mobile/                 Aplicación Flutter. Raíz de composición: rutas, dependencias y tema.
+  backoffice/             Servidor Next.js: consola de experiencia, API de clientes (app/api)
+                          y páginas de los aliados simulados (app/partners).
 packages/
-  design_system/     Tokens, tema y componentes base. Referencia de diseño en tokens/tokens.json.
-  app_platform/      Configuración publicada, resiliencia, conectividad y observabilidad.
-  feature_auth/      Registro, inicio de sesión, sesión, desbloqueo biométrico y personalización.
-  feature_accounts/  Cuentas, saldos y movimientos, solo lectura. Aporta al inicio los módulos de saldo, cuentas, inversiones y últimos movimientos.
-  module_kit/        Contrato entre los dominios y el inicio: registro de módulos, anfitrión y destinos.
-  feature_home/      Motor del inicio: lo arma desde la configuración publicada. Aporta acciones rápidas y banner.
-  feature_notifications/  Notificaciones push y bandeja del cliente.
-  feature_services/  Servicios: catálogo, contenedor de mini aplicaciones de aliados y módulo «Para ti» del inicio.
-contracts/           Esquema y ejemplo de la configuración publicada. Fuente única para la aplicación y la consola.
-firebase/            Reglas de seguridad e índices de Firestore, con las pruebas de las reglas.
-  seed/              Herramientas de desarrollo: cargan cuentas y movimientos de demostración y publican la configuración.
-docs/                Decisiones de arquitectura, diagramas, operación y registro de uso de IA.
-tool/                Scripts de configuración y verificación.
-.githooks/           Hooks de Git versionados.
-.github/workflows/   Integración continua.
+  design_system/          Tokens, tema y componentes. Referencia en tokens/tokens.json.
+  app_platform/           Configuración publicada, resiliencia, conectividad y telemetría.
+  module_kit/             Contrato entre los dominios y el inicio: registro de módulos, anfitrión, destinos.
+  feature_auth/           Registro, inicio de sesión, sesión, biometría y personalización.
+  feature_accounts/       Cuentas, movimientos, tendencia, transferencias y cola sin conexión.
+  feature_home/           Motor del inicio: lo arma desde la configuración publicada.
+  feature_notifications/  Notificaciones push y bandeja.
+  feature_services/       Catálogo, contenedor de mini aplicaciones de aliados y «Para ti».
+contracts/                Esquema y ejemplo de la configuración. Fuente única para aplicación y consola.
+firebase/                 Reglas e índices de Firestore con sus pruebas.
+  seed/                   Herramientas de carga: modo local (local.mjs) y proyecto real.
+docs/                     Alcance y riesgos, decisiones, diagramas, operación, guion y registro de IA.
+tool/                     setup.sh, verify.sh y local-stack.sh.
+.githooks/                Hooks de Git versionados.
+.github/workflows/        Integración continua (workspace y consola).
 ```
-
-Todos los paquetes de dominio previstos existen. La estructura y su justificación está en el [ADR 0001](docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md).
 
 ## Seguridad
 
-- **Claves de Firebase en el repositorio.** `firebase_options.dart`, `google-services.json` y `GoogleService-Info.plist` contienen identificadores de cliente, no secretos. Ninguna clave de cuenta de servicio ni archivo `.env` se versiona.
-- **Controles reales.** El acceso a los datos lo limitan las reglas de Firestore (`firebase/firestore.rules`), que niegan todo por defecto. Un cliente solo puede escribir su propio perfil, con una lista cerrada de campos validados; cuentas, saldos y movimientos no admiten escrituras de clientes. Las reglas tienen pruebas automáticas ([ADR 0011](docs/adr/0011-autenticacion-y-perfil.md)).
-- **Datos personales.** La cédula, el nombre, el correo y el celular no se registran en la telemetría ni se guardan en el dispositivo.
-- **Aplicado: restricción de claves por API.** Las claves solo pueden invocar los servicios de Firebase; no sirven para otras API de Google Cloud.
-- **Pendiente: restricción de claves por aplicación.** La clave de Android debe restringirse por nombre de paquete y huella SHA-1, y la de iOS por identificador de paquete. No se aplica en este reto de forma deliberada: quien compile el proyecto desde el código firma con su propia clave de depuración y quedaría bloqueado.
-- **Pendiente: App Check**, para aceptar solo peticiones de la aplicación legítima.
-- **Pendiente: firma de publicación.** Aún no está configurada: la compilación de publicación usa la clave de depuración de la plantilla de Flutter. Se resolverá en la etapa de despliegue.
+- **Qué puede escribir un cliente.** Su perfil, con una lista cerrada de campos validados; una orden de transferencia pendiente, con forma e importe acotados; sus dispositivos; y la marca de leído de su bandeja. Nada más: saldos, movimientos y configuración solo los escribe el servidor. Las reglas niegan todo por defecto y tienen 110 pruebas ([`firebase/firestore.rules`](firebase/firestore.rules)).
+- **Dinero.** Una transacción por orden, idempotente por su identificador; una orden que pudo salir del teléfono nunca se encola ([ADR 0016](docs/adr/0016-movimiento-de-dinero-en-el-servidor.md), [0017](docs/adr/0017-transferencias-en-la-aplicacion.md)).
+- **Datos personales.** Cédula, nombre, correo, celular, importes y números de cuenta no van a la telemetría. Al terminar una sesión se borra lo que el dispositivo guardó, y un borrado que no termina queda pendiente y se completa antes de la siguiente.
+- **Consola.** Solo administradores de una lista, con correo verificado y una cookie que solo lee el servidor ([ADR 0015](docs/adr/0015-acceso-de-administradores.md)). Un token de cliente no abre la consola.
+- **Candados de compilación.** Una versión de publicación no arranca con emuladores, sin `https` para la API o con `http` para los aliados, e ignora los fallos simulados.
+- **Claves en el repositorio.** Los archivos de configuración de Firebase contienen identificadores de cliente. Ninguna clave de cuenta de servicio ni archivo `.env` se versiona. Las claves están limitadas a las API de Firebase; no por aplicación, a propósito, para que quien compile desde el código no quede bloqueado.
+
+## Límites conocidos
+
+- **iOS** no se compiló ni se probó.
+- **Nada está desplegado**: el servidor corre en local y la aplicación se instala desde el código. Falta la firma de publicación.
+- **El registro es abierto** y cada cliente nuevo recibe un depósito de demostración. Faltan verificación de correo, App Check y límites de frecuencia.
+- **Los aliados son simulados** y comparten servidor con la consola.
+- **Sin verificar en un dispositivo:** desbloqueo biométrico, texto oculto en la pantalla de bloqueo, sesión revocada, borrado de lo que guarda la vista web y el modo local completo.
+- **La llegada de la telemetría a la consola de Firebase no se comprobó** y no hay alertas configuradas.
+- **Sin tema oscuro ni traducciones.**
+
+La lista razonada, con supuestos, riesgos y la estrategia de escalamiento, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md); lo que falta para producción, en [docs/operacion/despliegue.md](docs/operacion/despliegue.md).
 
 ## Documentación
 
-- [Índice de documentación](docs/README.md)
-- [Decisiones de arquitectura](docs/adr/)
+- [Índice](docs/README.md)
+- [Alcance, supuestos, riesgos y escalamiento](docs/alcance-y-riesgos.md)
+- [Decisiones de arquitectura](docs/adr/) · [Diagramas](docs/arquitectura/)
+- [Despliegue y operación](docs/operacion/despliegue.md) · [Monitoreo](docs/operacion/monitoreo.md) · [Conectividad degradada](docs/operacion/conectividad-degradada.md)
+- [Guion de la demostración](docs/demo/guion.md)
 - [Registro de uso de IA](docs/ia/registro-uso-ia.md)

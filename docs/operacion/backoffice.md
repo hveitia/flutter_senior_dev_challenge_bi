@@ -35,7 +35,22 @@ firebase apps:sdkconfig WEB --project flutter-challenge-bi
 
 Se incorporan al paquete del navegador durante la compilación, así que deben estar presentes al ejecutar `npm run build`.
 
-### Credenciales del servidor en desarrollo
+### Modo local, sin credenciales
+
+`tool/local-stack.sh up` arranca los emuladores de Auth y Firestore y este servidor apuntando a ellos, en el puerto 3210; `tool/local-stack.sh seed` crea un administrador y un cliente locales y publica la configuración. No necesita acceso al proyecto de Firebase ni credenciales de Google. El script pone por sí mismo las variables de la tabla anterior, además de:
+
+| Variable | Valor en el modo local | Efecto |
+| --- | --- | --- |
+| `FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST` | `127.0.0.1:9099`, `127.0.0.1:8080` | El servidor usa los emuladores, sin credenciales |
+| `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL` | `http://127.0.0.1:9099` | El inicio de sesión de la consola usa el emulador de Auth |
+| `BACKOFFICE_ENVIRONMENT` | `demo` | Muestra el laboratorio de resiliencia |
+
+Dos diferencias con el proyecto real:
+
+- **Servidor de desarrollo.** Se usa `next dev`, porque con `NODE_ENV=production` el servidor se niega a arrancar si ve variables de emulador: un emulador acepta tokens que nadie firmó.
+- **Notificaciones.** El servicio de mensajería no tiene emulador. Con los emuladores activos, cada envío se acepta en el momento como validación y no sale del equipo; queda «Validado» y no escribe la bandeja. El aviso de una transferencia completada sí se escribe en la bandeja.
+
+### Credenciales del servidor en desarrollo, contra el proyecto real
 
 No hace falta ningún archivo de clave:
 

@@ -172,7 +172,7 @@ Los nombres de los campos son los que lee la aplicación en `packages/feature_ac
 
 ## Cómo llega la aplicación en desarrollo
 
-El servidor se arranca como describe [backoffice.md](backoffice.md). La dirección base se pasa a la aplicación al compilar, sin dejarla escrita en el código:
+El servidor se arranca como describe [backoffice.md](backoffice.md); con `tool/local-stack.sh up` lo hace contra los emuladores, sin credenciales, y la aplicación compilada con `USE_FIREBASE_EMULATORS=true` presenta tokens del emulador de Auth. La dirección base se pasa a la aplicación al compilar, sin dejarla escrita en el código:
 
     flutter run --dart-define=API_BASE_URL=http://localhost:3210/
 

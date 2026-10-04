@@ -57,14 +57,30 @@ flowchart LR
 
 | Regla | Dónde se decide | Prueba |
 | --- | --- | --- |
-| Solo se carga contenido del origen fijado en la compilación, y solo por `https`. El `http` se acepta únicamente si la compilación marca el origen como de desarrollo. | `PartnerOrigin` | `partner_origin_test.dart` |
+| Solo se carga contenido del origen fijado en la compilación, y solo por `https`. El `http` exige tres cosas a la vez: que la compilación marque el origen como de desarrollo, que no sea una compilación de publicación y que el host sea `localhost`, `127.0.0.1` o `10.0.2.2`. Una compilación de publicación con un origen `http` se queda sin origen y no ofrece ninguna mini aplicación. | `PartnerOrigin` | `partner_origin_test.dart` |
+| Cada carga tiene su propia superficie, y lo que esta informa solo se escucha mientras su carga es la vigente. Una página abandonada o reemplazada por un reintento no puede cambiar lo que ve el cliente respondiendo tarde, y un fallo informado dos veces cuenta una. | `MiniAppCubit` | `mini_app_cubit_test.dart` |
 | Una navegación a otro sitio seguro no se abre dentro del contenedor: se ofrece abrirla en el navegador del teléfono. Cualquier otra cosa (`http` ajeno, `file:`, `content:`, `intent:`, `javascript:`, `data:`) se descarta sin ofrecer nada. | `judgeNavigation` | `navigation_test.dart` |
 | Un marco incrustado que apunta a otro sitio se bloquea sin preguntar al cliente. | `MiniAppCubit` | `mini_app_cubit_test.dart` |
 | La página no recibe acceso a archivos ni a contenido del dispositivo, y se le niega todo permiso (cámara, micrófono, ubicación). | Adaptador de la vista web | Solo en dispositivo |
 | El anfitrión envía a la página dos datos: idioma y segmento. Ningún identificador, nombre, saldo ni credencial. | `HostContext` | `host_contract_test.dart` |
 | La página puede enviar dos mensajes: `close` y `completed`, este con una referencia opcional de hasta 40 caracteres alfanuméricos. Todo lo demás se descarta y se cuenta. | `parsePartnerMessage` | `host_contract_test.dart` |
+| Un mensaje solo cuenta si la página ya está a la vista y la vista web sigue, en ese momento, en el origen del aliado. La dirección se le pregunta a la vista web al llegar el mensaje. Lo que llega durante la carga, o desde otra dirección, se descarta y se cuenta. Una operación completada cuenta una vez. | `MiniAppCubit` | `mini_app_cubit_test.dart` |
 | La carga tiene un límite de 15 segundos. Vencido, un error HTTP o un fallo de carga de la página llevan a «Servicio no disponible». Un recurso secundario que falla no. | `MiniAppCubit`, `PageEvents` | `mini_app_cubit_test.dart`, `page_events_test.dart` |
-| Las cookies, la caché y el almacenamiento de la vista web se borran al cerrar sesión, con el resto de los datos del cliente. | `apps/mobile/lib/composition.dart` | Solo en dispositivo |
+| Si, con la página ya a la vista, una navegación dentro del origen del aliado falla, el contenido se reemplaza por «Servicio no disponible»: es preferible a la página de error de la vista web. Si llega bien, la página nueva recibe otra vez el contexto. | `MiniAppCubit` | `mini_app_cubit_test.dart` |
+| El contexto lleva el segmento del cliente en el momento de cada carga. Un cambio de segmento con la mini aplicación abierta no se anuncia a la página en pantalla; la siguiente carga lleva el nuevo. | `services_routes.dart` | `services_routes_test.dart` |
+| Lo que la vista web guarda se borra al cerrar sesión, paso a paso, dejando una nota mientras el borrado no termina. Si un paso falla o la aplicación se cierra a mitad, la siguiente mini aplicación completa el borrado antes de cargar nada, y si no puede, no carga. | `StepwiseMiniAppData`, `apps/mobile/lib/services_wiring.dart` | `stepwise_mini_app_data_test.dart`; el efecto en la plataforma, solo en dispositivo |
+
+### Qué borra el borrado
+
+Tres pasos, con lo que ofrece el complemento de la vista web:
+
+| Paso | Android | iOS |
+| --- | --- | --- |
+| `cookies` | Todas las cookies de la vista web | Las cookies del almacén de datos |
+| `cache` | La caché de la vista web, incluida la de disco | Caché en memoria y en disco |
+| `storage` | Se pide a la vista web borrar los datos de sus API de almacenamiento de JavaScript | Solo el almacenamiento local |
+
+Lo que **no** queda garantizado: en iOS, el almacenamiento de sesión, IndexedDB y los *service workers* de una página no se borran, porque el complemento no lo expone y esta aplicación no llama todavía al almacén de datos de la plataforma. En Android, qué cubre exactamente la orden de borrado (IndexedDB y *service workers* incluidos) depende de la implementación de la vista web del dispositivo y no se ha comprobado. Las páginas de la demostración no usan ningún almacenamiento, y hay una prueba que lo vigila; con un tercero real, este punto debe cerrarse con una comprobación en dispositivo antes de habilitarlo.
 
 ### Contrato de mensajes
 
@@ -107,10 +123,14 @@ Sumar un aliado exige una versión porque el catálogo, con el nombre del aliado
 
 Los dos aliados, «Aliado Seguros» y «Aliado Recargas», no existen. Sus mini aplicaciones son páginas reales con procesamiento real en el servidor, alojadas para la demostración en el mismo proyecto Next.js que la consola, bajo `/partners`:
 
-- **Seguro de viaje** calcula una cotización en un manejador de ruta a partir de tarifas con nombre, por región, días y viajeros, con todo validado en el servidor. No emite ninguna póliza.
+- **Seguro de viaje** calcula una cotización en un manejador de ruta a partir de tarifas con nombre, por región, días y viajeros, con todo validado en el servidor. Hay un único descuento, del 5 % para el segmento Familia, que la página anuncia; es lo único que el aliado hace con el contexto que recibe. No emite ninguna póliza.
 - **Recargas** valida un celular ecuatoriano, una operadora y un monto, y devuelve una referencia. No llama a ninguna operadora ni mueve dinero.
 
-Ese código no comparte nada con la consola: no importa sus módulos, no usa su sesión ni Firebase y no deja cookies. Una prueba lo comprueba recorriendo sus importaciones. Las páginas se sirven como HTML plano con una política de seguridad de contenido que lo prohíbe todo salvo su propio guion y su propio estilo, identificados por un valor de un solo uso. Comprobado contra el servidor en local: las rutas responden sin ninguna variable de entorno de la consola. Una diferencia respecto de lo que piden sus manejadores: al estar alojadas con la consola, la cabecera `Referrer-Policy` que llega al cliente es la general del proyecto (`same-origin`) y no la más estricta que fijan ellas (`no-referrer`).
+Ese código no comparte nada con la consola: no importa sus módulos, no usa su sesión ni Firebase y no deja cookies. Una prueba lo comprueba recorriendo sus importaciones. Las páginas se sirven como HTML plano con una política de seguridad de contenido que lo prohíbe todo salvo su propio guion y su propio estilo, identificados por un valor de un solo uso. Comprobado contra el servidor en local: las rutas responden sin ninguna variable de entorno de la consola y la cabecera `Referrer-Policy` que llega al cliente es `no-referrer`, mientras las rutas de la consola conservan la suya.
+
+Los puntos de entrada leen como mucho 2 KB: un cuerpo que se declara mayor se rechaza sin leerlo, y la lectura se corta en el límite aunque la declaración mienta. Las referencias que devuelven (`SV-…`, `RC-…`) son aleatorias y no se guardan ni se comprueba que sean únicas: en la simulación no hay nada que conciliar.
+
+En producción, el aliado debe vivir en su propio origen, separado del de la consola. Compartir origen es una comodidad de la demostración y tiene un costo real: una página del aliado y la consola de administración quedan bajo las mismas reglas de mismo origen del navegador. Aquí no hay sesión compartida, porque las páginas del aliado no usan cookies y la de la consola no viaja a un contexto de terceros, pero no es una separación que convenga sostener con un tercero de verdad.
 
 Con un tercero real cambiaría lo siguiente: el origen sería el suyo y no el del banco; la lista de orígenes permitidos pasaría a tener uno por aliado; habría un acuerdo sobre el contrato de mensajes y sus versiones; y el banco no controlaría las cabeceras ni el contenido de la página, por lo que las reglas del contenedor serían la única defensa.
 
@@ -124,12 +144,13 @@ Con un tercero real cambiaría lo siguiente: el origen sería el suyo y no el de
 
 ### Límites conocidos
 
-- **El canal de mensajes es visible para todos los marcos de la página en Android.** Un marco incrustado de otro origen podría enviar mensajes. Los mensajes se validan y solo permiten cerrar el contenedor o mostrar una referencia corta, y las páginas de la demostración prohíben los marcos con su política de contenido; con un tercero real, esa garantía dependería de él.
+- **El canal de mensajes es visible para todos los marcos de la página en Android.** Un canal de JavaScript se inyecta en todos los marcos, también en uno incrustado de otro origen. Las mitigaciones son dos: el mensaje solo cuenta si la página principal sigue en el origen del aliado, y su contenido se valida y solo permite cerrar el contenedor o mostrar una referencia corta. No distinguen un marco ajeno incrustado en una página legítima del aliado; las páginas de la demostración prohíben los marcos con su política de contenido, y con un tercero real esa garantía dependería de él.
+- **La intercepción de navegación en Android tiene huecos conocidos, por confirmar en dispositivo.** La vista web no consulta al contenedor para todas las navegaciones: las de un marco incrustado y los envíos de formulario por `POST` pueden no pasar por él. Un formulario de la página del aliado que hiciera `POST` a otro sitio podría sacar la página principal del origen sin que el contenedor lo impida. Si eso ocurre, los mensajes dejan de contar, porque la dirección ya no es del aliado, pero el contenido ajeno quedaría a la vista dentro del marco. Las páginas de la demostración lo prohíben con `form-action 'none'`. Está en la lista de comprobaciones en dispositivo.
 - **No se comprueba la identidad del aliado más allá del origen.** No hay fijación de certificados ni App Check.
 - **El aliado conoce el segmento del cliente.** Es un dato comercial, no personal, pero es un dato. Si un aliado no debe conocerlo, hay que dejar de enviarlo.
 - **El cliente identificado no existe para el aliado.** No hay inicio de sesión único: una mini aplicación que necesite saber quién es el cliente requeriría un intercambio de credenciales entre servidores, que no está construido.
 - **El menú de la barra solo ofrece «Volver a cargar».** El diseño incluye las condiciones del aliado; no hay una página que abrir.
-- **El desarrollo usa `http` contra la máquina del desarrollador.** Las compilaciones de depuración y de perfil lo permiten solo hacia `localhost` y `10.0.2.2`; la de publicación no permite tráfico sin cifrar.
+- **El desarrollo usa `http` contra la máquina del desarrollador.** Hay dos candados independientes: la regla de origen de la aplicación (indicador de desarrollo, compilación que no sea de publicación y host local) y la política de red de Android, que en las compilaciones de depuración y de perfil permite tráfico sin cifrar solo hacia `localhost`, `127.0.0.1` y `10.0.2.2`, y en la de publicación no lo permite.
 - **Un producto del banco sin pantalla no se lista.** Por eso «Del banco» solo mostrará «Transferencias» cuando su etapa registre el destino.
 
 ## Impacto a largo plazo

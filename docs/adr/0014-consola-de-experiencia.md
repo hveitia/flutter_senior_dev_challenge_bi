@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-03
-- **Implementación:** existe en `apps/backoffice` la consola de una pantalla (segmentos, módulos, banner, funcionalidades, laboratorio de resiliencia, envío de notificaciones y vista previa) con su lado de servidor, cubierta por 163 pruebas. Se ejecutó en local contra el proyecto real `flutter-challenge-bi`: se publicó la primera versión de `config/home`, se provocó un conflicto de versión y se envió una notificación en modo de prueba. **No está desplegada**, la aplicación móvil aún no escucha la configuración publicada, y ninguna notificación se ha entregado a un dispositivo. El detalle de lo verificado está al final.
+- **Implementación:** existe en `apps/backoffice` la consola de una pantalla (segmentos, módulos, banner, funcionalidades, laboratorio de resiliencia, envío de notificaciones y vista previa) con su lado de servidor, cubierta por 214 pruebas. Dos revisiones independientes (fiabilidad y riesgo) dieron lugar a las correcciones que este documento ya recoge. Se ejecutó en local contra el proyecto real `flutter-challenge-bi`: se publicó la primera versión de `config/home`, se provocó un conflicto de versión y se envió una notificación en modo de prueba. **No está desplegada**, la aplicación móvil aún no escucha la configuración publicada, y ninguna notificación se ha entregado a un dispositivo. El detalle de lo verificado está al final.
 
 ## Problema a resolver
 
@@ -45,19 +45,40 @@ La primera opción en los cuatro casos.
 | Paso | Regla |
 |---|---|
 | Sesión | Sin sesión de administrador no se llega al almacén ([ADR 0015](0015-acceso-de-administradores.md)) |
+| Tamaño | Un borrador de más de 256 KB serializado se rechaza antes de validarlo |
 | Validación | Un borrador que rompe el contrato se rechaza con la lista de problemas y no se escribe nada |
-| Fallos simulados | Fuera de un entorno de demostración, un borrador con latencia o servicios caídos se rechaza |
 | Versión | Se lee `config/home` en una transacción; si su versión no es la que cargó el editor, se rechaza como conflicto |
+| Fallos simulados | Fuera de un entorno de demostración se rechaza un borrador que añade un fallo o agrava uno publicado; mantenerlos o reducirlos se permite |
 | Escritura | El número de versión se toma de lo almacenado más uno, nunca del navegador |
 | Auditoría | En la misma transacción se añade `configAudit/v<versión>` con quién, cuándo y cuántos ajustes cambiaron |
 
-Tras un conflicto la consola conserva las ediciones a la vista, desactiva «Publicar cambios» y pide recargar: reintentar sobre una base que ya no es la publicada repetiría el conflicto.
+Tras un conflicto la consola conserva las ediciones a la vista, desactiva «Publicar cambios» y pide recargar: reintentar sobre una base que ya no es la publicada repetiría el conflicto. El bloqueo se mantiene aunque se siga editando o se descarte; solo recargar lo levanta.
+
+Mientras una publicación está en curso, los controles de edición quedan desactivados: lo que hay en pantalla es exactamente lo que se envió, y es eso lo que se da por publicado al recibir la respuesta.
+
+**Documento almacenado inválido.** Si `config/home` no cumple el contrato (le faltan los segmentos, por ejemplo), la consola se abre sobre el ejemplo del contrato con la versión almacenada como base, y publicar lo repara. El recuento de cambios de esa publicación es cero, porque no hay un documento válido con el que comparar.
+
+**Fallos simulados fuera de demostración.** La regla «ni añadir ni agravar» sustituye a «ninguno»: con la regla anterior, un fallo publicado desde un entorno de demostración habría bloqueado todas las publicaciones posteriores de un entorno que no lo es, incluida la que lo quita. Como allí el laboratorio no se muestra, la consola avisa de que hay fallos activos y ofrece «Quitar fallos simulados». En el laboratorio, una latencia publicada por encima del rango habitual del control (8 s) se muestra con su valor real y alarga el control.
 
 **Edición.** `lib/config/editing.ts` devuelve siempre un documento nuevo y conserva los campos que no conoce, de modo que un módulo añadido al contrato no se pierde al pasar por la consola. `lib/config/diff.ts` cuenta los cambios como los piensa quien edita: un reordenamiento cuenta una vez por segmento, y cada interruptor o campo, una vez.
 
 **Vista previa.** Dibuja el inicio con los mismos módulos, orden y visibilidad del borrador, con cifras de ejemplo. Replica tres reglas de la aplicación: un tipo de módulo desconocido se omite, una funcionalidad apagada oculta sus accesos y el aviso de conexión lenta aparece a partir de 3 s de latencia. Es un boceto, no la aplicación.
 
-**Notificaciones** (`lib/server/push.ts`). Un envío a un segmento usa el tema `segment-<id>`; un envío a un cliente busca sus dispositivos en `users/{uid}/devices`. Cada envío queda en `pushHistory` con su estado, también cuando falla, y un envío fallido se puede reintentar sobre el mismo registro. Un envío que ya salió no se reintenta. Con `PUSH_DRY_RUN=true` el servicio valida el mensaje sin entregarlo y el estado es «Validado», distinto de «Enviado».
+**Notificaciones** (`lib/server/push.ts`). Un envío a un segmento usa el tema `segment-<id>`; un envío a un cliente busca sus dispositivos en `users/{uid}/devices`. Cada envío queda en `pushHistory` con su estado, también cuando falla.
+
+| Estado | Significado |
+|---|---|
+| Enviado | El servicio aceptó el envío para todos los destinatarios |
+| Entrega parcial | Llegó a algunos dispositivos del cliente y a otros no; se guarda cuántos |
+| Validado | Envío en modo de prueba: el servicio lo validó y no entregó nada |
+| Fallido | No se entregó; se guarda el código de error del servicio |
+| Reintentando | Alguien lo está enviando de nuevo en este momento |
+
+- **Entrega real solo si se pide.** El servidor entrega únicamente con `PUSH_DELIVERY=live`. Sin esa variable, o con cualquier otro valor, valida sin entregar: un despliegue sin configurar no puede notificar a clientes por descuido.
+- **Reintento reclamado en una transacción.** Reintentar pasa el registro de «Fallido» a «Reintentando» antes de enviar. De dos clics, o de dos administradores, solo envía quien consigue el cambio. Si el servidor muere entre reclamar y registrar el resultado, el registro vuelve a poder reintentarse a los 2 minutos.
+- **Un envío parcial no se reintenta:** repetirlo entregaría dos veces a los dispositivos que sí lo recibieron.
+- **Dispositivos dados de baja.** Los que el servicio informa como no registrados se marcan (`unregistered`) y dejan de usarse; la consola no borra documentos de dispositivo.
+- **Una sola respuesta para un cliente inalcanzable.** Una dirección que no es de un cliente y un cliente sin dispositivo dan el mismo resultado, en pantalla y en lo almacenado (sin identificador de usuario), para que el historial no sirva para averiguar qué direcciones son de clientes. Ese registro no se puede reintentar, porque ya no dice a quién iba.
 
 **Dependencias de ejecución**, todas con versión fija:
 
@@ -83,8 +104,10 @@ Los colores, radios y tamaños de letra salen de `packages/design_system/tokens/
 - **Límite:** el recuento de clientes por segmento y el historial se cargan al abrir la consola y no se actualizan solos.
 - **Límite:** no hay límite de frecuencia para envíos ni para intentos de inicio de sesión más allá del que aplica el proveedor de identidad.
 - **Límite:** no se define una política de seguridad de contenido (CSP); sí se envían `X-Frame-Options`, `X-Content-Type-Options` y `Referrer-Policy`.
-- **Límite:** `npm audit` informa avisos en dependencias transitivas sin corrección compatible disponible: `@grpc/grpc-js` (lo trae el SDK web de Firebase para Firestore, que la consola no usa en el navegador) y `uuid` (lo trae la autenticación de Google en el servidor). Los avisos de `braces` afectan solo a herramientas de desarrollo.
-- **Límite:** la accesibilidad se comprobó con pruebas por rol y nombre, y el reordenamiento funciona con teclado mediante los botones. No se hizo una revisión con lector de pantalla.
+- **Límite:** un envío a un cliente que sí tiene dispositivos se distingue de uno inalcanzable, así que un envío logrado confirma que la dirección es de un cliente. Es inherente a la función; lo que se evita es distinguir los dos casos de fallo.
+- **Límite:** el límite de 256 KB es del borrador completo. El contrato no acota todavía el número de módulos ni la longitud de los textos; las cotas propuestas están pendientes de aplicarse en `contracts/`.
+- **Dependencias:** dos dependencias transitivas con avisos de seguridad (`@grpc/grpc-js` y `uuid`) se elevan a versiones corregidas con `overrides` en `package.json`; con ello `npm audit --omit=dev` no informa avisos. Quedan avisos de `braces`, sin versión corregida, que solo afectan a herramientas de desarrollo. Las actualizaciones de dependencias se revisan a mano con `npm audit`; no se automatizan con un bot para que cada cambio del repositorio tenga un autor que lo haya revisado.
+- **Límite:** la accesibilidad se comprobó con pruebas por rol y nombre. El reordenamiento funciona con teclado mediante los botones, el foco sigue al módulo movido, y su nueva posición y cada publicación lograda se anuncian en una región viva. No se hizo una revisión con un lector de pantalla real.
 
 ## Impacto a largo plazo
 
@@ -104,10 +127,16 @@ Verificado el 2026-10-03 en local, con la compilación de producción (`next sta
 - Con la versión cambiada por fuera durante la edición, la publicación se rechazó, el documento no cambió y la consola mostró el conflicto.
 - Un envío en modo de prueba a un segmento fue aceptado por el servicio de mensajería y quedó como «Validado»; un envío a un cliente inexistente quedó como «Fallido».
 
+Verificado de nuevo tras las correcciones de la revisión, del mismo modo:
+
+- Tras un conflicto, otra edición no reactiva «Publicar cambios» y el aviso sigue visible.
+- Tras recargar, una publicación y su reversión se aplicaron, y la región viva anunció la versión publicada.
+- Después de cerrar sesión, la cookie anterior, que hasta ese momento daba acceso, se rechazó: la consola redirige al inicio de sesión y `POST /api/push` responde 401.
+
 Sin verificar:
 
-- La entrega real de una notificación: la aplicación aún no registra dispositivos ni se suscribe a temas.
+- La entrega real de una notificación: la aplicación aún no registra dispositivos ni se suscribe a temas. Por lo mismo, la entrega parcial y el marcado de dispositivos dados de baja solo están cubiertos por pruebas.
 - Que la aplicación refleje una publicación: aún no escucha `config/home`.
-- El reintento de un envío fallido contra el servicio real y el rechazo de fallos simulados fuera de demostración; ambos están cubiertos solo por pruebas.
+- El reintento de un envío fallido contra el servicio real, incluida la reclamación en transacción, y el rechazo de fallos simulados fuera de demostración; están cubiertos solo por pruebas.
 - El arrastre con el puntero; en la verificación se usaron los botones.
 - El despliegue y el flujo de integración continua, que nunca se ha ejecutado.

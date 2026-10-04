@@ -12,16 +12,16 @@ La consola vive en `apps/backoffice`. Es una aplicación Next.js con su propio `
 
 ## Configuración
 
-Las variables se leen del entorno. En desarrollo van en `apps/backoffice/.env.local`, que git ignora. **Ese archivo no se versiona nunca**; el repositorio es público.
+Las variables se leen del entorno. En desarrollo van en un archivo `apps/backoffice/.env.local` que cada persona crea a mano y que git ignora. **Ese archivo no se versiona nunca**; el repositorio es público. No hay un archivo de ejemplo en el repositorio: la lista completa de variables es la tabla siguiente.
 
 | Variable | Dónde se usa | Valor |
 |---|---|---|
 | `FIREBASE_PROJECT_ID` | Servidor | `flutter-challenge-bi`. Con otro valor el servidor no arranca |
 | `ALLOW_OTHER_PROJECT` | Servidor | `true` solo para apuntar a otro proyecto a propósito |
 | `ADMIN_EMAILS` | Servidor | Direcciones admitidas, separadas por comas. Obligatoria |
-| `BACKOFFICE_ENVIRONMENT` | Servidor | `demo` muestra el laboratorio de resiliencia y permite publicarlo. Cualquier otro valor lo oculta y el servidor rechaza fallos simulados |
-| `PUSH_DRY_RUN` | Servidor | `true` valida cada envío sin entregarlo |
-| `FIREBASE_SERVICE_ACCOUNT` | Servidor | Cuenta de servicio en una línea de JSON. Vacía en desarrollo |
+| `BACKOFFICE_ENVIRONMENT` | Servidor | `demo` muestra el laboratorio de resiliencia y permite publicarlo. Con cualquier otro valor se oculta y el servidor rechaza añadir o agravar fallos simulados; quitarlos sigue permitido |
+| `PUSH_DELIVERY` | Servidor | `live` entrega las notificaciones a los teléfonos. Sin la variable, o con cualquier otro valor, cada envío solo se valida y no se entrega |
+| `FIREBASE_SERVICE_ACCOUNT` | Servidor | Cuenta de servicio en una línea de JSON. Vacía en desarrollo. Solo debe existir en el almacén de secretos del proveedor de despliegue |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Navegador | Identificador público de la aplicación web de Firebase |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Navegador | Ídem |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Navegador | Ídem |
@@ -89,10 +89,15 @@ Las pruebas no necesitan credenciales ni red: el SDK de administración se susti
 | Notificaciones: envío, registro, reintento | `lib/server/push.test.ts`, `app/api/push/route.test.ts` |
 | Ajustes del servidor y guarda de proyecto | `lib/server/settings.test.ts` |
 | Estados de publicación y pantalla completa | `components/console/top-bar.test.tsx`, `components/console/console.test.tsx` |
+| Laboratorio de resiliencia e historial de envíos | `components/console/settings-cards.test.tsx`, `components/console/push-card.test.tsx` |
 
 El flujo `.github/workflows/backoffice.yml` ejecuta lint, compilación, comprobación de tipos y pruebas cuando cambia `apps/backoffice`, `contracts` o los tokens del sistema de diseño. La compilación va antes de la comprobación de tipos porque genera los tipos de las rutas.
 
 El hook de pre-commit del repositorio no ejecuta estas pruebas; antes de un commit que toque la consola hay que correr `npm run verify`.
+
+### Dependencias
+
+Las actualizaciones se revisan a mano: `npm audit` y `npm outdated` desde `apps/backoffice`, y cada cambio de versión entra como un commit revisado. No hay un bot que abra peticiones de actualización para este directorio. Dos dependencias transitivas se fijan con `overrides` en `package.json` a versiones corregidas; al actualizar `firebase` o `firebase-admin` conviene comprobar si siguen haciendo falta.
 
 ## Qué escribe en Firestore
 
@@ -100,28 +105,37 @@ El hook de pre-commit del repositorio no ejecuta estas pruebas; antes de un comm
 |---|---|---|
 | `config/home` | La configuración publicada | Lectura con sesión; sin escritura |
 | `configAudit/v<versión>` | Quién publicó, cuándo y cuántos ajustes cambiaron | Ninguno |
-| `pushHistory/<id>` | Cada envío: título, mensaje, audiencia, destino, estado, intentos | Ninguno |
+| `pushHistory/<id>` | Cada envío: título, mensaje, audiencia, destino, estado, intentos y dispositivos alcanzados | Ninguno |
+| `users/{uid}/devices/<id>` | Solo los campos `unregistered` y `unregisteredAt`, en un dispositivo que el servicio de mensajería ya no reconoce | Lo define la etapa de notificaciones |
 
-Las dos últimas colecciones no aparecen en las reglas, que niegan todo lo que no declaran. Un envío a un cliente guarda su identificador de usuario, no su correo.
+`configAudit` y `pushHistory` no aparecen en las reglas, que niegan todo lo que no declaran. Un envío a un cliente guarda su identificador de usuario, no su correo; si no se pudo alcanzar a nadie, no guarda ninguno de los dos.
 
-Para enviar a un cliente, la consola lee sus dispositivos de `users/{uid}/devices/*`, campo `token`. Para enviar a un segmento usa el tema `segment-<id del segmento>`. La aplicación móvil todavía no escribe esos documentos ni se suscribe a esos temas.
+Para enviar a un cliente, la consola lee sus dispositivos de `users/{uid}/devices/*`, campo `token`, y deja fuera los marcados como `unregistered`. Nunca borra un documento de dispositivo. Para enviar a un segmento usa el tema `segment-<id del segmento>`.
+
+**Pendiente en la etapa de notificaciones.** La aplicación móvil todavía no escribe esos documentos ni se suscribe a esos temas. Para que pueda registrar su dispositivo hará falta una regla de Firestore que permita a cada cliente escribir en su propio `users/{uid}/devices`; hoy las reglas niegan toda escritura en subcolecciones. Esa regla pertenece a esa etapa y no se ha añadido aquí.
 
 ## Despliegue (descrito, no realizado)
 
 La consola necesita un entorno Node con las variables de la tabla. En cualquier proveedor:
 
 1. Directorio raíz del proyecto: `apps/backoffice`, con acceso de compilación a la raíz del repositorio, porque importa `contracts/` y `packages/design_system/tokens/`.
-2. Variables de servidor como secretos del proveedor, incluida `FIREBASE_SERVICE_ACCOUNT` con una cuenta de servicio limitada a Firestore, autenticación y mensajería del proyecto.
+2. Variables de servidor como secretos del proveedor, incluida `FIREBASE_SERVICE_ACCOUNT` con una cuenta de servicio limitada a Firestore, autenticación y mensajería del proyecto. Ese JSON solo debe vivir en el almacén de secretos del proveedor: no se guarda en el repositorio, ni en un archivo de entorno, ni se pega en un terminal cuyo historial se conserve.
 3. Variables `NEXT_PUBLIC_*` disponibles en la compilación.
 4. `BACKOFFICE_ENVIRONMENT` distinto de `demo` salvo en el entorno de la demostración.
-5. Solo HTTPS: la cookie de sesión se marca `Secure` en producción.
+5. `PUSH_DELIVERY=live` solo en el entorno que deba notificar a clientes reales. Sin ella, la consola funciona entera pero no entrega nada.
+6. Solo HTTPS: la cookie de sesión se marca `Secure` en producción.
 
-Antes de dar por bueno un despliegue habría que comprobar lo que hoy solo cubren las pruebas: que sin sesión no se accede a nada, que un entorno que no es de demostración rechaza fallos simulados y que la cuenta de servicio no puede hacer más de lo necesario.
+Antes de dar por bueno un despliegue habría que comprobar lo que hoy solo cubren las pruebas: que un entorno que no es de demostración rechaza añadir fallos simulados, que sin `PUSH_DELIVERY=live` no se entrega ninguna notificación y que la cuenta de servicio no puede hacer más de lo necesario.
 
 ## Operación
 
-- **Una publicación falla con conflicto:** alguien publicó antes. Recargar y repetir las ediciones.
+- **Una publicación falla con conflicto:** alguien publicó antes. «Publicar cambios» queda desactivado hasta recargar; después hay que repetir las ediciones.
+- **La consola avisa de fallos simulados activos:** se publicaron desde un entorno de demostración. «Quitar fallos simulados» los pone a cero en el borrador; después se publica.
+- **Cerrar sesión:** cierra la sesión de ese administrador en todos sus navegadores, no solo en el actual.
 - **Una publicación falla sin motivo aparente:** el almacén no respondió. Las ediciones siguen en pantalla; reintentar.
 - **Revertir una publicación:** no hay botón. Se edita de nuevo y se publica; la auditoría dice qué versión publicó cada persona.
 - **Retirar el acceso a alguien:** quitar su dirección de `ADMIN_EMAILS` y reiniciar. Surte efecto en su siguiente petición. Si la cuenta está comprometida, además deshabilitarla en Firebase Authentication.
-- **Un envío queda como «Fallido»:** el registro guarda el código de error del servicio. «Reintentar» lo envía de nuevo sobre el mismo registro.
+- **Un envío queda como «Fallido»:** el registro guarda el código de error del servicio. «Reintentar» lo envía de nuevo sobre el mismo registro, una sola vez aunque dos personas pulsen a la vez. Un envío a un cliente al que no se pudo alcanzar no ofrece reintento: hay que redactarlo de nuevo.
+- **Un envío queda como «Reintentando» y no cambia:** el servidor se interrumpió durante el reintento. A los 2 minutos se puede reintentar otra vez.
+- **Un envío queda como «Entrega parcial»:** llegó a parte de los dispositivos del cliente. No se reintenta, para no duplicarlo en los que sí lo recibieron.
+- **Un envío queda como «Validado»:** el entorno no tiene `PUSH_DELIVERY=live`; el servicio aceptó el mensaje y no entregó nada.

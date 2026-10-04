@@ -44,7 +44,7 @@ La primera opción en los tres casos.
 | Intercambio | El token se envía una vez a `POST /api/session`; debe ser de un inicio de sesión de los últimos 5 minutos y no estar revocado |
 | Cookie | `__session`, solo HTTP, `SameSite=Strict`, `Secure` en producción, 8 horas |
 | Verificación | En cada petición, con comprobación de revocación, y la lista de administradores se vuelve a consultar |
-| Cierre | `DELETE /api/session` borra la cookie de ese navegador |
+| Cierre | `DELETE /api/session` verifica la cookie, revoca las sesiones del administrador en el proveedor de identidad y borra la cookie de ese navegador |
 
 **Admisión.** Solo se admite una dirección que esté en `ADMIN_EMAILS` **y** esté verificada. La segunda condición es la que cierra el hueco del registro abierto: quien registre la dirección de un administrador desde la aplicación obtiene una cuenta sin verificar, que la consola rechaza. Quitar una dirección de la lista surte efecto en la siguiente petición de esa persona, no al caducar su cookie.
 
@@ -54,7 +54,7 @@ La primera opción en los tres casos.
 
 **Peticiones entre sitios.** La cookie es `SameSite=Strict`. La publicación es una acción de servidor, a la que el framework compara el origen con el host. Las rutas `/api/session` y `/api/push` hacen la misma comparación con `lib/server/same-origin.ts`, y rechazan además una petición sin cabecera de origen.
 
-**Credenciales** (`lib/server/firebase.ts`, `lib/server/settings.ts`). Si existe `FIREBASE_SERVICE_ACCOUNT`, se usa; si no, las credenciales por defecto de la máquina (`gcloud auth application-default login`). El servidor se niega a arrancar contra un proyecto distinto de `flutter-challenge-bi` salvo que `ALLOW_OTHER_PROJECT=true` lo permita, y sin al menos un administrador en la lista. Un valor de cuenta de servicio mal formado se rechaza sin incluirlo en el mensaje de error.
+**Credenciales** (`lib/server/firebase.ts`, `lib/server/settings.ts`). Si existe `FIREBASE_SERVICE_ACCOUNT`, se usa; si no, las credenciales por defecto de la máquina (`gcloud auth application-default login`). El servidor se niega a arrancar contra un proyecto distinto de `flutter-challenge-bi` salvo que `ALLOW_OTHER_PROJECT=true` lo permita, y sin al menos un administrador en la lista. Un valor de cuenta de servicio mal formado se rechaza sin incluirlo en el mensaje de error. El JSON de la cuenta de servicio solo debe existir en el almacén de secretos del proveedor de despliegue: nunca en el repositorio, en un archivo de entorno compartido ni en el historial de un terminal.
 
 ## Trade-offs
 
@@ -63,8 +63,11 @@ La primera opción en los tres casos.
 - **Se gana:** ninguna clave en el repositorio ni en la máquina de quien desarrolla.
 - **Se paga:** la lista de administradores vive en la configuración del despliegue; cambiarla es cambiar una variable y reiniciar, y no queda registro de ese cambio.
 - **Se paga:** dos verificaciones contra el proveedor de identidad por petición autenticada (cookie y revocación), a cambio de que una revocación tenga efecto inmediato.
-- **Límite:** cerrar sesión borra la cookie del navegador pero no revoca la sesión en el servidor. Una cookie copiada antes del cierre sigue siendo válida hasta que caduca, se revoca la cuenta o se retira la dirección de la lista.
-- **Límite:** no hay segundo factor ni límite propio de intentos de inicio de sesión.
+- **Se gana:** cerrar sesión invalida también una cookie copiada antes del cierre, porque cada petición comprueba la revocación. Se comprobó contra el proyecto real: la cookie que daba acceso dejó de darlo tras el cierre.
+- **Se paga:** la revocación es por cuenta, no por navegador. Cerrar sesión en un equipo cierra la del mismo administrador en todos los demás. Para una herramienta interna de pocos usuarios se prefirió eso a dejar sesiones vivas.
+- **Límite:** si la revocación falla (el proveedor no responde), la cookie se borra igualmente en ese navegador y la respuesta lo indica, pero una copia seguiría valiendo hasta caducar.
+- **Límite:** no hay segundo factor.
+- **Límite:** no hay límite de frecuencia propio. Los intentos de inicio de sesión solo tienen el que aplica el proveedor de identidad; los envíos de notificaciones y las búsquedas de cliente por correo que hace un administrador autenticado no tienen ninguno. Un administrador podría probar direcciones enviando notificaciones: los fallos no distinguen entre «no es cliente» y «cliente sin dispositivo» ([ADR 0014](0014-consola-de-experiencia.md)), pero un envío logrado sí confirma que la dirección es de un cliente. Cada envío queda registrado con quién lo hizo.
 - **Límite:** las cuentas de administrador se crean a mano con la herramienta de administración, marcadas como verificadas. No hay un flujo de alta.
 - **Límite:** las credenciales por defecto de desarrollo son las de una persona con permisos amplios sobre el proyecto, más de los que la consola necesita.
 

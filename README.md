@@ -155,6 +155,7 @@ El repositorio sigue Trunk Based Development ([ADR 0006](docs/adr/0006-trunk-bas
 - Existe una única rama de larga vida: `main`. Siempre debe poder desplegarse.
 - Los cambios son pequeños y frecuentes. Cada commit deja el workspace en verde.
 - El hook `pre-commit` ejecuta `tool/verify.sh` y bloquea el commit si algo falla.
+- El hook rechaza el commit cuando hay cambios sin preparar o archivos sin seguimiento en `apps/`, `packages/`, `contracts/`, `firebase/` o `tool/`. La verificación lee el directorio de trabajo, así que solo es válida si este coincide con lo que se confirma. No se puede preparar una parte de un archivo: lo que no entra en el commit se guarda antes con `git stash`.
 - La integración continua repite la misma verificación en cada push a `main`.
 - El trabajo incompleto se integra desactivado mediante configuración, no en ramas largas.
 - Si `main` se rompe, repararlo o revertir el cambio es la prioridad.

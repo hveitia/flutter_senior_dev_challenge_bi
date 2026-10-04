@@ -20,7 +20,7 @@ La prueba exige Trunk Based Development y evalúa la frecuencia de los commits y
 La opción 4, apoyada en tres mecanismos:
 
 - **`tool/verify.sh`** es la única definición de "verde": formato, análisis estático y pruebas de todo el workspace.
-- **El hook `pre-commit`** ejecuta ese script y bloquea el commit si falla.
+- **El hook `pre-commit`** ejecuta ese script y bloquea el commit si falla. Antes comprueba que el directorio de trabajo coincide con lo que se confirma: rechaza el commit si hay cambios sin preparar o archivos sin seguimiento en las carpetas de código.
 - **La integración continua** ejecuta el mismo script en cada push a `main`.
 
 Reglas de trabajo:
@@ -36,6 +36,7 @@ Reglas de trabajo:
 - **Se gana:** integración continua real, sin conflictos de fusión y con un historial lineal que muestra cómo se construyó la solución.
 - **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con una revisión independiente asistida por IA de cada etapa antes de subirla al repositorio remoto. Los hallazgos de cada revisión quedan anotados en el [registro de uso de IA](../ia/registro-uso-ia.md).
 - **Se paga:** el hook añade unos segundos a cada commit, y ese tiempo crecerá con el número de pruebas.
+- **Se paga:** no se puede preparar solo una parte de un archivo. El script verifica el directorio de trabajo, y durante la etapa 5 eso dejó pasar un commit cuyo contenido no compilaba por sí solo, porque el archivo que le faltaba ya existía en disco sin estar preparado. El hook exige ahora que ambos coincidan; lo que no entra en el commit se aparta con `git stash`.
 - **Limitación:** la integración continua cancela las ejecuciones en curso cuando llega un push nuevo, por lo que no todos los commits intermedios quedan verificados en el servidor. Todos lo están en local por el hook.
 
 ## Impacto a largo plazo

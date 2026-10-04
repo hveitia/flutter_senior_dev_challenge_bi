@@ -2,4 +2,25 @@
 # Keeps main releasable: a commit is only created when the workspace is green.
 set -euo pipefail
 
-exec "$(git rev-parse --show-toplevel)/tool/verify.sh"
+cd "$(git rev-parse --show-toplevel)"
+
+# The verification reads the working tree, so it only says something about the
+# commit when the working tree holds exactly what is being committed. A change
+# left unstaged, or a new file left untracked, would be verified without being
+# part of the commit, and a commit that does not build could get through.
+guarded=(apps packages contracts firebase tool)
+
+unstaged=$(git diff --name-only -- "${guarded[@]}")
+untracked=$(git ls-files --others --exclude-standard -- "${guarded[@]}")
+
+if [ -n "$unstaged" ] || [ -n "$untracked" ]; then
+  {
+    echo "pre-commit: the working tree differs from what is being committed."
+    echo "Stage or stash these files so the verification covers the commit:"
+    [ -z "$unstaged" ] || printf '  not staged: %s\n' $unstaged
+    [ -z "$untracked" ] || printf '  untracked:  %s\n' $untracked
+  } >&2
+  exit 1
+fi
+
+exec tool/verify.sh

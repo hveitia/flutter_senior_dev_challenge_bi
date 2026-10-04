@@ -82,6 +82,19 @@ npm run start
 
 Al abrir la consola sin sesión se redirige a `/login`. Si `config/home` no existe todavía, el editor se abre con el ejemplo del contrato y la primera publicación crea el documento con la versión 1.
 
+### Secciones
+
+La consola se divide en secciones, con un menú bajo la barra superior. Cada una tiene su dirección, que se puede recargar o compartir:
+
+| Sección | Dirección | Qué se edita |
+| --- | --- | --- |
+| Inicio | `/` o `/?seccion=inicio` | Orden y visibilidad de los módulos y el banner, por segmento |
+| Funcionalidades | `/?seccion=funcionalidades` | Transferencias y servicios de aliados, por segmento |
+| Resiliencia | `/?seccion=resiliencia` | Fallos simulados, para todos los segmentos. Solo con `BACKOFFICE_ENVIRONMENT=demo` |
+| Notificaciones | `/?seccion=notificaciones` | Envío de avisos e historial |
+
+Todas editan el mismo borrador: los cambios pendientes y «Publicar cambios» están en la barra superior, y una publicación envía lo editado en todas las secciones. El menú marca las secciones con cambios sin publicar. Cambiar de sección no descarta nada; recargar la página sí descarta el borrador, igual que antes.
+
 ## Pruebas
 
 ```bash

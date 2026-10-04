@@ -213,6 +213,46 @@ describe("Console", () => {
     expect(screen.getByText("Producción")).toBeTruthy();
   });
 
+  it("outside a demonstration, warns about published faults and lets them be removed", async () => {
+    const publish = renderConsole({
+      isDemo: false,
+      loaded: {
+        config: {
+          ...exampleConfig(),
+          configVersion: 14,
+          resilience: {
+            latencyMs: 4000,
+            movementsUnavailable: true,
+            partnerInsuranceUnavailable: false,
+          },
+        },
+        baseVersion: 14,
+        source: "published",
+        lastPublishedAt: null,
+      },
+    });
+    publish.mockResolvedValue({ ok: true, version: 15, publishedAt: "2026-10-03T14:00:00.000Z" });
+
+    expect(
+      screen.getByText(/La configuración publicada tiene fallos simulados activos/),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Quitar fallos simulados" }));
+    expect(screen.getByText("2 cambios sin publicar")).toBeTruthy();
+    await userEvent.click(publishButton());
+
+    expect(publish.mock.calls[0]![0].draft.resilience).toEqual({
+      latencyMs: 0,
+      movementsUnavailable: false,
+      partnerInsuranceUnavailable: false,
+    });
+  });
+
+  it("shows no fault warning when nothing is simulated", () => {
+    renderConsole({ isDemo: false });
+
+    expect(screen.queryByRole("button", { name: "Quitar fallos simulados" })).toBeNull();
+  });
+
   it("shows simulated faults in the preview", async () => {
     renderConsole();
 

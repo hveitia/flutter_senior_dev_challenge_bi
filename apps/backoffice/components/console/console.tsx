@@ -11,7 +11,12 @@ import {
   setPromo,
   setResilience,
 } from "@/lib/config/editing";
-import { resilienceOf, type HomeConfig } from "@/lib/config/types";
+import {
+  hasFaults,
+  NO_FAULTS,
+  resilienceOf,
+  type HomeConfig,
+} from "@/lib/config/types";
 import {
   canPublish,
   editorReducer,
@@ -21,6 +26,7 @@ import {
   type LoadedConfig,
 } from "@/lib/console/editor-state";
 import type { PushRecord } from "@/lib/server/push";
+import { AlertIcon, Button } from "../ui";
 import { ModulesCard } from "./modules-card";
 import { PhonePreview } from "./phone-preview";
 import { PublishFailureBanner } from "./publish-failure-banner";
@@ -151,6 +157,26 @@ export function Console({
               resilience={resilienceOf(state.draft)}
               onChange={(patch) => edit(setResilience(state.draft, patch))}
             />
+          ) : hasFaults(resilienceOf(state.draft)) ? (
+            // The lab is hidden here, but faults published from a
+            // demonstration would otherwise stay live with no way out.
+            <div
+              role="status"
+              className="flex items-center gap-3 rounded-admin border border-warning-500 bg-warning-tint px-4 py-3 text-warning-500"
+            >
+              <AlertIcon />
+              <p className="flex-1 text-body">
+                La configuración publicada tiene fallos simulados activos. Este
+                entorno no permite añadirlos, solo quitarlos.
+              </p>
+              <Button
+                variant="text"
+                className="text-warning-500"
+                onClick={() => edit(setResilience(state.draft, NO_FAULTS))}
+              >
+                Quitar fallos simulados
+              </Button>
+            </div>
           ) : null}
           </fieldset>
           <PushCard

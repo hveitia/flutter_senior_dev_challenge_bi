@@ -228,6 +228,64 @@ describe("publishConfig", () => {
     expect(live(store)?.configVersion).toBe(14);
   });
 
+  describe("outside a demonstration environment, with faults already published", () => {
+    const faulty = () =>
+      setResilience(published(14), { latencyMs: 2000, movementsUnavailable: true });
+
+    it("publishes other edits that leave the faults as they are", async () => {
+      const store = new MemoryStore(faulty());
+      const draft = setModuleVisible(faulty(), "starting", "promo", false);
+
+      const result = await publishConfig(store, production, admin, now, {
+        draft,
+        baseVersion: 14,
+      });
+
+      expect(result).toMatchObject({ ok: true, version: 15 });
+    });
+
+    it("publishes a draft that clears or reduces the faults", async () => {
+      const store = new MemoryStore(faulty());
+      const draft = setResilience(faulty(), {
+        latencyMs: 500,
+        movementsUnavailable: false,
+      });
+
+      const result = await publishConfig(store, production, admin, now, {
+        draft,
+        baseVersion: 14,
+      });
+
+      expect(result).toMatchObject({ ok: true });
+      expect(live(store)?.resilience?.movementsUnavailable).toBe(false);
+    });
+
+    it("refuses a draft that raises the latency", async () => {
+      const store = new MemoryStore(faulty());
+      const draft = setResilience(faulty(), { latencyMs: 2001 });
+
+      const result = await publishConfig(store, production, admin, now, {
+        draft,
+        baseVersion: 14,
+      });
+
+      expect(result).toEqual({ ok: false, kind: "faults-not-allowed" });
+    });
+
+    it("refuses a draft that takes another service down", async () => {
+      const store = new MemoryStore(faulty());
+      const draft = setResilience(faulty(), { partnerInsuranceUnavailable: true });
+
+      const result = await publishConfig(store, production, admin, now, {
+        draft,
+        baseVersion: 14,
+      });
+
+      expect(result).toEqual({ ok: false, kind: "faults-not-allowed" });
+      expect(live(store)?.configVersion).toBe(14);
+    });
+  });
+
   it("publishes a draft without faults outside a demonstration environment", async () => {
     const store = new MemoryStore(published(14));
     const draft = setModuleVisible(published(14), "starting", "promo", false);

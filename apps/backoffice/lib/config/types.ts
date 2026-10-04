@@ -54,6 +54,26 @@ export const NO_FAULTS: ResilienceSettings = {
   partnerInsuranceUnavailable: false,
 };
 
+export function hasFaults(faults: ResilienceSettings): boolean {
+  return (
+    faults.latencyMs > NO_FAULTS.latencyMs ||
+    faults.movementsUnavailable ||
+    faults.partnerInsuranceUnavailable
+  );
+}
+
+/** Whether `after` simulates anything that `before` did not, or more of it. */
+export function worsensFaults(
+  before: ResilienceSettings,
+  after: ResilienceSettings,
+): boolean {
+  return (
+    after.latencyMs > before.latencyMs ||
+    (after.movementsUnavailable && !before.movementsUnavailable) ||
+    (after.partnerInsuranceUnavailable && !before.partnerInsuranceUnavailable)
+  );
+}
+
 /** The resilience block with every field stated. */
 export function resilienceOf(config: HomeConfig): ResilienceSettings {
   return { ...NO_FAULTS, ...config.resilience };

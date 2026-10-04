@@ -1,5 +1,10 @@
 import { countChanges } from "@/lib/config/diff";
-import { NO_FAULTS, resilienceOf, type HomeConfig } from "@/lib/config/types";
+import {
+  NO_FAULTS,
+  resilienceOf,
+  worsensFaults,
+  type HomeConfig,
+} from "@/lib/config/types";
 import {
   configVersionOf,
   validateHomeConfig,
@@ -65,15 +70,6 @@ function serializedBytes(value: unknown): number | null {
   }
 }
 
-function hasFaults(config: HomeConfig): boolean {
-  const faults = resilienceOf(config);
-  return (
-    faults.latencyMs !== NO_FAULTS.latencyMs ||
-    faults.movementsUnavailable ||
-    faults.partnerInsuranceUnavailable
-  );
-}
-
 /**
  * Publishes a draft: validated against the contract first, then written only
  * if nobody else published since the editor loaded it. The version number is
@@ -106,18 +102,23 @@ export async function publishConfig(
   }
   const draft = validation.config;
 
-  if (!settings.isDemo && hasFaults(draft)) {
-    return { ok: false, kind: "faults-not-allowed" };
-  }
-
   return store.transact((stored, write) => {
     const storedVersion = configVersionOf(stored);
     if (storedVersion !== request.baseVersion) {
       return { ok: false, kind: "conflict", storedVersion };
     }
+    const previous = validateHomeConfig(stored);
+
+    // Outside a demonstration nobody may add a simulated fault or make one
+    // worse. Faults that are already live may stay or be reduced: refusing
+    // them outright would block every publish until someone cleared them,
+    // including the publish that clears them.
+    const liveFaults = previous.ok ? resilienceOf(previous.config) : NO_FAULTS;
+    if (!settings.isDemo && worsensFaults(liveFaults, resilienceOf(draft))) {
+      return { ok: false, kind: "faults-not-allowed" };
+    }
 
     const version = storedVersion === null ? FIRST_VERSION : storedVersion + 1;
-    const previous = validateHomeConfig(stored);
     const document: HomeConfig = { ...draft, configVersion: version };
     write(document, {
       version,

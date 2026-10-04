@@ -8,7 +8,7 @@ import type {
 import { Card, Field, Select, TextInput, Toggle } from "../ui";
 
 const MS_PER_SECOND = 1000;
-/** Upper end of the slider. The contract allows more; the demo does not need it. */
+/** Usual upper end of the slider. The contract allows more; the demo does not need it. */
 const MAX_LATENCY_SECONDS = 8;
 
 export function PromoCard({
@@ -122,6 +122,9 @@ export function ResilienceCard({
   onChange: (patch: Partial<ResilienceSettings>) => void;
 }) {
   const seconds = resilience.latencyMs / MS_PER_SECOND;
+  // A latency published above the usual range stretches the slider instead of
+  // being drawn at its end: the control never shows less than what is live.
+  const sliderMax = Math.max(MAX_LATENCY_SECONDS, Math.ceil(seconds));
   return (
     <Card
       title="Laboratorio de resiliencia"
@@ -134,9 +137,9 @@ export function ResilienceCard({
         id="latency"
         type="range"
         min={0}
-        max={MAX_LATENCY_SECONDS}
+        max={sliderMax}
         step={1}
-        value={Math.min(seconds, MAX_LATENCY_SECONDS)}
+        value={seconds}
         onChange={(event) =>
           onChange({ latencyMs: Number(event.target.value) * MS_PER_SECOND })
         }

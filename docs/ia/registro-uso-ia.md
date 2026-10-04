@@ -209,6 +209,8 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
   - **Documentación.** Al contrastar el diagrama de dependencias con los `pubspec.yaml` faltaban dos flechas de la aplicación y una frase daba por terminada una etapa anterior; se corrigieron. La tabla de requisitos distingue lo visto en un dispositivo de lo cubierto solo por pruebas.
   - Sin verificar: la aplicación en un dispositivo contra el modo local, en particular que Firestore vuelva a apuntar al emulador tras cerrar sesión; la publicación desde la consola local más allá de cargarla con sesión; y todo lo que ya figuraba sin verificar en las etapas anteriores.
   - **Despliegue.** El servidor se desplegó después en Firebase App Hosting. La compilación de la plataforma falló por dos cosas que la comprobación previa en contenedor no había mostrado (una prueba que importaba el archivo de configuración y la salida anidada por importar fuera de la carpeta); se reprodujeron en local con el adaptador de la plataforma y se corrigieron. El detalle está en `docs/operacion/backoffice.md`.
+- **Ajuste tras probar la aplicación.** El autor vio que «Ver todos» llevaba a Cuentas y pidió una pantalla de movimientos. El asistente la construyó reutilizando la lista del detalle de cuenta, con las pruebas primero (25 en rojo por comportamiento en la aplicación y 2 en el servidor), y corrigió en el servidor un motivo de rechazo que se leía mal.
+  - Sin verificar: no se vio en un dispositivo (el teléfono estaba bloqueado) y la prueba de extremo a extremo de ida y vuelta sigue sin una ejecución válida.
 
 ## Impacto por etapa
 

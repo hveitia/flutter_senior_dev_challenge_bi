@@ -108,6 +108,8 @@ Sin conexión no se añade el aviso de «no pudimos actualizar»: el aviso gener
 
 **Telemetría.** Dos trazas miden la primera carga de cuentas y de movimientos, con el origen y la cantidad de elementos. Los eventos de falla, reintento y datos servidos desde la copia llevan el servicio, el tipo de falla y cantidades. Ningún importe, número de cuenta, descripción o nombre llega a la telemetría; los errores inesperados se informan solo con su tipo.
 
+**Todos los movimientos.** «Ver todos», bajo los últimos movimientos del inicio, y una entrada en Cuentas abren la pantalla Movimientos: los movimientos de todas las cuentas, del más reciente al más antiguo. No es una lectura nueva: es la misma consulta de los últimos movimientos (`users/{uid}/movements` por fecha, servicio `movements`) con un límite que crece de 20 en 20, y no necesita índice compuesto. El Bloc de movimientos sigue una cuenta o todas, y las dos pantallas dibujan la lista con el mismo código, de modo que la búsqueda, los filtros, las páginas, los avisos de datos guardados y la reconexión de la escucha se comportan igual. Cada fila nombra su cuenta. No hay filtro por cuenta: para eso está el detalle de cada una. El destino `movements` existe solo dentro de la aplicación; no está en la lista de destinos del contrato publicado, así que ni un banner ni una notificación pueden llevar a esta pantalla. Añadirlo al contrato y a la consola queda como posible continuación.
+
 **Alcance del cliente.** El repositorio y el Bloc de cuentas se crean al iniciar sesión, por cliente, y se destruyen al cerrarla. Un segundo cliente en el mismo dispositivo empieza sin nada del anterior.
 
 ## Trade-offs

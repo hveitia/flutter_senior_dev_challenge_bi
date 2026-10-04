@@ -13,7 +13,7 @@ export function Card({
 }) {
   return (
     <section className="rounded-admin border border-line bg-surface-0 p-5">
-      <h2 className="font-heading text-subtitle">{title}</h2>
+      <h3 className="font-heading text-subtitle">{title}</h3>
       {description ? (
         <p className="mt-1 text-caption text-secondary">{description}</p>
       ) : null}

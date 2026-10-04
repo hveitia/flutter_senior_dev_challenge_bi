@@ -13,8 +13,8 @@ export interface Section {
   slug: string;
   label: string;
   description: string;
-  /** Whether what is edited here belongs to the selected segment. */
-  perSegment: boolean;
+  /** What choosing a segment means while this section is open. */
+  segmentNote: string;
   /** Whether an edit made here changes what the home shows. */
   showsPreview: boolean;
 }
@@ -22,13 +22,16 @@ export interface Section {
 /** The query parameter that carries the section. */
 export const SECTION_PARAM = "seccion";
 
+const PER_SEGMENT_NOTE =
+  "Los cambios de esta sección se aplican al segmento seleccionado.";
+
 const SECTIONS: readonly Section[] = [
   {
     id: "home",
     slug: "inicio",
     label: "Inicio",
     description: "Orden, visibilidad y banner del inicio de cada segmento.",
-    perSegment: true,
+    segmentNote: PER_SEGMENT_NOTE,
     showsPreview: true,
   },
   {
@@ -36,7 +39,7 @@ const SECTIONS: readonly Section[] = [
     slug: "funcionalidades",
     label: "Funcionalidades",
     description: "Lo que cada segmento puede usar en la aplicación.",
-    perSegment: true,
+    segmentNote: PER_SEGMENT_NOTE,
     showsPreview: true,
   },
   {
@@ -44,7 +47,8 @@ const SECTIONS: readonly Section[] = [
     slug: "resiliencia",
     label: "Resiliencia",
     description: "Fallos simulados para la demostración.",
-    perSegment: false,
+    segmentNote:
+      "Estos ajustes valen para todos los segmentos. El segmento solo cambia la vista previa.",
     showsPreview: true,
   },
   {
@@ -52,7 +56,7 @@ const SECTIONS: readonly Section[] = [
     slug: "notificaciones",
     label: "Notificaciones",
     description: "Envía un aviso y revisa los últimos envíos.",
-    perSegment: false,
+    segmentNote: "Un envío a un segmento se dirige al segmento seleccionado.",
     showsPreview: false,
   },
 ];

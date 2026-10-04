@@ -256,8 +256,8 @@ void main() {
 
       expect(
         find.text(
-          'El banco ya recibió 1 transferencia y la realizará aunque '
-          'cierres sesión.',
+          'El banco ya recibió 1 transferencia. No se descarta: se '
+          'completará cuando vuelvas a iniciar sesión.',
         ),
         findsOneWidget,
       );
@@ -287,8 +287,8 @@ void main() {
         find.text(
           'Tienes 2 transferencias que solo existen en este teléfono. Si '
           'cierras sesión ahora, se descartan y no se enviarán.\n\n'
-          'El banco ya recibió 1 transferencia y la realizará aunque '
-          'cierres sesión.',
+          'El banco ya recibió 1 transferencia. No se descarta: se '
+          'completará cuando vuelvas a iniciar sesión.',
         ),
         findsOneWidget,
       );

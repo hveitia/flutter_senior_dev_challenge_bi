@@ -43,12 +43,14 @@ abstract final class ShellStrings {
     };
     final carriedOut = switch (delivered) {
       <= 0 => null,
+      // The server settles an order when the app asks, so it happens the
+      // next time this customer signs in: promising "now" would be untrue.
       1 =>
-        'El banco ya recibió 1 transferencia y la realizará aunque '
-            'cierres sesión.',
+        'El banco ya recibió 1 transferencia. No se descarta: se '
+            'completará cuando vuelvas a iniciar sesión.',
       _ =>
-        'El banco ya recibió $delivered transferencias y las realizará '
-            'aunque cierres sesión.',
+        'El banco ya recibió $delivered transferencias. No se descartan: '
+            'se completarán cuando vuelvas a iniciar sesión.',
     };
     return [?discarded, ?carriedOut].join('\n\n');
   }

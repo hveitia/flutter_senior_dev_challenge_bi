@@ -48,7 +48,8 @@ describe("parseTransferBody", () => {
   });
 
   it("treats a missing concept as an empty one", () => {
-    const { concept: _concept, ...withoutConcept } = valid;
+    const withoutConcept: Record<string, unknown> = { ...valid };
+    delete withoutConcept.concept;
 
     expect(parseTransferBody(withoutConcept)).toMatchObject({
       ok: true,
@@ -136,7 +137,8 @@ describe("orderFromStored", () => {
   });
 
   it("reads a missing concept as empty", () => {
-    const { concept: _concept, ...withoutConcept } = stored;
+    const withoutConcept: Record<string, unknown> = { ...stored };
+    delete withoutConcept.concept;
 
     expect(orderFromStored(withoutConcept)?.concept).toBe("");
   });

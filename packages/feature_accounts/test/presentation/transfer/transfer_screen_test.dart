@@ -341,6 +341,20 @@ void main() {
 
     expect(find.text('No pudimos enviar la transferencia'), findsOneWidget);
     expect(find.text('Continuar'), findsNothing);
+    // The customer is told what the order waits for, that repeating it
+    // cannot move the money twice, and why no other can be started.
+    expect(
+      find.textContaining('Aún no sabemos si el banco la recibió'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('esta misma transferencia, nunca una segunda'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('no podrás iniciar otra'),
+      findsOneWidget,
+    );
 
     await tap(tester, 'Reintentar');
     await tester.pump();

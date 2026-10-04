@@ -130,6 +130,97 @@ void main() {
       expect(api.submitted, [order]);
     });
 
+    test('an order that left is not queued when the customer repeats it '
+        'without a connection', () async {
+      api.onCall = () => Future.delayed(
+        const Duration(seconds: 1),
+        () => const ApiTransferCompleted('late'),
+      );
+      await repository.send(order);
+      final askedBefore = api.submitted.length;
+
+      // The customer taps "Reintentar" with the connection gone.
+      online = false;
+      final outcome = await repository.send(order);
+
+      // The first request may have been settled: a queued copy would say
+      // "it will be sent" about an order that may already be done.
+      expect(outcome, isA<TransferNotSent>());
+      expect(queue.orders, isEmpty);
+      expect(api.submitted, hasLength(askedBefore));
+      expect(repository.unresolved, order);
+    });
+
+    test('an order that left is not queued when the policy finds no '
+        'connection before the first attempt of its repeat', () async {
+      var policyOffline = false;
+      final flaky = DefaultTransfersRepository(
+        api: api,
+        queue: queue,
+        telemetry: telemetry,
+        // The repository always sees a connection; only the policy, a
+        // moment later, does not.
+        isOnline: () async => true,
+        policy: ResiliencePolicy(
+          isOffline: () => policyOffline,
+          delay: (_) async {},
+          timeout: const Duration(milliseconds: 20),
+        ),
+      );
+      api.onCall = () => Future.delayed(
+        const Duration(seconds: 1),
+        () => const ApiTransferCompleted('late'),
+      );
+      await flaky.send(order);
+      final askedBefore = api.submitted.length;
+
+      policyOffline = true;
+      final outcome = await flaky.send(order);
+
+      expect(outcome, isA<TransferNotSent>());
+      expect(queue.orders, isEmpty);
+      expect(api.submitted, hasLength(askedBefore));
+      expect(flaky.unresolved, order);
+    });
+
+    test('a different order placed without a connection is still queued '
+        'while an earlier one awaits its answer', () async {
+      api.onCall = () => Future.delayed(
+        const Duration(seconds: 1),
+        () => const ApiTransferCompleted('late'),
+      );
+      await repository.send(order);
+      const other = TransferOrder(
+        id: 'order-0000000000000002',
+        fromAccountId: 'checking',
+        toAccountId: 'savings',
+        amountCents: 500,
+      );
+
+      online = false;
+      final outcome = await repository.send(other);
+
+      expect(outcome, const TransferQueued());
+      expect(queue.orders, [other]);
+    });
+
+    test('a bank that says it has no such order ends it: no money moved, and '
+        'the customer is free to place another', () async {
+      api.onCall = () => Future.delayed(
+        const Duration(seconds: 1),
+        () => const ApiTransferCompleted('late'),
+      );
+      await repository.send(order);
+      expect(repository.unresolved, order);
+
+      api.onCall = () async => const ApiTransferNotFound();
+      final outcome = await repository.send(order);
+
+      expect(outcome, const TransferStopped(TransferStop.notAccepted));
+      expect(repository.unresolved, isNull);
+      expect(queue.orders, isEmpty);
+    });
+
     for (final (status, stop) in [
       (401, TransferStop.sessionExpired),
       (409, TransferStop.orderChanged),

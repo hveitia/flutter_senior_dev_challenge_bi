@@ -236,16 +236,20 @@ final class TransferCubit extends Cubit<TransferState> {
   }
 
   Future<void> _send() async {
-    final source = from;
-    final destination = to;
-    if (source == null || destination == null) return;
+    // The ids, not the accounts as listed now: an order that already left
+    // is repeated as it was even if one of its accounts is no longer
+    // listed, so the bank can give its final answer for it. A new order
+    // only gets here through the form, which requires both accounts.
+    final sourceId = state.fromAccountId;
+    final destinationId = state.toAccountId;
+    if (sourceId == null || destinationId == null) return;
 
     emit(state.copyWith(step: TransferStep.sending));
     final outcome = await _repository.send(
       TransferOrder(
         id: _orderId ??= _newId(),
-        fromAccountId: source.id,
-        toAccountId: destination.id,
+        fromAccountId: sourceId,
+        toAccountId: destinationId,
         amountCents: state.amountCents,
         concept: state.concept.trim(),
       ),

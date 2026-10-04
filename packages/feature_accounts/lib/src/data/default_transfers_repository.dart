@@ -35,12 +35,21 @@ final class DefaultTransfersRepository implements TransfersRepository {
 
   @override
   Future<TransferOutcome> send(TransferOrder order) async {
-    // Known to be offline: nothing was sent, so the order can wait on the
-    // device without any doubt about what the server did with it.
-    if (!await _isOnline()) return _enqueue(order);
+    // An order kept as unresolved left this device in an earlier call: the
+    // server may have settled it, whatever the connection is now.
+    final leftBefore = _unresolved?.id == order.id;
+
+    if (!await _isOnline()) {
+      // Repeating an order that already left cannot queue it: "En cola"
+      // would promise to send something that may already be done.
+      if (leftBefore) return _notSent(const OfflineFailure());
+      // Known to be offline and never sent: the order can wait on the
+      // device without any doubt about what the server did with it.
+      return _enqueue(order);
+    }
 
     // From the first attempt on, the request may have reached the server.
-    var left = false;
+    var left = leftBefore;
     final answer = await _settling(() {
       left = true;
       _unresolved = order;
@@ -54,16 +63,16 @@ final class DefaultTransfersRepository implements TransfersRepository {
         _resolved(order.id);
         return _rejected(reason);
       case Success(value: ApiTransferNotFound()):
-        // The online route creates the order; it cannot be missing.
-        return _notSent(
-          UnexpectedFailure(
-            const ApiContractError(_notFoundStatus, _notFoundCode),
-            StackTrace.current,
-          ),
-        );
+        // The route that creates the order says it has none: every attempt
+        // went to this same server, so no money moved. It is a final
+        // answer; keeping the order unresolved would block the customer
+        // behind a retry that can only repeat it.
+        _resolved(order.id);
+        return _stopped(const ApiContractError(_notFoundStatus, _notFoundCode));
       case Failed(failure: OfflineFailure()) when !left:
-        // The policy found no connection before the first attempt: nothing
-        // was sent, so the order can wait on the device.
+        // The policy found no connection before the first attempt of an
+        // order that never left: nothing was sent, so it can wait on the
+        // device.
         return _enqueue(order);
       case Failed(failure: UnexpectedFailure(cause: final ApiContractError e)):
         // The server answered, and the answer is about the request: no

@@ -181,6 +181,32 @@ void main() {
       );
     });
 
+    test('repeats the order whose outcome is unknown even when its accounts '
+        'are no longer listed, so the bank can answer for it', () async {
+      repository
+        ..unresolved = const TransferOrder(
+          id: 'order-left',
+          fromAccountId: 'closed-account',
+          toAccountId: 'savings',
+          amountCents: 2500,
+          concept: 'Arriendo',
+        )
+        ..onSend = (_) async =>
+            const TransferRejected(TransferRejection.unknownAccount);
+      final created = cubit();
+
+      await created.retryRequested();
+
+      // Doing nothing would leave the customer on a button that never
+      // answers; the same order, sent again, gets the bank's final word.
+      expect(repository.sent.single.id, 'order-left');
+      expect(repository.sent.single.fromAccountId, 'closed-account');
+      expect(
+        created.state.outcome,
+        const TransferRejected(TransferRejection.unknownAccount),
+      );
+    });
+
     test('after an order the server says changed, starting over goes back to '
         'the form and the next order has a new id', () async {
       repository.onSend = (_) async =>
@@ -457,6 +483,63 @@ void main() {
         created.state.lastRejection,
         TransferRejection.insufficientFunds,
       );
+    });
+
+    for (final (name, unanswered) in <(String, TransferOutcome)>[
+      ('the bank does not answer', const TransferNotSent(TimeoutFailure())),
+      ('there is no connection', const TransferNotSent(OfflineFailure())),
+      (
+        'the session has to be renewed',
+        const TransferStopped(TransferStop.sessionExpired),
+      ),
+    ]) {
+      test('an order turned away is not reported as lost while $name: it is '
+          'asked about again later', () async {
+        repository.onSettle = (_) async => unanswered;
+        final created = outbox();
+
+        repository.refused.add(first.id);
+        await settle();
+        await settle();
+
+        // Nothing is known yet: saying "no se pudo enviar" could be false.
+        expect(created.state.hasRefused, isFalse);
+        expect(created.state.lastRejection, isNull);
+        expect(waits, hasLength(1));
+
+        // Later the bank answers that it had carried it out.
+        repository.onSettle = (_) async =>
+            const TransferCompleted(reference: 'TRF-a');
+        waits.single.complete();
+        await settle();
+        await settle();
+
+        expect(repository.settled, [first.id, first.id]);
+        expect(created.state.hasRefused, isFalse);
+      });
+    }
+
+    test('an order turned away that had no answer is asked about again when '
+        'the connection returns, and then reported if the bank knows nothing '
+        'of it', () async {
+      online = false;
+      repository.onSettle = (_) async =>
+          const TransferNotSent(OfflineFailure());
+      final created = outbox();
+
+      repository.refused.add(first.id);
+      await settle();
+      await settle();
+      expect(created.state.hasRefused, isFalse);
+
+      online = true;
+      repository.onSettle = (_) async => null;
+      onlineChanges.add(true);
+      await settle();
+      await settle();
+
+      expect(created.state.hasRefused, isTrue);
+      expect(repository.settled, [first.id, first.id]);
     });
 
     test('a queued order the server cannot read is reported once and not '

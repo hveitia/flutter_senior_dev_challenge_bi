@@ -24,8 +24,14 @@ abstract final class TransferStrings {
   static const String queuedChip = 'En cola';
   static const String rejectedTitle = 'No pudimos realizar la transferencia';
   static const String notSentTitle = 'No pudimos enviar la transferencia';
+
+  /// Shown while an order has no final answer. It says what the order
+  /// waits for, that repeating it is safe, and why no other can start.
   static const String notSentMessage =
-      'No se ha movido dinero dos veces: puedes reintentar con tranquilidad.';
+      'Aún no sabemos si el banco la recibió. Cuando tengas conexión, '
+      'reintenta: se envía esta misma transferencia, nunca una segunda, '
+      'así que el dinero no puede moverse dos veces. Hasta conocer su '
+      'resultado no podrás iniciar otra.';
   static const String retry = 'Reintentar';
   static const String seeMovement = 'Ver movimiento';
   static const String backHome = 'Volver al inicio';

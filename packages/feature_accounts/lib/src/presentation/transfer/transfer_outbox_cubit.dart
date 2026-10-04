@@ -75,7 +75,9 @@ final class TransferOutboxCubit extends Cubit<TransferOutboxState> {
       onError: (Object _) {},
     );
     _onlineSubscription = onlineChanges.listen((online) {
-      if (online) unawaited(_drain());
+      if (!online) return;
+      _askAgainAboutRefused();
+      unawaited(_drain());
     });
   }
 
@@ -101,6 +103,10 @@ final class TransferOutboxCubit extends Cubit<TransferOutboxState> {
   /// one for a moment; it is not asked about again.
   final Set<String> _finished = {};
 
+  /// Orders the bank turned away from the queue whose fate it has not said
+  /// yet. They are no longer in the queue, so the drain does not see them.
+  final Set<String> _unanswered = {};
+
   void _onQueue(List<QueuedTransfer> queued) {
     if (isClosed) return;
     emit(state._with(queued: queued));
@@ -115,14 +121,29 @@ final class TransferOutboxCubit extends Cubit<TransferOutboxState> {
     if (isClosed) return;
     final outcome = await _repository.settle(transferId);
     if (isClosed) return;
-    _finished.add(transferId);
     switch (outcome) {
+      case TransferNotSent() ||
+          TransferStopped(reason: TransferStop.sessionExpired):
+        // The bank has not answered: the order may be fine. Saying it
+        // could not be sent would be a guess, so it is asked about again.
+        _unanswered.add(transferId);
+        unawaited(_retryLater());
+        return;
       case TransferCompleted():
         break;
       case TransferRejected(:final reason):
         emit(state._with(lastRejection: reason));
-      case null || TransferNotSent() || TransferQueued() || TransferStopped():
+      case null || TransferQueued() || TransferStopped():
         emit(state._with(hasRefused: true));
+    }
+    _unanswered.remove(transferId);
+    _finished.add(transferId);
+  }
+
+  /// Asks once more about every order turned away that got no answer.
+  void _askAgainAboutRefused() {
+    for (final transferId in List.of(_unanswered)) {
+      unawaited(_onRefused(transferId));
     }
   }
 
@@ -182,6 +203,10 @@ final class TransferOutboxCubit extends Cubit<TransferOutboxState> {
     _retryScheduled = true;
     await _delay(retryAfter);
     _retryScheduled = false;
+    if (isClosed) return;
+    // Without a connection there is nobody to ask; the return of the
+    // connection asks again, so no timer keeps running meanwhile.
+    if (_unanswered.isNotEmpty && await _isOnline()) _askAgainAboutRefused();
     if (!isClosed && state.hasUnsent) unawaited(_drain());
   }
 

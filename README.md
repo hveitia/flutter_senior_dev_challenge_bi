@@ -18,8 +18,8 @@ El proyecto se construye por etapas, con `main` siempre en verde. Esta sección 
 | 6. Inicio dinámico | Inicio armado desde la configuración publicada, registro de módulos por dominio, personalización por segmento, laboratorio de resiliencia y diagnóstico | Completa |
 | 7. Consola web | Edición y publicación de la configuración con control de versión, acceso de administradores y envío de notificaciones | Completa, sin desplegar |
 | 8. Transferencias | API de servidor, transferencias entre cuentas propias, cola sin conexión, alta de cuentas y flujo de extremo a extremo | Completa; la cola sin conexión no se ha visto en un dispositivo |
-| 9. Notificaciones | Push y bandeja | Pendiente |
-| 10. Servicios | Catálogo y micro aplicativos | Pendiente |
+| 9. Notificaciones | Bandeja escrita por el servidor, invitación previa al permiso, registro del dispositivo, tema por segmento y aviso de transferencia realizada | Completa en código y pruebas; sin ver en un dispositivo |
+| 10. Servicios | Catálogo, contenedor de mini aplicaciones de aliados, módulo «Para ti» y dos aliados simulados | Completa en código y pruebas; sin ver en un dispositivo |
 | 11. Cierre | Diagramas, despliegue, operación y guion de demostración | Pendiente |
 
 Lo que existe hoy:
@@ -31,6 +31,8 @@ Lo que existe hoy:
 - **Personalización.** El cliente cambia sus intereses y su segmento en Perfil, en «Personalización», y el inicio se recompone para el segmento nuevo sin iniciar sesión otra vez. El segmento Patrimonio muestra el saldo con las inversiones, la tendencia del saldo de los últimos 30 días, calculada a partir de los movimientos reales, y un módulo con lo invertido.
 - **Consola de experiencia.** Una aplicación web interna edita la configuración por segmento (orden y visibilidad de los módulos, banner, funcionalidades, laboratorio de resiliencia), la valida contra el contrato y la publica con control de versión. Lo publicado cambia el inicio de los teléfonos sin publicar la aplicación. También envía notificaciones ([Consola de experiencia](#consola-de-experiencia)).
 - **Transferencias.** El cliente transfiere entre sus cuentas de ahorros y corriente. El dinero lo mueve el servidor, en una transacción, a través de la API de clientes; la aplicación solo lo pide. Cada orden lleva un identificador propio que el servidor liquida una sola vez, así que repetirla nunca mueve el dinero dos veces. Sin conexión, la orden queda en cola en el teléfono y se envía sola al volver la red. Una orden que pudo salir del teléfono nunca se encola: se repite con el mismo identificador. Un cliente recién registrado recibe sus dos cuentas, con un depósito de demostración, sin intervención de nadie.
+- **Notificaciones.** La bandeja la escribe el servidor cuando una notificación sale de verdad, y el cliente solo puede marcarla como leída. La aplicación invita a activar las notificaciones antes de mostrar el aviso del sistema, registra el dispositivo para el cliente y sigue el tema de su segmento. El dispositivo se limpia en toda vía de cierre de sesión y antes de registrar a otro cliente en el mismo teléfono. Una transferencia realizada deja su aviso en la bandeja, sin montos ni números de cuenta.
+- **Servicios y mini aplicaciones de aliados.** Servicios lista lo que ofrece el banco y lo que ofrecen sus aliados. Una mini aplicación de un aliado se abre en un contenedor con la barra del banco, solo desde el origen indicado en la compilación, con un contrato de mensajes mínimo (idioma y segmento; nunca nombre, identificador ni saldos). El módulo «Para ti» del inicio recomienda los servicios publicados. Los dos aliados (seguro de viaje y recargas) son simulados y calculan en el servidor.
 - **Degradación.** Los formularios avisan de la falta de conexión, cada llamada pasa por la política de resiliencia y una cuenta cuyo perfil no llegó a guardarse se completa en el siguiente inicio de sesión. Sin conexión, el inicio, las cuentas y los movimientos se muestran desde la copia guardada en el dispositivo, indicando desde cuándo. Cada módulo del inicio tiene su propio estado: si los movimientos fallan, el saldo y las cuentas siguen en pantalla. El detalle está en [`docs/operacion/conectividad-degradada.md`](docs/operacion/conectividad-degradada.md).
 - **Laboratorio de resiliencia.** La configuración publicada puede añadir latencia y dar por caído el servicio de movimientos. Solo tiene efecto en una compilación hecha para demostración; una compilación normal lo ignora.
 - **Diagnóstico.** Perfil muestra el estado de la conexión, la antigüedad de la última sincronización, la versión y el origen de la configuración en uso y la versión de la aplicación, con valores reales.
@@ -38,9 +40,10 @@ Lo que existe hoy:
 
 Lo que todavía no hace la aplicación:
 
-- La sección Servicios dice que está en construcción. Perfil muestra el nombre, el correo y el segmento del cliente, la personalización, el diagnóstico y permite cerrar sesión.
-- Las acciones del inicio cuyo destino aún no tiene pantalla (recargar, el seguro de viaje) no se muestran, aunque la configuración las publique. Tampoco se dibuja el módulo de servicios recomendados.
-- La consola web no está desplegada: se ejecuta en local. La aplicación todavía no registra dispositivos, así que las notificaciones que envía la consola se validan contra el servicio y no llegan a ningún teléfono.
+- Notificaciones, Servicios y las mini aplicaciones están cubiertos por pruebas automáticas y por el emulador de reglas, pero nada de ello se ha ejecutado todavía en un dispositivo ni contra el servicio de mensajería. El borrado de lo que guarda la vista web al cerrar sesión está pendiente de comprobación, y en iOS no cubre todo el almacenamiento.
+- Una compilación sin `PARTNER_BASE_URL` no ofrece ninguna mini aplicación. Perfil muestra el nombre, el correo y el segmento del cliente, la personalización, el diagnóstico y permite cerrar sesión.
+- Las acciones del inicio cuyo destino no tiene pantalla en la compilación instalada no se muestran, aunque la configuración las publique. Es el caso de las mini aplicaciones en una compilación sin origen de aliados.
+- La consola web no está desplegada: se ejecuta en local. La entrega real de una notificación exige `PUSH_DELIVERY=live` en el servidor y todavía no se ha comprobado contra el servicio de mensajería.
 - La API de clientes no está desplegada: se ejecuta en local, junto a la consola. Sin ella en marcha, la aplicación no puede transferir ni abrir las cuentas de un cliente nuevo; para ese caso sigue existiendo la herramienta que carga datos de demostración (ver [Datos de demostración](#datos-de-demostración-herramienta-de-desarrollo)).
 - Solo se transfiere entre cuentas propias de ahorros y corriente. No hay terceros, ni otros bancos, ni comprobante para compartir. Compartir los datos de la cuenta tampoco está: esas acciones del diseño no se muestran hasta que tengan algo detrás.
 - La cola de transferencias sin conexión, su envío al reconectar y el alta de un cliente nuevo están cubiertos por pruebas automáticas, pero no se han visto en un dispositivo.
@@ -52,7 +55,7 @@ Qué se ha comprobado en ejecución:
 - **En un teléfono Android real** contra el proyecto real (etapa 6), con la compilación de demostración: el inicio armado desde la configuración publicada; un cambio de orden y un módulo oculto publicados mientras la aplicación estaba abierta, reflejados sin reiniciarla; el servicio de movimientos dado por caído, con el saldo y las cuentas en pantalla, y su recuperación; la latencia añadida y el aviso de conexión lenta; el inicio en modo avión y al abrir la aplicación sin conexión; el aviso de conexión restablecida; el diagnóstico con la versión publicada; y una compilación sin la opción de demostración, que ignoró los fallos publicados.
 - **En el mismo teléfono, tras la revisión de la etapa 6:** el cambio de segmento desde Perfil, de Familia a Patrimonio y después a Estoy empezando, con el inicio recompuesto cada vez (el de Patrimonio con la tendencia, el saldo con inversiones y el módulo de inversiones); un inicio de acciones rápidas, banner y movimientos con el servicio de movimientos caído, en el que los módulos sin datos siguieron en pantalla; un fallo publicado y retirado con el inicio abierto, que surtió efecto sin deslizar ni reintentar; y el cierre y el nuevo inicio de sesión.
 - **De la consola al teléfono:** con la consola ejecutándose en local contra el proyecto real, un cambio de orden publicado desde ella cambió el inicio del teléfono sin tocarlo.
-- **No se han comprobado en un dispositivo:** el desbloqueo biométrico, el correo de restablecimiento de contraseña, el error único cuando ningún módulo tiene nada que mostrar, la entrega real de una notificación (cubiertos por pruebas automáticas o pendientes de su etapa), ni nada en iOS. La consola no está desplegada.
+- **No se han comprobado en un dispositivo:** el desbloqueo biométrico, el correo de restablecimiento de contraseña, el error único cuando ningún módulo tiene nada que mostrar, la entrega real de una notificación, la bandeja, el registro del dispositivo, las mini aplicaciones de aliados y el borrado de lo que guarda su vista web (cubiertos por pruebas automáticas), ni nada en iOS. La consola no está desplegada.
 
 La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado.
 
@@ -124,6 +127,26 @@ adb install -r build/app/outputs/flutter-apk/app-profile.apk
 ```
 
 La compilación de Android está verificada (`flutter build apk --debug`). El proyecto de iOS está configurado, pero su compilación aún no se ha verificado.
+
+### Mini aplicaciones de aliados
+
+Las páginas de los aliados simulados se sirven desde `apps/backoffice`, bajo `/partners`, sin sesión ni variables de entorno: el mismo servidor local de la API. La aplicación solo las carga si la compilación indica su origen:
+
+```bash
+cd apps/backoffice && npm ci && npm run build && npx next start -p 3210
+adb reverse tcp:3210 tcp:3210
+cd ../mobile
+flutter build apk --profile \
+  --dart-define=ALLOW_FAULT_INJECTION=true \
+  --dart-define=PARTNER_BASE_URL=http://localhost:3210 \
+  --dart-define=PARTNER_DEV_ORIGIN=true
+```
+
+El `http` exige tres cosas a la vez: `PARTNER_DEV_ORIGIN`, una compilación que no sea de publicación y un host local (`localhost`, `127.0.0.1` o `10.0.2.2`). Una compilación de publicación con un origen `http`, o cualquier compilación sin `PARTNER_BASE_URL`, no ofrece ninguna mini aplicación. Los aliados son simulados y se alojan junto a la consola solo para la demostración; uno real viviría en su propio origen ([ADR 0019](docs/adr/0019-mini-aplicaciones-de-aliados.md)).
+
+### Notificaciones
+
+La consola envía una notificación a un segmento o a un cliente y la deja en la bandeja de cada destinatario. Sin `PUSH_DELIVERY=live` en el servidor, el envío solo se valida: no se entrega ni se escribe en la bandeja. Un aviso no debe llevar montos, números de cuenta ni datos personales, porque puede verse con el teléfono bloqueado ([ADR 0018](docs/adr/0018-notificaciones-y-bandeja.md)).
 
 ### Datos de demostración (herramienta de desarrollo)
 
@@ -242,6 +265,8 @@ Qué cubren hoy las pruebas:
 | `packages/feature_accounts` | Filtro, búsqueda y agrupación por día de los movimientos, textos de fecha y de antigüedad con reloj inyectado, estado de un conjunto de datos (guardado, cargando, desactualizado), repositorio (origen y antigüedad de cada entrega, copia vacía que no se muestra, reintentos, movimientos caídos con cuentas en pie), Blocs de cuentas y de movimientos, pantallas en cada estado y con texto al 130 %, rutas, lectura tolerante de los documentos, ausencia de importes y números de cuenta en la telemetría, y límites entre capas |
 | `packages/module_kit` | Registro de módulos (un dueño por tipo), lectura tolerante de las propiedades publicadas, aviso del estado de un módulo (incluido «no tengo nada que dibujar») y registro de su actualización, retirada del aviso al salir de pantalla, y que el contrato solo depende del framework |
 | `packages/feature_home` | Composición del inicio (orden publicado, módulos ocultos, tipos desconocidos omitidos), recomposición al publicarse otra configuración o cambiar el segmento, aviso único de un tipo omitido, pantalla de inicio (módulos que conservan su estado, falla de un módulo frente a falla de todos, deslizar para actualizar, sin conexión, texto al 130 %), acciones rápidas y banner que solo muestran lo que la aplicación puede abrir, y que el paquete no depende de otro dominio |
+| `packages/feature_notifications` | Invitación previa al permiso, registro y olvido del dispositivo (pasos que fallan o se cuelgan, cambio de segmento, permiso retirado, teléfono que cambia de cliente), bandeja con sus estados y marcado como leído, aviso tocado sin sesión o con la sesión bloqueada, y que el dominio no importa Firebase fuera de sus adaptadores |
+| `packages/feature_services` | Catálogo, regla de origen de los aliados (incluido el `http` solo en desarrollo), contrato de mensajes con la página, contenedor de la mini aplicación (cargas reemplazadas, tiempo límite, fallos, servicio caído por el laboratorio, enlaces fuera del origen), borrado por pasos de lo que guarda la vista web y módulo «Para ti» |
 | `apps/mobile` | Navegación según el estado de la sesión con dependencias simuladas, navegación inferior y secciones, repositorio de cuentas creado para el cliente que inicia sesión y liberado al cerrarla, inicio armado desde la configuración y recompuesto al publicar otra, configuración escuchada solo durante la sesión, fallos del laboratorio entregados a la política y retirados al cerrar sesión, resolución de destinos según pantallas existentes y funcionalidades activas, diagnóstico, pantalla de carga, galería del sistema de diseño, manejadores globales de errores, arranque sin telemetría cuando Firebase falla y validez de la configuración incluida |
 | `firebase` | Reglas de seguridad: qué puede leer y escribir un cliente en su perfil, que puede leer y consultar sus cuentas y movimientos pero no los de otro, y que cuentas, movimientos y configuración no admiten escrituras de clientes. Datos de la herramienta de carga: saldos, sumas e identificadores estables. Documento que publica la herramienta de configuración: fallos pedidos, límites del contrato y conversión al formato de Firestore |
 
@@ -283,6 +308,8 @@ packages/
   feature_accounts/  Cuentas, saldos y movimientos, solo lectura. Aporta al inicio los módulos de saldo, cuentas, inversiones y últimos movimientos.
   module_kit/        Contrato entre los dominios y el inicio: registro de módulos, anfitrión y destinos.
   feature_home/      Motor del inicio: lo arma desde la configuración publicada. Aporta acciones rápidas y banner.
+  feature_notifications/  Notificaciones push y bandeja del cliente.
+  feature_services/  Servicios: catálogo, contenedor de mini aplicaciones de aliados y módulo «Para ti» del inicio.
 contracts/           Esquema y ejemplo de la configuración publicada. Fuente única para la aplicación y la consola.
 firebase/            Reglas de seguridad e índices de Firestore, con las pruebas de las reglas.
   seed/              Herramientas de desarrollo: cargan cuentas y movimientos de demostración y publican la configuración.
@@ -292,7 +319,7 @@ tool/                Scripts de configuración y verificación.
 .github/workflows/   Integración continua.
 ```
 
-Los demás paquetes de `packages/` se crean en sus etapas correspondientes. La estructura completa prevista está en el [ADR 0001](docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md).
+Todos los paquetes de dominio previstos existen. La estructura y su justificación está en el [ADR 0001](docs/adr/0001-monorepo-workspaces-paquetes-por-dominio.md).
 
 ## Seguridad
 

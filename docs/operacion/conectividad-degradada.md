@@ -143,12 +143,32 @@ Quien sigue la configuración avisa a la política cuando los fallos publicados 
 
 Una observación sin explicar: en el primer arranque tras instalar la compilación de demostración, con un fallo de movimientos publicado mientras la aplicación estaba cerrada, el inicio mostró los movimientos sin el aviso durante al menos 14 segundos. No se reprodujo en dos intentos posteriores con los mismos pasos, en los que el aviso apareció en menos de 5 segundos.
 
+## Mini aplicaciones de aliados
+
+| Situación | Qué ve el cliente | Estado |
+| --- | --- | --- |
+| Sin conexión al abrir | «Servicio no disponible», con el aviso de falta de conexión y «Reintentar» | Pruebas |
+| El aliado tarda más de 15 s | «Servicio no disponible» | Pruebas |
+| El servidor del aliado responde con error, o la página no carga | «Servicio no disponible», una sola vez aunque el fallo se informe dos | Pruebas |
+| Un recurso secundario de la página falla | Nada: la página sigue | Pruebas |
+| Una página ya a la vista navega a otra del aliado y esa falla | «Servicio no disponible», en lugar de la página de error de la vista web | Pruebas |
+| El cliente reintenta mientras carga | La carga anterior se abandona y lo que responda tarde no cambia nada | Pruebas |
+| El laboratorio da por caído el seguro de viaje | «Servicio no disponible» al instante, también con la mini aplicación abierta o comprobando si puede abrirse; se recupera sola al levantarse. Recargas no se ve afectada | Pruebas |
+| Los servicios de aliados se apagan en la configuración | Desaparecen de Servicios y de «Para ti», y una mini aplicación abierta se cierra | Pruebas |
+| El borrado del cierre de sesión anterior no terminó | Se completa antes de cargar; si no puede, «Servicio no disponible» | Pruebas |
+
+En todos los casos la barra del banco permanece y el mensaje dice que la cuenta y los saldos no se ven afectados. Nada de esta tabla se ha visto todavía en un dispositivo.
+
+## Notificaciones
+
+La bandeja es una lectura como las demás: sin conexión muestra los avisos guardados bajo el aviso de falta de conexión, y un fallo con datos guardados no los reemplaza por un error. Un aviso tocado sin sesión, o con la sesión bloqueada, se conserva y se abre cuando el cliente entra. El aviso de una transferencia realizada se escribe después de responder a la aplicación: si falla, la transferencia no se ve afectada. Cubierto por pruebas; sin ver en un dispositivo.
+
 ## Qué no está hecho
 
 - **Publicar los fallos desde la consola, visto en un dispositivo.** La consola tiene el laboratorio de resiliencia y sus pruebas, pero en el teléfono los fallos se publicaron con la herramienta de desarrollo `firebase/seed/publish-config.mjs`. Desde la consola se comprobó en el teléfono un cambio de orden de módulos.
 - **El aviso de conexión como aviso flotante.** El diseño muestra «Conexión restablecida» como un aviso flotante; la aplicación lo muestra como un aviso bajo el encabezado.
-- **Transferencias sin conexión.** La cola con identificador de idempotencia llega con la etapa 8.
-- **Micro aplicativos de aliados no disponibles.** Etapa 10.
+- **Transferencias sin conexión, vistas en un dispositivo.** La cola con identificador de idempotencia está construida y cubierta por pruebas (sección Transferencias), pero su envío al reconectar no se ha visto en un teléfono.
+- **Mini aplicaciones de aliados y notificaciones, vistas en un dispositivo.** Sus estados degradados están cubiertos por pruebas (secciones anteriores) y pendientes de comprobarse en un teléfono.
 - **El contador «Intento 2 de 3» del diseño.** La pantalla indica que está reintentando y, al terminar, cuántos intentos hubo.
 - **Detección de falta de salida real a internet.** El estado de conectividad dice si el dispositivo tiene una interfaz de red activa, no si esa red llega a internet (un portal cautivo, por ejemplo). En ese caso las peticiones agotan su tiempo y se muestran como una falla, no como «sin conexión».
 - **iOS.** Nada de lo anterior se ha ejecutado en iOS.

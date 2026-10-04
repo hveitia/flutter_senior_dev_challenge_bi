@@ -16,6 +16,8 @@ flowchart TB
     auth[feature_auth<br/>registro, sesión, desbloqueo, personalización]
     accounts[feature_accounts<br/>cuentas, movimientos<br/>módulos: saldo, cuentas, inversiones, últimos movimientos]
     home[feature_home<br/>motor del inicio<br/>módulos: acciones rápidas, banner]
+    notifications[feature_notifications<br/>bandeja, permiso, registro del dispositivo]
+    services[feature_services<br/>catálogo, contenedor de mini aplicaciones<br/>módulo: Para ti]
   end
 
   subgraph base[Paquetes compartidos]
@@ -28,11 +30,16 @@ flowchart TB
     fauth[(Firebase Auth)]
     fs[(Firestore)]
     obs[(Crashlytics, Analytics, Performance)]
+    fcm[(Cloud Messaging)]
+    api[(API de clientes)]
+    aliados[(Páginas de aliados)]
   end
 
   app --> auth
   app --> accounts
   app --> home
+  app --> notifications
+  app --> services
   app --> kit
 
   auth --> platform
@@ -43,7 +50,17 @@ flowchart TB
   home --> kit
   home --> platform
   home --> ds
+  notifications --> kit
+  notifications --> platform
+  notifications --> ds
+  services --> kit
+  services --> platform
+  services --> ds
 
+  accounts -. adaptadores .-> api
+  notifications -. adaptadores .-> fs
+  notifications -. adaptadores .-> fcm
+  services -. vista web .-> aliados
   auth -. adaptadores .-> fauth
   auth -. adaptadores .-> fs
   accounts -. adaptadores .-> fs
@@ -52,6 +69,8 @@ flowchart TB
 ```
 
 `module_kit` no depende de ningún otro paquete del repositorio: es el contrato y solo necesita el framework.
+
+Ningún paquete de dominio depende de otro. Notificaciones y servicios llegan al inicio sin que el inicio los conozca: la campana ocupa un hueco del encabezado que coloca la raíz de composición, y «Para ti» es un módulo que `feature_services` registra. Un aviso tocado y una acción del inicio usan el mismo resolutor de destinos, de modo que ambos abren lo mismo, mini aplicaciones incluidas.
 
 ## La consola y el contrato
 

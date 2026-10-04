@@ -59,6 +59,34 @@ Un valor distinto de cero en `accounts_data_documents_skipped` significa que alg
 | `home_refresh_requested` | El cliente desliza para actualizar el inicio, o reintenta desde el error de pantalla completa | Cantidad de módulos que se actualizan |
 | `home_nothing_to_show` | Todo lo que el inicio dibujaría es un módulo con datos que falló. Se emite al entrar en ese estado, y de nuevo solo después de haberse recuperado | Ninguno |
 
+- **Eventos de notificaciones** ([ADR 0018](../adr/0018-notificaciones-y-bandeja.md)). Ninguno lleva título, texto, dirección del dispositivo ni identificador del cliente.
+
+| Nombre | Cuándo se emite | Datos |
+|---|---|---|
+| `notifications_primer_shown` | Se mostró la invitación a activar notificaciones | Ninguno |
+| `notifications_primer_accepted` | El cliente aceptó la invitación | Ninguno |
+| `notifications_primer_declined` | El cliente eligió «Ahora no» | Ninguno |
+| `notifications_permission_result` | Respuesta al aviso del sistema | `result`: granted, denied, notAsked |
+| `notifications_device_registered` | El dispositivo quedó registrado para el cliente | Ninguno |
+| `notifications_device_failed` | Falló un paso del registro, del olvido del dispositivo o de la limpieza tras una sesión terminada o un cambio de cliente | `step`: register, subscribe, unsubscribe, remove, delete_token |
+| `notification_opened` | El cliente abrió una notificación | `kind`, `source`: inbox, system |
+| `notifications_load_failed` | La bandeja no pudo actualizarse | `reason`: offline, timeout, unavailable, unexpected |
+
+Un valor sostenido de `notifications_device_failed` con `step: delete_token` indica dispositivos que conservan una dirección que debía eliminarse. En el servidor, `transfer_notice_failed` deja una línea con el paso (`inbox` o `push`) cuando no se pudo avisar de una transferencia realizada; el aviso nunca retrasa ni cambia la respuesta de la transferencia.
+
+- **Eventos de las mini aplicaciones de aliados** ([ADR 0019](../adr/0019-mini-aplicaciones-de-aliados.md)). Ninguno lleva lo que el cliente escribió en la página del aliado ni lo que esta respondió.
+
+| Nombre | Cuándo se emite | Datos |
+|---|---|---|
+| `mini_app_opened` | El cliente abrió una mini aplicación; una vez, aunque reintente | `service` |
+| `mini_app_loaded` | La página del aliado terminó de cargar | `service`, `duration` (`under_1s`, `1_to_3s`, `3_to_8s`, `over_8s`) |
+| `mini_app_unavailable` | La mini aplicación no pudo mostrarse; una vez por carga, aunque el fallo se informe varias veces | `service`, `reason` (`not_configured`, `offline`, `outage`, `timeout`, `http_error`, `load_failed`) |
+| `mini_app_navigation_blocked` | La página, o un marco suyo, intentó salir del origen del aliado | `service`, `origin` (solo esquema, host y puerto) |
+| `mini_app_completed` | La página informó que el cliente terminó; una vez por carga | `service` |
+| `mini_app_message_dropped` | Llegó un mensaje fuera del contrato, durante la carga o con la vista web fuera del origen del aliado | `service` |
+
+`load_failed` incluye el caso de un borrado pendiente que no pudo completarse antes de cargar. `saved_customer_data_clear_failed` con `step` = `mini_app_data` indica que no se pudo borrar lo que guardó la vista web al cerrar sesión. Los eventos de notificaciones y de mini aplicaciones los emite la aplicación y están cubiertos por pruebas; ninguno se ha visto llegar a la consola de Firebase.
+
 - **Señales de la configuración.** Desde la etapa 6 la aplicación escucha la configuración publicada mientras hay una sesión iniciada, así que emite las señales de la tabla siguiente. Los movimientos más recientes del inicio usan los mismos eventos y el mismo servicio (`movements`) que los del detalle de una cuenta.
 
 | Nombre | Tipo | Cuándo se emite | Datos |

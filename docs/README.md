@@ -25,6 +25,8 @@ Cada decisión relevante se registra como un ADR con cinco campos: problema, alt
 | [0015](adr/0015-acceso-de-administradores.md) | Acceso de administradores y credenciales del servidor de la consola | Aceptada |
 | [0016](adr/0016-movimiento-de-dinero-en-el-servidor.md) | Movimiento de dinero en el servidor: solicitud pendiente, idempotencia y una sola transacción | Aceptada |
 | [0017](adr/0017-transferencias-en-la-aplicacion.md) | Transferencias en la aplicación: cliente de API, cola sin conexión y prueba de extremo a extremo | Aceptada |
+| [0018](adr/0018-notificaciones-y-bandeja.md) | Notificaciones push y bandeja del cliente escrita por el servidor | Aceptada |
+| [0019](adr/0019-mini-aplicaciones-de-aliados.md) | Servicios y mini aplicaciones de aliados en un contenedor con origen permitido | Aceptada |
 
 "Aceptada" significa que la decisión está tomada. Cada ADR indica qué parte está implementada y qué parte está planificada.
 
@@ -50,6 +52,6 @@ Estos documentos se escriben cuando exista lo que describen:
 
 - Diagramas de la API de clientes y de los flujos de transferencias (en línea y en cola) y notificaciones.
 - Estrategia de despliegue.
-- Comportamiento ante conectividad limitada, alta latencia e indisponibilidad parcial del inicio, las transferencias y los servicios de aliados (el de acceso, cuentas y movimientos ya está escrito).
+- Lo visto en un dispositivo de la conectividad degradada en transferencias, notificaciones y mini aplicaciones de aliados (su comportamiento ya está descrito y cubierto por pruebas).
 - Supuestos, riesgos técnicos y estrategia de escalamiento.
 - Decisiones conscientes de alcance.

@@ -12,6 +12,7 @@ workspace:
   - packages/feature_auth
   - packages/feature_accounts
   - packages/module_kit
+  - packages/feature_home
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

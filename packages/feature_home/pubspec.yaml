@@ -1,0 +1,29 @@
+name: feature_home
+description: >-
+  The home of Banca Digital: the engine that assembles it from the published
+  configuration, and the modules that carry no data of their own.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+resolution: workspace
+
+dependencies:
+  app_platform: ^0.1.0
+  bloc: ^9.2.0
+  design_system: ^0.1.0
+  equatable: ^2.0.7
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  module_kit: ^0.1.0
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

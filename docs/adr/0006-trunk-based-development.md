@@ -36,7 +36,7 @@ Reglas de trabajo:
 ## Trade-offs
 
 - **Se gana:** integración continua real, sin conflictos de fusión y con un historial lineal que muestra cómo se construyó la solución.
-- **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con una revisión independiente asistida por IA de cada etapa antes de subirla al repositorio remoto. Los hallazgos de cada revisión quedan anotados en el [registro de uso de IA](../ia/registro-uso-ia.md).
+- **Se paga:** no hay revisión de pares antes de integrar. Se compensa con la verificación automática previa a cada commit y con una revisión independiente asistida por IA de cada etapa antes de subirla al repositorio remoto. Las correcciones que salieron de cada revisión están en el historial de `main`, y el método se resume en el [uso de IA en el desarrollo](../ia/registro-uso-ia.md).
 - **Se paga:** el hook añade tiempo a cada commit. Con el modo acotado, un commit de documentación tarda unos 4 s, uno en un paquete de dominio unos 16 s, y uno en el sistema de diseño o en la configuración común más de 30 s, porque ejecuta casi todo (medido en la máquina de desarrollo con unas 1000 pruebas).
 - **Se paga:** la selección de pruebas es código que puede equivocarse. Si omite un paquete afectado, el error llega a `main` en local y lo detecta la integración continua en el push, no el hook.
 - **Se paga:** no se puede preparar solo una parte de un archivo. El script verifica el directorio de trabajo, y durante la etapa 5 eso dejó pasar un commit cuyo contenido no compilaba por sí solo, porque el archivo que le faltaba ya existía en disco sin estar preparado. El hook exige ahora que ambos coincidan; lo que no entra en el commit se aparta con `git stash`.

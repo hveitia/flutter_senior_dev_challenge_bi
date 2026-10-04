@@ -2,7 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-04
-- **Implementación:** existen en `packages/feature_accounts` el dominio de la transferencia, el repositorio sobre la API de clientes, la cola de solicitudes pendientes en Firestore, el procesador de salida, el alta de cuentas y las pantallas de formulario, confirmación y resultado. `apps/mobile` los compone por cliente, habilita el destino `transfer` detrás de la funcionalidad `transfers` y avisa antes de cerrar sesión con órdenes sin enviar. La regla de Firestore que permite a la aplicación dejar la solicitud pendiente está desplegada. Lo comprobado en un dispositivo y lo que queda sin comprobar está en [conectividad degradada](../operacion/conectividad-degradada.md) y en el [registro de uso de IA](../ia/registro-uso-ia.md).
+- **Implementación:** existen en `packages/feature_accounts` el dominio de la transferencia, el repositorio sobre la API de clientes, la cola de solicitudes pendientes en Firestore, el procesador de salida, el alta de cuentas y las pantallas de formulario, confirmación y resultado. `apps/mobile` los compone por cliente, habilita el destino `transfer` detrás de la funcionalidad `transfers` y avisa antes de cerrar sesión con órdenes sin enviar. La regla de Firestore que permite a la aplicación dejar la solicitud pendiente está desplegada. Lo comprobado en un dispositivo y lo que queda sin comprobar está en [conectividad degradada](../operacion/conectividad-degradada.md).
 
 ## Problema a resolver
 

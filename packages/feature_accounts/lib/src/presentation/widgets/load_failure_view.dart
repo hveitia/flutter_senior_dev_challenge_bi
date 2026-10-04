@@ -4,6 +4,19 @@ import 'package:feature_accounts/src/domain/load_state.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
 import 'package:flutter/material.dart';
 
+/// Completes when a refresh that was just requested is over: at the first
+/// state that is no longer loading, or when the Bloc is closed. It is what
+/// keeps the pull-to-refresh indicator on screen for as long as the refresh
+/// lasts.
+Future<void> untilLoaded<S>(
+  Stream<S> states,
+  bool Function(S state) isLoading,
+) {
+  return states
+      .firstWhere((state) => !isLoading(state))
+      .then<void>((_) {}, onError: (Object _) {});
+}
+
 /// Takes the whole content area when a screen has nothing to show because
 /// loading failed. The retry shows its progress in place, so the customer
 /// does not lose sight of what went wrong while the app tries again.

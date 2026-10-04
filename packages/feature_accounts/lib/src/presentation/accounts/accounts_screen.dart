@@ -77,43 +77,52 @@ class AccountsScreen extends StatelessWidget {
     // Data the backend just confirmed needs no age next to it.
     final showsAge = accounts.origin == DataOrigin.cache || accounts.isOutdated;
 
-    return ListView(
-      padding: EdgeInsets.symmetric(
-        horizontal: margin,
-        vertical: context.metrics.moduleGap,
-      ),
-      children: [
-        if (accounts.needsOutdatedNotice) ...[
-          OutdatedNotice(
-            message: AccountsStrings.accountsOutdated,
-            isRetrying: accounts.isLoading,
-            onRetry: () => refresh(isRetry: true),
-          ),
-          SizedBox(height: context.metrics.componentGap),
-        ],
-        const GroupHeader(label: AccountsStrings.totalBalance),
-        const SizedBox(height: AppSpacing.x1),
-        AmountText(
-          cents: totalAvailableCents(data),
-          size: AmountTextSize.display,
+    return RefreshIndicator(
+      onRefresh: () {
+        final bloc = context.read<AccountsBloc>();
+        refresh();
+        return untilLoaded(bloc.stream, (state) => state.accounts.isLoading);
+      },
+      child: ListView(
+        // Always scrollable, so a short list can still be pulled down.
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(
+          horizontal: margin,
+          vertical: context.metrics.moduleGap,
         ),
-        if (showsAge) ...[
+        children: [
+          if (accounts.needsOutdatedNotice) ...[
+            OutdatedNotice(
+              message: AccountsStrings.accountsOutdated,
+              isRetrying: accounts.isLoading,
+              onRetry: () => refresh(isRetry: true),
+            ),
+            SizedBox(height: context.metrics.componentGap),
+          ],
+          const GroupHeader(label: AccountsStrings.totalBalance),
           const SizedBox(height: AppSpacing.x1),
-          FreshnessCaption(
-            TimeLabels.freshness(accounts.syncedAt, now: now()),
+          AmountText(
+            cents: totalAvailableCents(data),
+            size: AmountTextSize.display,
           ),
+          if (showsAge) ...[
+            const SizedBox(height: AppSpacing.x1),
+            FreshnessCaption(
+              TimeLabels.freshness(accounts.syncedAt, now: now()),
+            ),
+          ],
+          SizedBox(height: context.metrics.moduleGap),
+          for (final (index, account) in data.indexed) ...[
+            if (index > 0) SizedBox(height: context.metrics.componentGap),
+            AccountCard(
+              name: account.name,
+              maskedNumber: account.maskedNumber,
+              balanceCents: account.availableCents,
+              onTap: () => onOpenAccount(account.id),
+            ),
+          ],
         ],
-        SizedBox(height: context.metrics.moduleGap),
-        for (final (index, account) in data.indexed) ...[
-          if (index > 0) SizedBox(height: context.metrics.componentGap),
-          AccountCard(
-            name: account.name,
-            maskedNumber: account.maskedNumber,
-            balanceCents: account.availableCents,
-            onTap: () => onOpenAccount(account.id),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

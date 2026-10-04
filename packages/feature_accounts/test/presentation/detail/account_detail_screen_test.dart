@@ -255,6 +255,19 @@ void main() {
     );
   });
 
+  testWidgets('pulling down refreshes the balance and the movements', (
+    tester,
+  ) async {
+    await open(tester, movementsAnswer: Success(movementsSnapshot(movements)));
+    await tester.pump();
+
+    await tester.fling(find.text('DISPONIBLE'), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.accountRefreshes, 2);
+    expect(harness.repository.movementRefreshes, 2);
+  });
+
   testWidgets('brings older movements when asked', (tester) async {
     await open(
       tester,

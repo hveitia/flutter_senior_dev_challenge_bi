@@ -101,67 +101,81 @@ class _AccountContent extends StatelessWidget {
     final margin = context.metrics.screenMargin;
     final horizontal = EdgeInsets.symmetric(horizontal: margin);
 
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(
-            margin,
-            context.metrics.moduleGap,
-            margin,
-            0,
-          ),
-          sliver: SliverList.list(
-            children: [
-              const GroupHeader(label: AccountsStrings.available),
-              const SizedBox(height: AppSpacing.x1),
-              AmountText(
-                cents: account.availableCents,
-                size: AmountTextSize.display,
-              ),
-              const SizedBox(height: AppSpacing.x2),
-              DetailRow(
-                label: AccountsStrings.ledger,
-                value: formatAmount(account.ledgerCents).text,
-              ),
-              DetailRow(
-                label: AccountsStrings.accountNumber,
-                value: account.number,
-                trailing: IconButton(
-                  tooltip: AccountsStrings.copyAccountNumber,
-                  icon: const Icon(Icons.copy_outlined),
-                  onPressed: () => unawaited(_copyNumber(context)),
+    return RefreshIndicator(
+      onRefresh: () {
+        final accounts = context.read<AccountsBloc>()
+          ..add(const AccountsRefreshRequested());
+        bloc.add(const MovementsRefreshRequested());
+        return Future.wait([
+          untilLoaded(accounts.stream, (state) => state.accounts.isLoading),
+          untilLoaded(bloc.stream, (state) => state.movements.isLoading),
+        ]);
+      },
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              margin,
+              context.metrics.moduleGap,
+              margin,
+              0,
+            ),
+            sliver: SliverList.list(
+              children: [
+                const GroupHeader(label: AccountsStrings.available),
+                const SizedBox(height: AppSpacing.x1),
+                AmountText(
+                  cents: account.availableCents,
+                  size: AmountTextSize.display,
                 ),
-              ),
-              const Divider(height: AppSpacing.x8),
-              AppTextField(
-                label: AccountsStrings.searchLabel,
-                hintText: AccountsStrings.searchHint,
-                textInputAction: TextInputAction.search,
-                onChanged: (query) => bloc.add(MovementsSearchChanged(query)),
-              ),
-              SizedBox(height: context.metrics.componentGap),
-              Wrap(
-                spacing: AppSpacing.x2,
-                runSpacing: AppSpacing.x2,
-                children: [
-                  for (final filter in MovementFilter.values)
-                    AppChip(
-                      label: AccountsStrings.filter(filter),
-                      selected: state.filter == filter,
-                      // Tapping the chosen filter keeps it: one of them is
-                      // always in effect.
-                      onSelected: (_) =>
-                          bloc.add(MovementsFilterChanged(filter)),
-                    ),
-                ],
-              ),
-              SizedBox(height: context.metrics.componentGap),
-            ],
+                const SizedBox(height: AppSpacing.x2),
+                DetailRow(
+                  label: AccountsStrings.ledger,
+                  value: formatAmount(account.ledgerCents).text,
+                ),
+                DetailRow(
+                  label: AccountsStrings.accountNumber,
+                  value: account.number,
+                  trailing: IconButton(
+                    tooltip: AccountsStrings.copyAccountNumber,
+                    icon: const Icon(Icons.copy_outlined),
+                    onPressed: () => unawaited(_copyNumber(context)),
+                  ),
+                ),
+                const Divider(height: AppSpacing.x8),
+                AppTextField(
+                  label: AccountsStrings.searchLabel,
+                  hintText: AccountsStrings.searchHint,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (query) => bloc.add(MovementsSearchChanged(query)),
+                ),
+                SizedBox(height: context.metrics.componentGap),
+                Wrap(
+                  spacing: AppSpacing.x2,
+                  runSpacing: AppSpacing.x2,
+                  children: [
+                    for (final filter in MovementFilter.values)
+                      AppChip(
+                        label: AccountsStrings.filter(filter),
+                        selected: state.filter == filter,
+                        // Tapping the chosen filter keeps it: one of them is
+                        // always in effect.
+                        onSelected: (_) =>
+                            bloc.add(MovementsFilterChanged(filter)),
+                      ),
+                  ],
+                ),
+                SizedBox(height: context.metrics.componentGap),
+              ],
+            ),
           ),
-        ),
-        ..._movements(context, state, bloc, horizontal),
-        SliverToBoxAdapter(child: SizedBox(height: context.metrics.moduleGap)),
-      ],
+          ..._movements(context, state, bloc, horizontal),
+          SliverToBoxAdapter(
+            child: SizedBox(height: context.metrics.moduleGap),
+          ),
+        ],
+      ),
     );
   }
 

@@ -53,6 +53,18 @@ void main() {
     expect(find.textContaining('Actualizado'), findsNothing);
   });
 
+  testWidgets('pulling down asks the backend again', (tester) async {
+    backendAnswers(Success(accountsSnapshot(const [savings, checking])));
+    await harness.pump(tester, screen());
+    await tester.pump();
+
+    await tester.fling(find.text('SALDO TOTAL'), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.accountRefreshes, 2);
+    expect(find.byType(AccountCard), findsNWidgets(2));
+  });
+
   testWidgets('opens the account that was tapped', (tester) async {
     backendAnswers(Success(accountsSnapshot(const [savings, checking])));
     await harness.pump(tester, screen());

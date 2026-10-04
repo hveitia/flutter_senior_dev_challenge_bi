@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Development builds may reach the customer API running on the
+         developer's machine over plain HTTP, and only there. Release builds
+         have no such exception: they keep Android's default, HTTPS only. -->
+    <application android:networkSecurityConfig="@xml/network_security_config"/>
 </manifest>

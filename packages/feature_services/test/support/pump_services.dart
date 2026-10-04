@@ -58,10 +58,15 @@ final class MiniAppHarness {
               isDevelopment: false,
             )
           : null,
-      hostContext: const HostContext(locale: 'es-EC', segment: 'family'),
+      hostContext: () => HostContext(locale: 'es-EC', segment: segment),
       policy: ResiliencePolicy(delay: (_) async {}),
       telemetry: telemetry,
-      surfaceFactory: (events) => surface = FakeMiniAppSurface(events),
+      surfaceFactory: (events) {
+        final surface = FakeMiniAppSurface(events, loadError: nextLoadError);
+        nextLoadError = null;
+        surfaces.add(surface);
+        return surface;
+      },
     );
   }
 
@@ -72,7 +77,21 @@ final class MiniAppHarness {
   final FakeExternalLinks links = FakeExternalLinks();
 
   late final MiniAppCubit cubit;
-  late final FakeMiniAppSurface surface;
+
+  /// The surface of every load, in order.
+  final List<FakeMiniAppSurface> surfaces = [];
+
+  /// Thrown by the next load, once.
+  Object? nextLoadError;
+
+  /// What the page is told the customer's segment is.
+  String segment = 'family';
+
+  /// The surface of the current load.
+  FakeMiniAppSurface get surface => surfaces.last;
+
+  /// Every address loaded, by any surface, in order.
+  List<Uri> get loaded => [for (final surface in surfaces) ...surface.loaded];
 
   /// How many times the screen asked to be closed.
   int closes = 0;

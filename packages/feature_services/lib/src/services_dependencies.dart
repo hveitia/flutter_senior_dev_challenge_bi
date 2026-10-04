@@ -12,6 +12,7 @@ final class ServicesDependencies {
     required this.telemetry,
     required this.surfaceFactory,
     required this.externalLinks,
+    this.data,
     this.catalog = ServiceCatalog.standard,
     this.locale = defaultLocale,
   });
@@ -27,6 +28,10 @@ final class ServicesDependencies {
   final Telemetry telemetry;
   final MiniAppSurfaceFactory surfaceFactory;
   final ExternalLinks externalLinks;
+
+  /// What partners' pages leave on the device. When given, a mini app
+  /// checks before loading that the last clean-up finished.
+  final MiniAppData? data;
   final ServiceCatalog catalog;
   final String locale;
 

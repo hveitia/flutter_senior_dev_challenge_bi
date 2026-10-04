@@ -1,13 +1,20 @@
+import 'package:feature_services/src/data/stepwise_mini_app_data.dart';
 import 'package:feature_services/src/ports.dart';
 import 'package:flutter/widgets.dart';
 
 /// A [MiniAppSurface] that loads nothing and records what it was asked. The
 /// test plays the page through [events].
 final class FakeMiniAppSurface implements MiniAppSurface {
-  FakeMiniAppSurface(this.events);
+  FakeMiniAppSurface(this.events, {this.loadError});
 
   /// Identifies the widget that stands for the page.
   static const Key pageKey = ValueKey('mini-app-page');
+
+  /// A page on the origin the tests use for partners. Tests give it as the
+  /// place a message was posted from.
+  static final Uri partnerPage = Uri.parse(
+    'https://partners.example.com/partners/travel-insurance',
+  );
 
   /// What the container listens with. A test calls it as the page would.
   final MiniAppEvents events;
@@ -58,10 +65,42 @@ final class FakeExternalLinks implements ExternalLinks {
   }
 }
 
-/// A [MiniAppData] that counts how many times it was cleared.
+/// A [MiniAppData] that counts how many times it was asked to clear.
 final class FakeMiniAppData implements MiniAppData {
   int clears = 0;
+  int pendingChecks = 0;
+
+  /// When set, [clearIfPending] ends with this error.
+  Object? pendingFailsWith;
 
   @override
   Future<void> clear() async => clears++;
+
+  @override
+  Future<void> clearIfPending() async {
+    pendingChecks++;
+    final error = pendingFailsWith;
+    // Whatever a clean-up throws reaches the container as an object.
+    // ignore: only_throw_errors
+    if (error != null) throw error;
+  }
+}
+
+/// A [PendingCleanUp] kept in memory, recording every value it was given.
+final class InMemoryPendingCleanUp implements PendingCleanUp {
+  InMemoryPendingCleanUp({bool pending = false}) : _pending = pending;
+
+  bool _pending;
+
+  /// Every value written, in order.
+  final List<bool> writes = [];
+
+  @override
+  Future<bool> isPending() async => _pending;
+
+  @override
+  Future<void> setPending({required bool pending}) async {
+    _pending = pending;
+    writes.add(pending);
+  }
 }

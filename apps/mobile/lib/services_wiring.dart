@@ -4,9 +4,11 @@ import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/destinations.dart';
 import 'package:feature_services/adapters.dart';
 import 'package:feature_services/feature_services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Where partner content lives, decided when the app is built.
 ///
@@ -31,21 +33,59 @@ abstract final class PartnerBuildFlags {
 /// pages left on the device.
 const String miniAppDataStep = 'mini_app_data';
 
+/// What partners' pages leave in the web view, removed step by step, with a
+/// note kept in [preferences] while a clean-up is unfinished.
+MiniAppData composeMiniAppData(SharedPreferences preferences) {
+  return StepwiseMiniAppData(
+    steps: webViewDataSteps(),
+    pending: SharedPreferencesPendingCleanUp(preferences),
+  );
+}
+
 /// Builds what the services screens need on the device plugins.
+///
+/// [isReleaseBuild] is the build mode. A release build never loads partner
+/// content over plain `http`, whatever the flags say.
 ServicesDependencies composeServices({
   required ResiliencePolicy policy,
   required Telemetry telemetry,
+  required MiniAppData data,
+  bool isReleaseBuild = kReleaseMode,
 }) {
   return ServicesDependencies(
     origin: PartnerOrigin.parse(
       PartnerBuildFlags.baseUrl,
       isDevelopment: PartnerBuildFlags.isDevelopmentOrigin,
+      isReleaseBuild: isReleaseBuild,
     ),
     policy: policy,
     telemetry: telemetry,
     surfaceFactory: WebViewMiniAppSurface.new,
     externalLinks: const UrlLauncherExternalLinks(),
+    data: data,
   );
+}
+
+/// [PendingCleanUp] kept in the device's preferences: one boolean that says
+/// nothing about any customer.
+final class SharedPreferencesPendingCleanUp implements PendingCleanUp {
+  const SharedPreferencesPendingCleanUp(this._preferences);
+
+  static const String _key = 'mini_apps.clean_up_pending';
+
+  final SharedPreferences _preferences;
+
+  @override
+  Future<bool> isPending() async => _preferences.getBool(_key) ?? false;
+
+  @override
+  Future<void> setPending({required bool pending}) async {
+    if (pending) {
+      await _preferences.setBool(_key, true);
+    } else {
+      await _preferences.remove(_key);
+    }
+  }
 }
 
 /// The destinations of the partners' mini apps this build can open, each

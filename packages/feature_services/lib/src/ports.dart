@@ -20,7 +20,11 @@ abstract interface class MiniAppEvents {
 
   /// The page posted [raw] to the host. It is text of unknown shape and
   /// size: whoever receives it validates it before using it.
-  void onMessage(String raw);
+  ///
+  /// [page] is the address the surface is showing at that moment, or null
+  /// when it cannot tell. The channel is reachable by every frame of the
+  /// page, so whoever receives the message checks where it came from.
+  void onMessage(String raw, {required Uri? page});
 }
 
 /// Shows a partner's page and reports what happens in it.
@@ -51,9 +55,12 @@ abstract interface class ExternalLinks {
 }
 
 /// What a partner's pages left on the device: cookies and stored data.
-// Kept as an interface so the app and the tests provide named classes.
-// ignore: one_member_abstracts
 abstract interface class MiniAppData {
-  /// Removes it all, so the next customer on the device starts clean.
+  /// Removes it all, so the next customer on the device starts clean. It
+  /// fails when something could not be removed, after trying everything.
   Future<void> clear();
+
+  /// Removes it all again when an earlier [clear] did not finish. Does
+  /// nothing otherwise.
+  Future<void> clearIfPending();
 }

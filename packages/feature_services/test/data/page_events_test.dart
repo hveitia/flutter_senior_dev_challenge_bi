@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 final class _RecordingEvents implements MiniAppEvents {
   final List<(Uri target, bool isMainFrame)> navigations = [];
   final List<int> httpErrors = [];
-  final List<String> messages = [];
+  final List<(String raw, Uri? page)> messages = [];
   int finished = 0;
   int failed = 0;
 
@@ -30,7 +30,7 @@ final class _RecordingEvents implements MiniAppEvents {
   void onHttpError(int statusCode) => httpErrors.add(statusCode);
 
   @override
-  void onMessage(String raw) => messages.add(raw);
+  void onMessage(String raw, {required Uri? page}) => messages.add((raw, page));
 }
 
 void main() {
@@ -158,12 +158,17 @@ void main() {
     });
   });
 
-  test('passes on that the page finished and what it posts', () {
+  test('passes on that the page finished, and what it posts with where the '
+      'web view is', () {
     pageEvents
       ..pageFinished()
-      ..message('{"type":"close"}');
+      ..message('{"type":"close"}', currentUrl: '$page#form')
+      ..message('{"type":"close"}', currentUrl: null);
 
     expect(events.finished, 1);
-    expect(events.messages, ['{"type":"close"}']);
+    expect(events.messages, [
+      ('{"type":"close"}', Uri.parse('$page#form')),
+      ('{"type":"close"}', null),
+    ]);
   });
 }

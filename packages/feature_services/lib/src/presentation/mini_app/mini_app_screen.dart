@@ -80,7 +80,13 @@ class MiniAppScreen extends StatelessWidget {
                   loadingLabel: state.phase == MiniAppPhase.loading
                       ? ServicesStrings.loading(service.title)
                       : null,
-                  page: cubit.surface.build(context),
+                  page: KeyedSubtree(
+                    // A new load has a new surface: the old page must go.
+                    key: ValueKey(state.load),
+                    child:
+                        cubit.surface?.build(context) ??
+                        const SizedBox.shrink(),
+                  ),
                 ),
         );
       },

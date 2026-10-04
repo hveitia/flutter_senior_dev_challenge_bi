@@ -137,6 +137,7 @@ final class TestDependencies {
           return surface;
         },
         externalLinks: FakeExternalLinks(),
+        data: miniAppData,
       ),
     );
   }
@@ -170,6 +171,9 @@ final class TestDependencies {
   /// The surface of every mini app opened, in order. A test plays the
   /// partner's page through the last one.
   final List<FakeMiniAppSurface> miniApps = [];
+
+  /// What partners' pages left on the device, as the mini apps see it.
+  final FakeMiniAppData miniAppData = FakeMiniAppData();
 
   final FakeAuthRepository auth;
   final InMemoryTelemetry telemetry;

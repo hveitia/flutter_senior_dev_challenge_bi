@@ -44,15 +44,21 @@ enum MiniAppUnavailableReason {
 final class MiniAppState extends Equatable {
   const MiniAppState({
     required this.phase,
+    required this.load,
     this.reason,
     this.outsideLink,
     this.completed,
     this.closeRequested = false,
   });
 
-  const MiniAppState.loading() : this(phase: MiniAppPhase.loading);
+  const MiniAppState.loading(int load)
+    : this(phase: MiniAppPhase.loading, load: load);
 
   final MiniAppPhase phase;
+
+  /// Which load this state is about. Every load has its own surface, so the
+  /// screen swaps the page it draws when this changes.
+  final int load;
 
   /// Set while [phase] is [MiniAppPhase.unavailable].
   final MiniAppUnavailableReason? reason;
@@ -74,6 +80,7 @@ final class MiniAppState extends Equatable {
   }) {
     return MiniAppState(
       phase: phase,
+      load: load,
       reason: reason,
       outsideLink: outsideLink == null ? this.outsideLink : outsideLink(),
       completed: completed ?? this.completed,
@@ -84,6 +91,7 @@ final class MiniAppState extends Equatable {
   @override
   List<Object?> get props => [
     phase,
+    load,
     reason,
     outsideLink,
     completed?.reference,
@@ -95,14 +103,20 @@ final class MiniAppState extends Equatable {
 /// Runs one partner's mini app: decides whether it can be opened, loads it,
 /// gives up when it takes too long, keeps it on the partner's origin and
 /// reads what the page tells the host.
-final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
+///
+/// Every load gets a surface of its own. What a surface reports is only
+/// heard while its load is the current one, so a page that was given up, or
+/// replaced by a retry, cannot change what the customer sees by answering
+/// late.
+final class MiniAppCubit extends Cubit<MiniAppState> {
   MiniAppCubit({
     required ServiceEntry service,
     required PartnerOrigin? origin,
-    required HostContext hostContext,
+    required HostContext Function() hostContext,
     required ResiliencePolicy policy,
     required Telemetry telemetry,
     required MiniAppSurfaceFactory surfaceFactory,
+    Future<void> Function()? ensureClean,
     Duration loadTimeout = defaultLoadTimeout,
     DateTime Function() now = DateTime.now,
   }) : assert(service.isPartner, 'Only a partner service has a mini app.'),
@@ -113,10 +127,11 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
        _hostContext = hostContext,
        _policy = policy,
        _telemetry = telemetry,
+       _surfaceFactory = surfaceFactory,
+       _ensureClean = ensureClean,
        _loadTimeout = loadTimeout,
        _now = now,
-       super(const MiniAppState.loading()) {
-    surface = surfaceFactory(this);
+       super(const MiniAppState.loading(0)) {
     _faultChanges = policy.faultChanges.listen((_) => _onFaultsChanged());
   }
 
@@ -131,29 +146,42 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
   final String _path;
   final String? _outageServiceId;
   final PartnerOrigin? _origin;
-  final HostContext _hostContext;
+
+  /// Asked every time a page is told its context, so a page loaded after
+  /// the customer changed segment hears the new one.
+  final HostContext Function() _hostContext;
   final ResiliencePolicy _policy;
   final Telemetry _telemetry;
+  final MiniAppSurfaceFactory _surfaceFactory;
+
+  /// Removes what an earlier customer's mini apps left on the device when
+  /// the clean-up at their sign-out did not finish.
+  final Future<void> Function()? _ensureClean;
   final Duration _loadTimeout;
   final DateTime Function() _now;
 
-  /// The page. The screen draws it; nothing else touches it.
-  late final MiniAppSurface surface;
+  /// The page of the current load, or null before the first one. The
+  /// screen draws it; nothing else touches it.
+  MiniAppSurface? get surface => _surface;
+  MiniAppSurface? _surface;
 
   late final StreamSubscription<void> _faultChanges;
   Timer? _timeout;
   DateTime? _loadStartedAt;
   bool _openingReported = false;
 
-  /// Counts the loads started. What an earlier load answers late is told
-  /// apart by it and dropped.
+  /// Counts the loads started and given up. What an earlier load answers
+  /// late is told apart by it and dropped.
   int _load = 0;
 
-  /// Opens the mini app, or opens it again after a failure.
+  /// Opens the mini app, or opens it again: after a failure, on the
+  /// customer's request or when an outage is lifted.
   Future<void> start() async {
+    if (isClosed) return;
     final load = ++_load;
     _timeout?.cancel();
-    emit(const MiniAppState.loading());
+    final surface = _surface = _surfaceFactory(_LoadEvents(this, load));
+    emit(MiniAppState.loading(load));
     if (!_openingReported) {
       _openingReported = true;
       _report(ServicesTelemetry.opened);
@@ -161,6 +189,16 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
 
     final origin = _origin;
     if (origin == null) return _fail(MiniAppUnavailableReason.notConfigured);
+
+    try {
+      await _ensureClean?.call();
+    } on Object {
+      // Showing a partner's page on top of what another customer's left
+      // behind is worse than not showing it.
+      if (load == _load) _fail(MiniAppUnavailableReason.loadFailed);
+      return;
+    }
+    if (isClosed || load != _load) return;
 
     // Nothing is requested here: it asks the policy whether the partner can
     // be reached, so an outage published by the resilience lab, a device
@@ -189,11 +227,13 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
 
   /// The customer decided about the outside link, one way or the other.
   void outsideLinkHandled() {
-    if (state.outsideLink != null) emit(state._with(outsideLink: () => null));
+    // The dialog may outlive the mini app: partners switched off, or the
+    // customer left, while it was open.
+    if (isClosed || state.outsideLink == null) return;
+    emit(state._with(outsideLink: () => null));
   }
 
-  @override
-  NavigationVerdict onNavigation(Uri target, {bool isMainFrame = true}) {
+  NavigationVerdict _navigation(Uri target, {required bool isMainFrame}) {
     final origin = _origin;
     if (origin == null) return NavigationVerdict.refuse;
 
@@ -216,14 +256,17 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
     return isOffered ? verdict : NavigationVerdict.refuse;
   }
 
-  @override
-  void onPageFinished() {
+  void _pageFinished() {
     final origin = _origin;
-    if (isClosed || origin == null || state.phase != MiniAppPhase.loading) {
-      return;
+    if (isClosed || origin == null) return;
+    if (state.phase == MiniAppPhase.ready) {
+      // The page moved to another page of the partner. A new document has
+      // forgotten the context, so it is told again.
+      return _sendContext(origin);
     }
+    if (state.phase != MiniAppPhase.loading) return;
     _timeout?.cancel();
-    emit(const MiniAppState(phase: MiniAppPhase.ready));
+    emit(MiniAppState(phase: MiniAppPhase.ready, load: _load));
 
     final startedAt = _loadStartedAt;
     _report(ServicesTelemetry.loaded, {
@@ -231,35 +274,45 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
         startedAt == null ? Duration.zero : _now().difference(startedAt),
       ),
     });
+    _sendContext(origin);
+  }
+
+  void _sendContext(PartnerOrigin origin) {
     unawaited(
-      surface.postToPage(
-        jsonEncode(_hostContext.toJson()),
+      _surface?.postToPage(
+        jsonEncode(_hostContext().toJson()),
         targetOrigin: origin.value,
       ),
     );
   }
 
-  @override
-  void onLoadFailed() => _fail(MiniAppUnavailableReason.loadFailed);
-
-  @override
-  void onHttpError(int statusCode) {
+  void _httpError(int statusCode) {
     if (statusCode >= _firstErrorStatus) {
       _fail(MiniAppUnavailableReason.httpError);
     }
   }
 
-  @override
-  void onMessage(String raw) {
-    // A page that is not shown has nothing to say to the host.
-    if (isClosed || state.phase != MiniAppPhase.ready) return;
+  void _message(String raw, Uri? page) {
+    if (isClosed) return;
 
-    switch (parsePartnerMessage(raw)) {
+    // The channel can be reached by any frame of the page, and by a page
+    // that is not shown yet. A message counts only when the page is shown
+    // and the web view is still on the partner's origin; anything else is
+    // dropped and counted, like a message that breaks the contract.
+    final origin = _origin;
+    final isFromPartner = page != null && origin != null && origin.allows(page);
+    final message = state.phase == MiniAppPhase.ready && isFromPartner
+        ? parsePartnerMessage(raw)
+        : null;
+
+    switch (message) {
       case null:
         _report(ServicesTelemetry.messageDropped);
       case PartnerClosed():
         emit(state._with(closeRequested: true));
       case final PartnerCompleted completed:
+        // The first one stands: a page that reports again changes nothing.
+        if (state.completed != null) return;
         emit(state._with(completed: completed));
         _report(ServicesTelemetry.completed);
     }
@@ -282,13 +335,20 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
     }
   }
 
+  /// Gives the current load up. It also ends it: whatever its surface
+  /// reports afterwards is dropped, which is what makes a failure reported
+  /// twice count once.
   void _fail(MiniAppUnavailableReason reason) {
     if (isClosed) return;
     _timeout?.cancel();
-    // Whatever the abandoned load reports from here on is not about what
-    // the customer is looking at.
-    _load++;
-    emit(MiniAppState(phase: MiniAppPhase.unavailable, reason: reason));
+    final load = ++_load;
+    emit(
+      MiniAppState(
+        phase: MiniAppPhase.unavailable,
+        load: load,
+        reason: reason,
+      ),
+    );
     _report(ServicesTelemetry.unavailable, {
       ServicesTelemetry.reasonKey: reason.code,
     });
@@ -310,9 +370,48 @@ final class MiniAppCubit extends Cubit<MiniAppState> implements MiniAppEvents {
       };
 
   @override
-  Future<void> close() async {
+  Future<void> close() {
     _timeout?.cancel();
-    await _faultChanges.cancel();
+    // Not awaited before closing: from this call on the mini app is closed,
+    // with no moment in between where it could still be started.
+    unawaited(_faultChanges.cancel());
     return super.close();
+  }
+}
+
+/// What the surface of one load reports, passed on only while that load is
+/// the current one.
+final class _LoadEvents implements MiniAppEvents {
+  const _LoadEvents(this._cubit, this._load);
+
+  final MiniAppCubit _cubit;
+  final int _load;
+
+  bool get _isCurrent => _cubit._load == _load;
+
+  @override
+  NavigationVerdict onNavigation(Uri target, {bool isMainFrame = true}) =>
+      _isCurrent
+      ? _cubit._navigation(target, isMainFrame: isMainFrame)
+      : NavigationVerdict.refuse;
+
+  @override
+  void onPageFinished() {
+    if (_isCurrent) _cubit._pageFinished();
+  }
+
+  @override
+  void onLoadFailed() {
+    if (_isCurrent) _cubit._fail(MiniAppUnavailableReason.loadFailed);
+  }
+
+  @override
+  void onHttpError(int statusCode) {
+    if (_isCurrent) _cubit._httpError(statusCode);
+  }
+
+  @override
+  void onMessage(String raw, {required Uri? page}) {
+    if (_isCurrent) _cubit._message(raw, page);
   }
 }

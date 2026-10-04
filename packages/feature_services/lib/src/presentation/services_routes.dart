@@ -79,18 +79,23 @@ GoRoute miniAppRoute(
     return BlocProvider<MiniAppCubit>(
       key: ValueKey(key),
       create: (context) {
+        final remoteConfig = context.read<RemoteConfigCubit>();
         final cubit = MiniAppCubit(
           service: service,
           origin: dependencies.origin,
           // The segment and the language, and nothing that says who the
-          // customer is.
-          hostContext: HostContext(
+          // customer is. Read every time a page is told, not captured: the
+          // customer may change segment while the mini app is open, and the
+          // page hears the new one on its next load.
+          hostContext: () => HostContext(
             locale: dependencies.locale,
-            segment: config.segmentId ?? HostContract.unknownSegment,
+            segment:
+                remoteConfig.state.segmentId ?? HostContract.unknownSegment,
           ),
           policy: dependencies.policy,
           telemetry: dependencies.telemetry,
           surfaceFactory: dependencies.surfaceFactory,
+          ensureClean: dependencies.data?.clearIfPending,
         );
         unawaited(cubit.start());
         return cubit;

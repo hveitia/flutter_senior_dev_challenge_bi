@@ -80,9 +80,11 @@ final class _App {
         return surface;
       },
       externalLinks: FakeExternalLinks(),
+      data: data,
     );
   }
 
+  final FakeMiniAppData data = FakeMiniAppData();
   final FakeConfigSource source = FakeConfigSource();
   final List<FakeMiniAppSurface> surfaces = [];
   late final ServicesDependencies dependencies;
@@ -266,6 +268,55 @@ void main() {
 
       expect(find.text('Servicio no disponible'), findsOneWidget);
       expect(app.surfaces.single.loaded, isEmpty);
+    });
+  });
+
+  group('a mini app, about what an earlier session left', () {
+    testWidgets('asks for a pending clean-up before loading the page', (
+      tester,
+    ) async {
+      final app = _App();
+      await app.pump(tester, location: '/aliados/recharge');
+
+      expect(app.data.pendingChecks, 1);
+      expect(app.surfaces.single.loaded, hasLength(1));
+      await app.finishLoading(tester);
+    });
+
+    testWidgets('stays closed when that clean-up cannot be finished', (
+      tester,
+    ) async {
+      final app = _App()..data.pendingFailsWith = StateError('still there');
+      await app.pump(tester, location: '/aliados/recharge');
+
+      expect(find.text('Servicio no disponible'), findsOneWidget);
+      expect(app.surfaces.single.loaded, isEmpty);
+    });
+  });
+
+  group('a customer who changes segment with a mini app open', () {
+    testWidgets('is not announced to the page shown, and the next load '
+        'tells the new segment', (tester) async {
+      final app = _App();
+      await app.pump(tester, location: '/aliados/travelInsurance');
+      await app.finishLoading(tester);
+
+      app.config.selectSegment('wealth');
+      await _frames(tester);
+      expect(app.surfaces.single.posted, hasLength(1));
+
+      await tester.tap(find.byTooltip('Más opciones'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Volver a cargar'));
+      await _frames(tester);
+      await app.finishLoading(tester);
+
+      expect(app.surfaces, hasLength(2));
+      expect(
+        (jsonDecode(app.surfaces.last.posted.single.json)
+            as Map<String, Object?>)['segment'],
+        'wealth',
+      );
     });
   });
 

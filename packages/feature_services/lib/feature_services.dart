@@ -7,6 +7,7 @@
 /// are meant for the composition root only.
 library;
 
+export 'src/data/stepwise_mini_app_data.dart';
 export 'src/domain/partner_origin.dart' show PartnerOrigin;
 export 'src/domain/service_catalog.dart';
 export 'src/ports.dart';

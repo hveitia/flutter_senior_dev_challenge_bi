@@ -7,6 +7,7 @@ import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_services/feature_services.dart';
 import 'package:feature_services/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/test_dependencies.dart';
 
@@ -265,6 +266,40 @@ void main() {
 
       expect(partnerDestinations(services), isEmpty);
     });
+  });
+
+  group('the note of an unfinished clean-up', () {
+    test('survives in the preferences until the clean-up finishes', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final note = SharedPreferencesPendingCleanUp(preferences);
+
+      expect(await note.isPending(), isFalse);
+
+      await note.setPending(pending: true);
+      expect(
+        await SharedPreferencesPendingCleanUp(preferences).isPending(),
+        isTrue,
+      );
+
+      await note.setPending(pending: false);
+      expect(await note.isPending(), isFalse);
+      expect(preferences.getKeys(), isEmpty);
+    });
+  });
+
+  test('a release build never takes an http origin from its flags', () {
+    final services = composeServices(
+      policy: ResiliencePolicy(),
+      telemetry: const NoopTelemetry(),
+      data: FakeMiniAppData(),
+      isReleaseBuild: true,
+    );
+
+    // The flags are empty under test, so this pins the wiring: the build
+    // mode reaches the rule, which is tested where it lives.
+    expect(services.origin, isNull);
+    expect(services.miniApps, isEmpty);
   });
 
   test('a build that sets no partner origin has none', () {

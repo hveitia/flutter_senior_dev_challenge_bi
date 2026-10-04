@@ -72,7 +72,12 @@ final class WebViewMiniAppSurface implements MiniAppSurface {
     );
     await _controller.addJavaScriptChannel(
       HostContract.channel,
-      onMessageReceived: (message) => _page.message(message.message),
+      onMessageReceived: (message) async => _page.message(
+        message.message,
+        // Asked of the web view itself, not remembered: it is the address
+        // the page is on when the message arrives.
+        currentUrl: await _controller.currentUrl(),
+      ),
     );
 
     if (_controller.platform case final AndroidWebViewController android) {

@@ -52,7 +52,7 @@ void main() {
       await tester.tap(find.text('Volver a cargar'));
       await tester.pumpAndSettle();
 
-      expect(harness.surface.loaded, hasLength(2));
+      expect(harness.loaded, hasLength(2));
     });
   });
 
@@ -107,7 +107,7 @@ void main() {
       harness.surface.events.onPageFinished();
       await tester.pump();
 
-      expect(harness.surface.loaded, hasLength(2));
+      expect(harness.loaded, hasLength(2));
       expect(find.text('Servicio no disponible'), findsNothing);
       expect(find.byKey(FakeMiniAppSurface.pageKey), findsOneWidget);
     });
@@ -130,7 +130,7 @@ void main() {
       await harness.pump(tester);
 
       expect(find.text('Servicio no disponible'), findsOneWidget);
-      expect(harness.surface.loaded, isEmpty);
+      expect(harness.loaded, isEmpty);
     });
   });
 
@@ -201,7 +201,7 @@ void main() {
       await harness.pump(tester);
       harness.surface.events
         ..onPageFinished()
-        ..onMessage('{"type":"close"}');
+        ..onMessage(page: FakeMiniAppSurface.partnerPage, '{"type":"close"}');
       await tester.pump();
 
       expect(harness.closes, 1);
@@ -214,7 +214,10 @@ void main() {
       await harness.pump(tester);
       harness.surface.events
         ..onPageFinished()
-        ..onMessage('{"type":"completed","reference":"SV-00042"}');
+        ..onMessage(
+          page: FakeMiniAppSurface.partnerPage,
+          '{"type":"completed","reference":"SV-00042"}',
+        );
       await tester.pump();
 
       expect(
@@ -231,7 +234,10 @@ void main() {
       await harness.pump(tester);
       harness.surface.events
         ..onPageFinished()
-        ..onMessage('{"type":"completed","reference":"<b>gratis</b>"}');
+        ..onMessage(
+          page: FakeMiniAppSurface.partnerPage,
+          '{"type":"completed","reference":"<b>gratis</b>"}',
+        );
       await tester.pump();
 
       expect(find.textContaining('gratis'), findsNothing);
@@ -276,7 +282,10 @@ void main() {
         'completed',
         (harness) => harness.surface.events
           ..onPageFinished()
-          ..onMessage('{"type":"completed","reference":"SV-00042"}'),
+          ..onMessage(
+            page: FakeMiniAppSurface.partnerPage,
+            '{"type":"completed","reference":"SV-00042"}',
+          ),
       ),
     ]) {
       testWidgets('does not overflow on a small phone at 130% text: $state', (

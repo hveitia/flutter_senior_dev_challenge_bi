@@ -49,5 +49,9 @@ final class PageEvents {
     _events.onHttpError(statusCode);
   }
 
-  void message(String raw) => _events.onMessage(raw);
+  /// The page posted [raw] while the web view was showing [currentUrl].
+  void message(String raw, {required String? currentUrl}) => _events.onMessage(
+    raw,
+    page: currentUrl == null ? null : Uri.tryParse(currentUrl),
+  );
 }

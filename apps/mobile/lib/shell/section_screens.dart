@@ -18,9 +18,6 @@ abstract final class ShellStrings {
   static const String services = 'Servicios';
   static const String profile = 'Perfil';
 
-  static const String underConstruction = 'Estamos construyendo esta sección';
-  static const String servicesComing =
-      'Pronto encontrarás aquí productos del banco y de nuestros aliados.';
   static const String signOut = 'Cerrar sesión';
   static const String unsentTransfersTitle = 'Tienes transferencias sin enviar';
 
@@ -60,38 +57,6 @@ abstract final class ShellStrings {
   static const String signOutAndDiscard = 'Cerrar sesión y descartar';
   static const String personalization = 'Personalización';
   static const String interests = 'Mis intereses';
-}
-
-/// The root of a section that is not built yet. It says so plainly instead
-/// of showing invented content.
-class SectionPlaceholderScreen extends StatelessWidget {
-  const SectionPlaceholderScreen({
-    required this.title,
-    required this.message,
-    required this.icon,
-    super.key,
-  });
-
-  final String title;
-  final String message;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: TabRootAppBar(title: title),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(context.metrics.screenMargin),
-          child: EmptyState(
-            icon: icon,
-            title: ShellStrings.underConstruction,
-            message: message,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Who is signed in, the state of the app and the way out. The rest of the

@@ -24,12 +24,13 @@ final class _Harness {
     String serviceKey = ServiceCatalog.travelInsuranceKey,
     bool configured = true,
     bool allowFaultInjection = true,
+    Future<void> Function()? ensureClean,
   }) {
     policy = ResiliencePolicy(
       faults: () => faults,
       allowFaultInjection: allowFaultInjection,
       isOffline: () => offline,
-      delay: (_) async {},
+      delay: (duration) => delay(duration),
     );
     cubit = MiniAppCubit(
       service: ServiceCatalog.standard.partner(serviceKey)!,
@@ -39,10 +40,16 @@ final class _Harness {
               isDevelopment: false,
             )
           : null,
-      hostContext: const HostContext(locale: 'es-EC', segment: 'family'),
+      hostContext: () => HostContext(locale: 'es-EC', segment: segment),
       policy: policy,
       telemetry: telemetry,
-      surfaceFactory: (events) => surface = FakeMiniAppSurface(events),
+      surfaceFactory: (events) {
+        final surface = FakeMiniAppSurface(events, loadError: nextLoadError);
+        nextLoadError = null;
+        surfaces.add(surface);
+        return surface;
+      },
+      ensureClean: ensureClean,
       now: () => now,
     );
   }
@@ -50,11 +57,28 @@ final class _Harness {
   final InMemoryTelemetry telemetry = InMemoryTelemetry();
   ResilienceSettings faults = ResilienceSettings.none;
   bool offline = false;
+
+  /// How the policy waits. A test replaces it to hold a run in flight.
+  Future<void> Function(Duration duration) delay = (_) async {};
   DateTime now = DateTime(2026, 10, 3, 10);
 
   late final ResiliencePolicy policy;
   late final MiniAppCubit cubit;
-  late final FakeMiniAppSurface surface;
+
+  /// The surface of every load, in order.
+  final List<FakeMiniAppSurface> surfaces = [];
+
+  /// Thrown by the next load, once.
+  Object? nextLoadError;
+
+  /// What the page is told the customer's segment is.
+  String segment = 'family';
+
+  /// The surface of the current load.
+  FakeMiniAppSurface get surface => surfaces.last;
+
+  /// Every address loaded, by any surface, in order.
+  List<Uri> get loaded => [for (final surface in surfaces) ...surface.loaded];
 
   /// Publishes [next] as the resilience lab would.
   void publish(ResilienceSettings next) {
@@ -89,7 +113,7 @@ void main() {
     test('loads the path of the mini app on the partner origin', () {
       _started((async, harness) {
         expect(harness.cubit.state.phase, MiniAppPhase.loading);
-        expect(harness.surface.loaded.map((uri) => '$uri'), [
+        expect(harness.loaded.map((uri) => '$uri'), [
           'https://partners.example.com/partners/travel-insurance',
         ]);
       });
@@ -144,21 +168,21 @@ void main() {
     test('when the build has no partner origin, without loading anything', () {
       _started(create: () => _Harness(configured: false), (async, harness) {
         expectUnavailable(harness, MiniAppUnavailableReason.notConfigured);
-        expect(harness.surface.loaded, isEmpty);
+        expect(harness.loaded, isEmpty);
       });
     });
 
     test('when the device is offline, without loading anything', () {
       _started(create: () => _Harness()..offline = true, (async, harness) {
         expectUnavailable(harness, MiniAppUnavailableReason.offline);
-        expect(harness.surface.loaded, isEmpty);
+        expect(harness.loaded, isEmpty);
       });
     });
 
     test('when the lab took the partner down, without loading anything', () {
       _started(create: () => _Harness()..faults = _taken, (async, harness) {
         expectUnavailable(harness, MiniAppUnavailableReason.outage);
-        expect(harness.surface.loaded, isEmpty);
+        expect(harness.loaded, isEmpty);
       });
     });
 
@@ -211,8 +235,7 @@ void main() {
 
     test('when the surface itself refuses to load', () {
       fakeAsync((async) {
-        final harness = _Harness();
-        harness.surface.loadError = StateError('no web view');
+        final harness = _Harness()..nextLoadError = StateError('no web view');
         unawaited(harness.cubit.start());
         async.flushMicrotasks();
 
@@ -241,7 +264,7 @@ void main() {
         unawaited(harness.cubit.start());
         async.flushMicrotasks();
         expect(harness.cubit.state.phase, MiniAppPhase.loading);
-        expect(harness.surface.loaded, hasLength(2));
+        expect(harness.loaded, hasLength(2));
 
         harness.surface.events.onPageFinished();
         expect(harness.cubit.state.phase, MiniAppPhase.ready);
@@ -295,7 +318,7 @@ void main() {
         async.flushMicrotasks();
 
         expect(harness.cubit.state.phase, MiniAppPhase.loading);
-        expect(harness.surface.loaded, hasLength(1));
+        expect(harness.loaded, hasLength(1));
       });
     });
 
@@ -307,7 +330,7 @@ void main() {
         async.flushMicrotasks();
 
         expect(harness.cubit.state.reason, MiniAppUnavailableReason.loadFailed);
-        expect(harness.surface.loaded, hasLength(1));
+        expect(harness.loaded, hasLength(1));
       });
     });
 
@@ -452,7 +475,7 @@ void main() {
       _started((async, harness) {
         harness.surface.events
           ..onPageFinished()
-          ..onMessage('{"type":"close"}');
+          ..onMessage(page: FakeMiniAppSurface.partnerPage, '{"type":"close"}');
 
         expect(harness.cubit.state.closeRequested, isTrue);
       });
@@ -462,7 +485,10 @@ void main() {
       _started((async, harness) {
         harness.surface.events
           ..onPageFinished()
-          ..onMessage('{"type":"completed","reference":"SV-00042"}');
+          ..onMessage(
+            page: FakeMiniAppSurface.partnerPage,
+            '{"type":"completed","reference":"SV-00042"}',
+          );
 
         expect(harness.cubit.state.completed?.reference, 'SV-00042');
         expect(harness.cubit.state.phase, MiniAppPhase.ready);
@@ -474,6 +500,7 @@ void main() {
         harness.surface.events
           ..onPageFinished()
           ..onMessage(
+            page: FakeMiniAppSurface.partnerPage,
             '{"type":"completed","reference":"SV-00042","amount":120}',
           );
 
@@ -487,7 +514,10 @@ void main() {
       _started((async, harness) {
         harness.surface.events
           ..onPageFinished()
-          ..onMessage('{"type":"open","url":"https://evil.example"}');
+          ..onMessage(
+            page: FakeMiniAppSurface.partnerPage,
+            '{"type":"open","url":"https://evil.example"}',
+          );
 
         expect(harness.cubit.state.closeRequested, isFalse);
         expect(harness.cubit.state.completed, isNull);
@@ -499,7 +529,10 @@ void main() {
 
     test('are not read before the page is shown', () {
       _started((async, harness) {
-        harness.surface.events.onMessage('{"type":"close"}');
+        harness.surface.events.onMessage(
+          page: FakeMiniAppSurface.partnerPage,
+          '{"type":"close"}',
+        );
 
         expect(harness.cubit.state.closeRequested, isFalse);
       });
@@ -520,6 +553,341 @@ void main() {
           ServicesTelemetry.serviceKey: ServiceCatalog.travelInsuranceKey,
           ServicesTelemetry.durationKey: '1_to_3s',
         });
+      });
+    });
+  });
+
+  group('a load that was replaced', () {
+    /// Starts a second load while the first is still loading and returns
+    /// the surface of the first.
+    FakeMiniAppSurface replaced(FakeAsync async, _Harness harness) {
+      final first = harness.surface;
+      unawaited(harness.cubit.start());
+      async.flushMicrotasks();
+      expect(harness.surface, isNot(same(first)));
+      return first;
+    }
+
+    test('cannot make the new one ready by finishing late', () {
+      _started((async, harness) {
+        final first = replaced(async, harness);
+
+        first.events.onPageFinished();
+        async.flushMicrotasks();
+
+        expect(harness.cubit.state.phase, MiniAppPhase.loading);
+        expect(first.posted, isEmpty);
+        expect(harness.events, isNot(contains(ServicesTelemetry.loaded)));
+      });
+    });
+
+    test('cannot make the new one unavailable by failing late', () {
+      _started((async, harness) {
+        final first = replaced(async, harness);
+
+        first.events
+          ..onLoadFailed()
+          ..onHttpError(503);
+
+        expect(harness.cubit.state.phase, MiniAppPhase.loading);
+        expect(harness.events, isNot(contains(ServicesTelemetry.unavailable)));
+      });
+    });
+
+    test('is not heard when it posts or navigates', () {
+      _started((async, harness) {
+        final first = replaced(async, harness);
+        harness.surface.events.onPageFinished();
+
+        first.events.onMessage(
+          page: FakeMiniAppSurface.partnerPage,
+          '{"type":"close"}',
+        );
+        final verdict = first.events.onNavigation(
+          Uri.parse('https://www.example.org/terms'),
+        );
+
+        expect(harness.cubit.state.closeRequested, isFalse);
+        expect(verdict, NavigationVerdict.refuse);
+        expect(harness.cubit.state.outsideLink, isNull);
+      });
+    });
+
+    test('leaves the new one to load, with its own surface and limit', () {
+      _started((async, harness) {
+        async.elapse(const Duration(seconds: 10));
+        replaced(async, harness);
+        async.elapse(const Duration(seconds: 10));
+        expect(harness.cubit.state.phase, MiniAppPhase.loading);
+
+        harness.surface.events.onPageFinished();
+
+        expect(harness.cubit.state.phase, MiniAppPhase.ready);
+        expect(harness.loaded, hasLength(2));
+      });
+    });
+
+    test('gives the screen a new page to draw', () {
+      _started((async, harness) {
+        final before = harness.cubit.state.load;
+        final first = replaced(async, harness);
+
+        expect(harness.cubit.state.load, isNot(before));
+        expect(harness.cubit.surface, same(harness.surface));
+        expect(harness.cubit.surface, isNot(same(first)));
+      });
+    });
+  });
+
+  group('a failure reported more than once', () {
+    test('makes the mini app unavailable once', () {
+      _started((async, harness) {
+        harness.surface.events
+          ..onHttpError(503)
+          ..onLoadFailed()
+          ..onHttpError(500);
+
+        expect(harness.cubit.state.reason, MiniAppUnavailableReason.httpError);
+        expect(
+          harness.events.where((name) => name == ServicesTelemetry.unavailable),
+          hasLength(1),
+        );
+      });
+    });
+  });
+
+  group('after the page is shown', () {
+    test('a page of the partner that fails to load replaces it with the '
+        'unavailable screen', () {
+      _started((async, harness) {
+        harness.surface.events
+          ..onPageFinished()
+          ..onLoadFailed();
+
+        expect(harness.cubit.state.phase, MiniAppPhase.unavailable);
+        expect(harness.cubit.state.reason, MiniAppUnavailableReason.loadFailed);
+      });
+    });
+
+    test('a new page of the partner is told the context again', () {
+      _started((async, harness) {
+        harness.surface.events.onPageFinished();
+        async.flushMicrotasks();
+
+        harness.surface.events
+          ..onNavigation(
+            Uri.parse('https://partners.example.com/partners/recharge/done'),
+          )
+          ..onPageFinished();
+        async.flushMicrotasks();
+
+        expect(harness.surface.posted, hasLength(2));
+        expect(harness.cubit.state.phase, MiniAppPhase.ready);
+        expect(
+          harness.events.where((name) => name == ServicesTelemetry.loaded),
+          hasLength(1),
+        );
+      });
+    });
+
+    test('a page that never posts anything stays shown, with nothing left '
+        'running', () {
+      _started((async, harness) {
+        harness.surface.events.onPageFinished();
+        async.elapse(MiniAppCubit.defaultLoadTimeout * 4);
+
+        expect(harness.cubit.state.phase, MiniAppPhase.ready);
+        expect(harness.cubit.state.completed, isNull);
+        expect(harness.cubit.state.closeRequested, isFalse);
+        expect(async.pendingTimers, isEmpty);
+      });
+    });
+
+    test('a completed operation posted twice is kept and reported once', () {
+      _started((async, harness) {
+        harness.surface.events
+          ..onPageFinished()
+          ..onMessage(
+            page: FakeMiniAppSurface.partnerPage,
+            '{"type":"completed","reference":"SV-00042"}',
+          )
+          ..onMessage(
+            page: FakeMiniAppSurface.partnerPage,
+            '{"type":"completed","reference":"SV-99999"}',
+          );
+
+        expect(harness.cubit.state.completed?.reference, 'SV-00042');
+        expect(
+          harness.events.where((name) => name == ServicesTelemetry.completed),
+          hasLength(1),
+        );
+      });
+    });
+  });
+
+  group('where a message comes from', () {
+    void expectDropped(_Harness harness) {
+      expect(harness.cubit.state.closeRequested, isFalse);
+      expect(
+        harness.events.where(
+          (name) => name == ServicesTelemetry.messageDropped,
+        ),
+        hasLength(1),
+      );
+    }
+
+    test('a page on another origin is not heard, and it is counted', () {
+      _started((async, harness) {
+        harness.surface.events
+          ..onPageFinished()
+          ..onMessage(
+            page: Uri.parse('https://evil.example.org/partners/recharge'),
+            '{"type":"close"}',
+          );
+
+        expectDropped(harness);
+      });
+    });
+
+    test('a surface that cannot say where it is is not heard', () {
+      _started((async, harness) {
+        harness.surface.events
+          ..onPageFinished()
+          ..onMessage(page: null, '{"type":"close"}');
+
+        expectDropped(harness);
+      });
+    });
+
+    test('a page that is still loading is not heard, and it is counted', () {
+      _started((async, harness) {
+        harness.surface.events.onMessage(
+          page: FakeMiniAppSurface.partnerPage,
+          '{"type":"close"}',
+        );
+
+        expectDropped(harness);
+      });
+    });
+  });
+
+  group('the context a page is told', () {
+    test('is the customer’s segment at the time of each load', () {
+      _started((async, harness) {
+        harness.surface.events.onPageFinished();
+        async.flushMicrotasks();
+
+        harness.segment = 'wealth';
+        async.flushMicrotasks();
+        expect(harness.surface.posted, hasLength(1));
+
+        unawaited(harness.cubit.start());
+        async.flushMicrotasks();
+        harness.surface.events.onPageFinished();
+        async.flushMicrotasks();
+
+        expect(
+          (jsonDecode(harness.surface.posted.single.json)
+              as Map<String, Object?>)['segment'],
+          'wealth',
+        );
+      });
+    });
+  });
+
+  group(
+    'an outage published while the mini app checks whether it can open',
+    () {
+      test('wins: nothing is loaded when the check comes back', () {
+        fakeAsync((async) {
+          final held = Completer<void>();
+          final harness = _Harness()
+            ..faults = const ResilienceSettings(
+              latency: Duration(seconds: 5),
+              unavailableServices: {},
+            )
+            ..delay = (_) => held.future;
+          unawaited(harness.cubit.start());
+          async.flushMicrotasks();
+          expect(harness.cubit.state.phase, MiniAppPhase.loading);
+
+          harness.publish(_taken);
+          async.flushMicrotasks();
+          held.complete();
+          async.flushMicrotasks();
+
+          expect(harness.cubit.state.reason, MiniAppUnavailableReason.outage);
+          expect(harness.loaded, isEmpty);
+          expect(
+            harness.events.where(
+              (name) => name == ServicesTelemetry.unavailable,
+            ),
+            hasLength(1),
+          );
+          unawaited(harness.cubit.close());
+          async.flushMicrotasks();
+        });
+      });
+    },
+  );
+
+  group('a clean-up left pending by an earlier session', () {
+    test('is finished before anything is loaded', () {
+      fakeAsync((async) {
+        final order = <String>[];
+        final harness = _Harness(
+          ensureClean: () async => order.add('clean'),
+        );
+        unawaited(harness.cubit.start());
+        async.flushMicrotasks();
+        order.addAll(harness.loaded.map((_) => 'load'));
+
+        expect(order, ['clean', 'load']);
+        unawaited(harness.cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('keeps the mini app closed when it cannot be finished', () {
+      fakeAsync((async) {
+        final harness = _Harness(
+          ensureClean: () async => throw StateError('still there'),
+        );
+        unawaited(harness.cubit.start());
+        async.flushMicrotasks();
+
+        expect(harness.cubit.state.phase, MiniAppPhase.unavailable);
+        expect(harness.loaded, isEmpty);
+        unawaited(harness.cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+  });
+
+  group('once closed', () {
+    test('ignores being started or told about the outside link', () {
+      fakeAsync((async) {
+        final harness = _Harness();
+        unawaited(harness.cubit.start());
+        async.flushMicrotasks();
+        harness.surface.events
+          ..onPageFinished()
+          ..onNavigation(Uri.parse('https://www.example.org/terms'));
+        final surfaces = harness.surfaces.length;
+        unawaited(harness.cubit.close());
+        async.flushMicrotasks();
+
+        expect(harness.cubit.outsideLinkHandled, returnsNormally);
+        Object? failure;
+        unawaited(
+          harness.cubit.start().catchError((Object error) {
+            failure = error;
+          }),
+        );
+        async.flushMicrotasks();
+
+        expect(failure, isNull);
+        expect(harness.surfaces, hasLength(surfaces));
       });
     });
   });

@@ -9,18 +9,39 @@ final class PartnerOrigin {
   static const String _secureScheme = 'https';
   static const String _plainScheme = 'http';
 
+  /// The only hosts plain `http` is ever accepted for: the developer's
+  /// machine as a phone reaches it through `adb reverse`, and as an Android
+  /// emulator sees it.
+  static const Set<String> developmentHosts = {
+    'localhost',
+    '127.0.0.1',
+    '10.0.2.2',
+  };
+
   /// Reads the origin from [baseUrl], the value given to the build.
   ///
   /// Null when there is none or it cannot be trusted: it must be an absolute
-  /// `https` address made of scheme, host and port only. Plain `http` is
-  /// accepted only when [isDevelopment] says the build points at a
-  /// developer's own machine.
-  static PartnerOrigin? parse(String baseUrl, {required bool isDevelopment}) {
+  /// `https` address made of scheme, host and port only.
+  ///
+  /// Plain `http` needs three things at once: [isDevelopment] says the
+  /// build points at a developer's own machine, the build is not a release
+  /// one ([isReleaseBuild]), and the host is one of [developmentHosts]. A
+  /// release build given an `http` origin therefore has no origin, and
+  /// offers no mini app.
+  static PartnerOrigin? parse(
+    String baseUrl, {
+    required bool isDevelopment,
+    bool isReleaseBuild = false,
+  }) {
     final uri = Uri.tryParse(baseUrl.trim());
     if (uri == null || uri.host.isEmpty) return null;
 
     final isSecure = uri.scheme == _secureScheme;
-    final isPlainForDevelopment = uri.scheme == _plainScheme && isDevelopment;
+    final isPlainForDevelopment =
+        uri.scheme == _plainScheme &&
+        isDevelopment &&
+        !isReleaseBuild &&
+        developmentHosts.contains(uri.host);
     if (!isSecure && !isPlainForDevelopment) return null;
 
     final isBare =

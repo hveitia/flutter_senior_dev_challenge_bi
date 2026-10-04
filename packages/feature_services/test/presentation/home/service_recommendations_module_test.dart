@@ -1,4 +1,5 @@
 import 'package:design_system/design_system.dart';
+import 'package:feature_services/src/domain/service_catalog.dart';
 import 'package:feature_services/src/presentation/home/service_recommendations_module.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,8 +16,9 @@ final class _Module {
   _Module({
     Object? services = const ['travelInsurance', 'recharge'],
     Set<String> available = const {_insurance, _recharge},
+    ServiceCatalog catalog = ServiceCatalog.standard,
   }) : destinations = FakeDestinationResolver(available: available) {
-    registerServicesHomeModules(registry);
+    registerServicesHomeModules(registry, catalog: catalog);
     context = moduleContext(
       id: 'services',
       type: ServicesModuleTypes.serviceRecommendations,
@@ -102,6 +104,47 @@ void main() {
 
     expect(find.text('Seguro de viaje'), findsNothing);
     expect(find.text('Recargas'), findsOneWidget);
+  });
+
+  testWidgets('draws no more than its limit, keeping the first published', (
+    tester,
+  ) async {
+    const extra = 2;
+    final keys = [
+      for (
+        var index = 0;
+        index < ServiceRecommendationsModule.maxRecommendations + extra;
+        index++
+      )
+        'partner$index',
+    ];
+    final module = _Module(
+      services: keys,
+      available: {for (final key in keys) 'partner:$key'},
+      catalog: ServiceCatalog([
+        for (final key in keys)
+          ServiceEntry(
+            destination: 'partner:$key',
+            title: 'Servicio $key',
+            description: 'Descripción',
+            symbol: ServiceSymbol.recharge,
+            miniApp: MiniApp(
+              key: key,
+              partnerName: 'Aliado',
+              path: '/partners/$key',
+            ),
+          ),
+      ]),
+    );
+    await module.pump(tester);
+
+    final cards = tester.widgetList<LinkCard>(find.byType(LinkCard));
+    expect(cards.map((card) => card.title), [
+      for (final key in keys.take(
+        ServiceRecommendationsModule.maxRecommendations,
+      ))
+        'Servicio $key',
+    ]);
   });
 
   testWidgets('draws a service once, however many times it is published', (

@@ -13,7 +13,6 @@ import 'package:feature_accounts/adapters.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/adapters.dart';
 import 'package:feature_home/feature_home.dart';
-import 'package:feature_services/adapters.dart';
 import 'package:feature_services/feature_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -41,6 +40,7 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
   // configuration, which is read once a customer signs in. The policy reads
   // them from here on every attempt.
   final publishedFaults = PublishedFaults();
+  final miniAppData = composeMiniAppData(preferences);
 
   // The policy asks the cubit whether the device is offline, and the cubit
   // listens to the policy to know when requests are slow.
@@ -118,7 +118,11 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
       policy: policy,
       telemetry: telemetry,
     ),
-    services: composeServices(policy: policy, telemetry: telemetry),
+    services: composeServices(
+      policy: policy,
+      telemetry: telemetry,
+      data: miniAppData,
+    ),
     savedCustomerData: StepwiseSavedCustomerData(
       telemetry: telemetry,
       steps: [
@@ -129,7 +133,7 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
         ),
         // What a partner's pages kept in the web view: the next customer
         // on this device must not find it.
-        (name: miniAppDataStep, run: const WebViewMiniAppData().clear),
+        (name: miniAppDataStep, run: miniAppData.clear),
       ],
     ),
   );

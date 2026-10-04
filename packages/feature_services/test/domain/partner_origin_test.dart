@@ -74,6 +74,60 @@ void main() {
     });
   });
 
+  group('plain http', () {
+    PartnerOrigin? parse(
+      String baseUrl, {
+      bool isDevelopment = true,
+      bool isReleaseBuild = false,
+    }) => PartnerOrigin.parse(
+      baseUrl,
+      isDevelopment: isDevelopment,
+      isReleaseBuild: isReleaseBuild,
+    );
+
+    test('is accepted for the developer’s own machine only', () {
+      for (final baseUrl in [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://10.0.2.2:3000',
+      ]) {
+        expect(parse(baseUrl)?.value, baseUrl, reason: baseUrl);
+      }
+      for (final baseUrl in [
+        'http://192.168.1.20:3000',
+        'http://partners.example.com',
+        'http://localhost.evil.example',
+        'http://10.0.2.20:3000',
+      ]) {
+        expect(parse(baseUrl), isNull, reason: baseUrl);
+      }
+    });
+
+    test('is never accepted in a release build, whatever the flag says', () {
+      expect(parse('http://localhost:3000', isReleaseBuild: true), isNull);
+      expect(parse('http://10.0.2.2:3000', isReleaseBuild: true), isNull);
+    });
+
+    test('is never accepted without the development flag', () {
+      expect(parse('http://localhost:3000', isDevelopment: false), isNull);
+    });
+
+    test('does not get in the way of https, in any build', () {
+      expect(
+        parse('https://partners.example.com', isReleaseBuild: true)?.value,
+        'https://partners.example.com',
+      );
+      expect(
+        parse(
+          'https://localhost:3443',
+          isDevelopment: false,
+          isReleaseBuild: true,
+        )?.value,
+        'https://localhost:3443',
+      );
+    });
+  });
+
   group('allows', () {
     final origin = _production('https://partners.example.com')!;
 

@@ -146,7 +146,7 @@ else
         ;;
       firebase/*) run_firebase=true ;;
       # The console validates what it publishes against the contract file.
-      apps/backoffice/* | contracts/*) run_console=true ;;
+      apps/backoffice/* | contracts/* | packages/design_system/tokens/*) run_console=true ;;
     esac
   done <<< "$staged"
 

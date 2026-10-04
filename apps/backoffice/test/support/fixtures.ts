@@ -1,4 +1,4 @@
-import example from "../../../../contracts/home-config.example.json";
+import example from "@/shared/home-config.example.json";
 import type { HomeConfig } from "@/lib/config/types";
 
 /** A fresh copy of the contract example, safe to mutate in a test. */

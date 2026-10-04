@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import designTokens from "../../../../packages/design_system/tokens/tokens.json";
+import designTokens from "@/shared/tokens.json";
 import { cssVariableName, themeCss, toCssVariables } from "./tokens";
 
 describe("cssVariableName", () => {

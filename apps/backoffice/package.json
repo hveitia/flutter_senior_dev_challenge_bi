@@ -6,11 +6,17 @@
     "node": ">=22"
   },
   "scripts": {
+    "sync": "node scripts/sync-shared.mjs",
+    "predev": "npm run sync",
     "dev": "next dev",
+    "prebuild": "npm run sync",
     "build": "next build",
     "start": "next start",
+    "prelint": "npm run sync",
     "lint": "eslint",
+    "pretypecheck": "npm run sync",
     "typecheck": "tsc --noEmit",
+    "pretest": "npm run sync",
     "test": "vitest run",
     "verify": "npm run lint && npm run build && npm run typecheck && npm run test"
   },

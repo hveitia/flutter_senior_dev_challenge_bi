@@ -1,5 +1,5 @@
 import Ajv2020 from "ajv/dist/2020";
-import contract from "../../../../contracts/home-config.schema.json";
+import contract from "@/shared/home-config.schema.json";
 import type { HomeConfig } from "./types";
 
 export interface ConfigIssue {

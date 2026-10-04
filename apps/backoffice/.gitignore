@@ -12,6 +12,12 @@ next-env.d.ts
 # production
 /build
 
+# copies of the contract and the design tokens, made before every build
+/shared/
+
+# output bundle written by the hosting platform's build adapter
+/.apphosting/
+
 # misc
 .DS_Store
 *.pem

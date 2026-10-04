@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MAX_BODY_BYTES } from "@/lib/partners/http";
-import nextConfig from "@/next.config";
+import { responseHeaderRules } from "@/lib/http/response-headers";
 import { GET as rechargePage } from "./recharge/route";
 import { POST as topUp } from "./recharge/top-up/route";
 import { POST as quote } from "./travel-insurance/quote/route";
@@ -267,8 +267,8 @@ describe("the travel insurance page", () => {
 });
 
 describe("the headers the server adds to every partner route", () => {
-  it("ask for no referrer, after the console's own rule so it wins", async () => {
-    const rules = (await nextConfig.headers?.()) ?? [];
+  it("ask for no referrer, after the console's own rule so it wins", () => {
+    const rules = responseHeaderRules();
     const partners = rules.findIndex((rule) => rule.source === "/partners/:path*");
     const everything = rules.findIndex((rule) => rule.source === "/:path*");
 

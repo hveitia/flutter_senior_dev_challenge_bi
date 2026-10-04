@@ -1,4 +1,4 @@
-import designTokens from "../../../../packages/design_system/tokens/tokens.json";
+import designTokens from "@/shared/tokens.json";
 
 const VARIABLE_PREFIX = "--ds-";
 

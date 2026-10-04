@@ -1,35 +1,22 @@
-import path from "node:path";
 import type { NextConfig } from "next";
 
-// The contract and the design tokens live at the repository root and are
-// imported, not copied, so the bundler must be allowed to resolve them.
-const repositoryRoot = path.join(__dirname, "..", "..");
-
-const securityHeaders = [
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "same-origin" },
-  {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
-  },
-];
+import { responseHeaderRules } from "./lib/http/response-headers";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  turbopack: { root: repositoryRoot },
-  outputFileTracingRoot: repositoryRoot,
+  // The app root is this folder, stated so the framework does not infer one
+  // from another lockfile in the repository. What the console shares with the
+  // rest of the repository is copied into `shared/` before every build (see
+  // scripts/sync-shared.mjs), so nothing outside this folder is imported and
+  // the standalone output sits at its top level, where the hosting platform
+  // expects it.
+  turbopack: { root: __dirname },
+  outputFileTracingRoot: __dirname,
   async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      // The partners' mini apps stand in for a third party's server: their
-      // addresses are handed to nobody. Listed last so it replaces the
-      // policy above for these routes.
-      {
-        source: "/partners/:path*",
-        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
-      },
-    ];
+    return responseHeaderRules().map((rule) => ({
+      source: rule.source,
+      headers: [...rule.headers],
+    }));
   },
 };
 

@@ -550,3 +550,157 @@ describe('anything else', () => {
     await assertFails(setDoc(doc(asOwner(), 'secrets/keys'), { a: 1 }));
   });
 });
+
+// --- Notifications ---------------------------------------------------------
+
+/** A device exactly as the app registers it. */
+function device(overrides = {}) {
+  return {
+    token: 'fcm-token-of-this-installation',
+    platform: 'android',
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  };
+}
+
+describe('users/{uid}/devices: the devices that receive notifications', () => {
+  const OWN = `users/${OWNER}/devices/device-1`;
+
+  test('a customer registers their own device', async () => {
+    await assertSucceeds(setDoc(doc(asOwner(), OWN), device()));
+  });
+
+  test('a customer replaces the address of a device the console flagged',
+    async () => {
+      await seed(OWN, {
+        token: 'old-token',
+        platform: 'android',
+        updatedAt: Timestamp.now(),
+        unregistered: true,
+        unregisteredAt: Timestamp.now(),
+      });
+      await assertSucceeds(
+        setDoc(doc(asOwner(), OWN), device({ token: 'new-token' })),
+      );
+    });
+
+  test('a customer removes their own device', async () => {
+    await seed(OWN, device({ updatedAt: Timestamp.now() }));
+    await assertSucceeds(deleteDoc(doc(asOwner(), OWN)));
+  });
+
+  test('a customer cannot register a device for another customer',
+    async () => {
+      await assertFails(
+        setDoc(doc(asOtherCustomer(), OWN), device()),
+      );
+    });
+
+  test('nobody else reads or removes a customer\'s devices', async () => {
+    await seed(OWN, device({ updatedAt: Timestamp.now() }));
+    await assertFails(getDoc(doc(asOtherCustomer(), OWN)));
+    await assertFails(deleteDoc(doc(asOtherCustomer(), OWN)));
+    await assertFails(getDoc(doc(asVisitor(), OWN)));
+    await assertFails(setDoc(doc(asVisitor(), OWN), device()));
+  });
+
+  test('a device holds only its address, its platform and when it was saved',
+    async () => {
+      await assertFails(
+        setDoc(doc(asOwner(), OWN), device({ unregistered: false })),
+      );
+      await assertFails(setDoc(doc(asOwner(), OWN), without(device(), 'platform')));
+    });
+
+  test('the address is a bounded, non-empty text', async () => {
+    await assertFails(setDoc(doc(asOwner(), OWN), device({ token: '' })));
+    await assertFails(setDoc(doc(asOwner(), OWN), device({ token: 42 })));
+    await assertFails(
+      setDoc(doc(asOwner(), OWN), device({ token: 'x'.repeat(4097) })),
+    );
+  });
+
+  test('the platform is one the sender knows', async () => {
+    await assertFails(setDoc(doc(asOwner(), OWN), device({ platform: 'web' })));
+  });
+
+  test('the time it was saved is the server\'s, not the device\'s', async () => {
+    await assertFails(
+      setDoc(doc(asOwner(), OWN), device({ updatedAt: Timestamp.fromMillis(0) })),
+    );
+  });
+
+  test('a device identifier cannot be arbitrarily long', async () => {
+    await assertFails(
+      setDoc(doc(asOwner(), `users/${OWNER}/devices/${'d'.repeat(65)}`), device()),
+    );
+  });
+});
+
+describe('users/{uid}/inbox: notifications written by the server', () => {
+  const OWN = `users/${OWNER}/inbox/n-1`;
+
+  function notification(overrides = {}) {
+    return {
+      title: 'Nuevo inicio de sesión',
+      body: 'Ingresaste desde tu dispositivo habitual.',
+      kind: 'security',
+      destination: 'profile',
+      createdAt: Timestamp.now(),
+      read: false,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => seed(OWN, notification()));
+
+  test('a customer reads and lists their own inbox', async () => {
+    await assertSucceeds(getDoc(doc(asOwner(), OWN)));
+    await assertSucceeds(
+      getDocs(query(
+        collection(asOwner(), `users/${OWNER}/inbox`),
+        orderBy('createdAt', 'desc'),
+        limit(50),
+      )),
+    );
+  });
+
+  test('a customer marks a notification as read', async () => {
+    await assertSucceeds(updateDoc(doc(asOwner(), OWN), { read: true }));
+  });
+
+  test('a read notification cannot go back to unread', async () => {
+    await seed(OWN, notification({ read: true }));
+    await assertFails(updateDoc(doc(asOwner(), OWN), { read: false }));
+  });
+
+  test('a customer cannot change what a notification says or where it leads',
+    async () => {
+      await assertFails(
+        updateDoc(doc(asOwner(), OWN), { read: true, title: 'Otro título' }),
+      );
+      await assertFails(
+        updateDoc(doc(asOwner(), OWN), { destination: 'transfer' }),
+      );
+      await assertFails(
+        updateDoc(doc(asOwner(), OWN), { read: true, pinned: true }),
+      );
+    });
+
+  test('a customer cannot write a notification into their own inbox',
+    async () => {
+      await assertFails(
+        setDoc(doc(asOwner(), `users/${OWNER}/inbox/n-2`), notification()),
+      );
+    });
+
+  test('a customer cannot delete a notification', async () => {
+    await assertFails(deleteDoc(doc(asOwner(), OWN)));
+  });
+
+  test('nobody else reads or marks a customer\'s notifications', async () => {
+    await assertFails(getDoc(doc(asOtherCustomer(), OWN)));
+    await assertFails(updateDoc(doc(asOtherCustomer(), OWN), { read: true }));
+    await assertFails(getDoc(doc(asVisitor(), OWN)));
+  });
+});

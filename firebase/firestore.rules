@@ -111,6 +111,41 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // --- Notifications -------------------------------------------------
+      // The devices the customer receives push notifications on. The app
+      // registers its own installation and removes it at sign-out. The
+      // console reads the address and, through the Admin SDK, flags one the
+      // messaging service no longer knows; a client cannot set that flag.
+      function isValidDevice(device) {
+        return device.keys().hasOnly(['token', 'platform', 'updatedAt'])
+            && device.keys().hasAll(['token', 'platform', 'updatedAt'])
+            && device.token is string
+            && device.token.size() > 0
+            && device.token.size() <= 4096
+            && device.platform in ['android', 'ios']
+            // The registration time is the server's, never the device's.
+            && device.updatedAt == request.time;
+      }
+
+      match /devices/{deviceId} {
+        allow create, update: if isOwner(uid)
+            && deviceId.size() <= 64
+            && isValidDevice(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      // The inbox is written by the server when a notification is sent.
+      // The customer reads it (rule below) and may only mark an item as
+      // read: nothing else in it changes, and read never goes back.
+      match /inbox/{notificationId} {
+        allow update: if isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['read'])
+            && resource.data.read == false
+            && request.resource.data.read == true;
+      }
+      // --- End of notifications -------------------------------------------
+
       // Accounts, movements and anything else under the customer: read-only.
       match /{document=**} {
         allow read: if isOwner(uid);

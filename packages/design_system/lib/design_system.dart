@@ -14,6 +14,7 @@ export 'src/components/empty_state.dart';
 export 'src/components/group_header.dart';
 export 'src/components/inline_alert.dart';
 export 'src/components/inline_error.dart';
+export 'src/components/link_card.dart';
 export 'src/components/module_container.dart';
 export 'src/components/movement_row.dart';
 export 'src/components/radio_card.dart';

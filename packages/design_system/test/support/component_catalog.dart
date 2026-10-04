@@ -62,6 +62,19 @@ Map<String, Widget> componentCatalog() {
         StatusChip(label: 'Aliado', tone: AppTone.info),
       ],
     ),
+    'LinkCard': LinkCard(
+      icon: Icons.swap_horiz,
+      title: 'Transferencias',
+      description: 'Mueve dinero entre tus cuentas',
+      onTap: noop,
+    ),
+    'LinkCard with badge': LinkCard(
+      icon: Icons.shield_outlined,
+      title: 'Seguro de viaje',
+      description: 'Protección para tus planes',
+      badge: 'Aliado',
+      onTap: noop,
+    ),
     'StatusBanner offline': const StatusBanner(kind: StatusBannerKind.offline),
     'StatusBanner slow': const StatusBanner(kind: StatusBannerKind.slow),
     'StatusBanner restored': const StatusBanner(

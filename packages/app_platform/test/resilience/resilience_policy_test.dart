@@ -580,6 +580,32 @@ void main() {
 
       expect(eventsNamed(ResilienceTelemetry.faultInjectionEnabled), isEmpty);
     });
+
+    test('says a service is taken down only when the build allows it', () {
+      final lab = policy(allowFaultInjection: true, faults: everythingDown);
+
+      expect(lab.isTakenDown(ServiceIds.movements), isTrue);
+      expect(lab.isTakenDown(ServiceIds.partnerInsurance), isFalse);
+      expect(
+        policy(faults: everythingDown).isTakenDown(ServiceIds.movements),
+        isFalse,
+      );
+    });
+
+    test('reads the settings again every time it is asked', () {
+      var down = false;
+      final lab = policy(
+        allowFaultInjection: true,
+        faults: () => ResilienceSettings(
+          latency: Duration.zero,
+          unavailableServices: {if (down) ServiceIds.movements},
+        ),
+      );
+
+      expect(lab.isTakenDown(ServiceIds.movements), isFalse);
+      down = true;
+      expect(lab.isTakenDown(ServiceIds.movements), isTrue);
+    });
   });
 
   group('timers', () {

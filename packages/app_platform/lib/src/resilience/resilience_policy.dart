@@ -89,6 +89,15 @@ final class ResiliencePolicy {
   /// `true` when a run in flight became slow, `false` once none is.
   Stream<bool> get slowChanges => _slowChanges.stream;
 
+  /// Whether the published faults take [serviceId] down right now. Always
+  /// false in a build that does not allow fault injection.
+  ///
+  /// [run] already answers as unavailable for such a service. This is for
+  /// what does not go through [run], such as a live listener: a simulated
+  /// outage that kept delivering through it would not be an outage.
+  bool isTakenDown(String serviceId) =>
+      _faults?.call().isUnavailable(serviceId) ?? false;
+
   /// Runs [operation] and returns its value or the failure that ended it.
   ///
   /// [idempotent] declares whether [operation] may run more than once without

@@ -69,7 +69,7 @@ flowchart LR
 
 1. **Versión.** `version` de `apps/mobile/pubspec.yaml` (hoy `0.1.0+1`). El número de compilación lo pone la canalización; la etiqueta `vX.Y.Z` marca el commit publicado.
 2. **Compilación.** `flutter build appbundle --release --dart-define=API_BASE_URL=https://… --dart-define=PARTNER_BASE_URL=https://…`. Sin `ALLOW_FAULT_INJECTION`, `USE_FIREBASE_EMULATORS` ni `PARTNER_DEV_ORIGIN`.
-3. **Firma.** Con una clave que vive en el almacén de secretos de la canalización, nunca en el repositorio (`key.properties`, `*.jks` y `*.keystore` están en `.gitignore`). **Hoy no está configurada**: la compilación de publicación usa la clave de depuración de la plantilla.
+3. **Firma.** Con una clave que vive en el almacén de secretos de la canalización, nunca en el repositorio (`key.properties`, `*.jks` y `*.keystore` están en `.gitignore`). `apps/mobile/android/app/build.gradle.kts` firma la compilación de publicación con esa clave cuando existe `apps/mobile/android/key.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`); sin ese archivo usa la clave de depuración, de modo que un clon nuevo y la integración continua siguen compilando. El APK de la publicación `v0.1.0` se firmó así, con una clave RSA de 4096 bits guardada en el equipo del autor. Para una tienda, la clave pasaría al almacén de secretos de la canalización y Play App Signing custodiaría la clave de la aplicación.
 4. **Despliegue gradual.** Pista interna, después porcentajes crecientes. El criterio para avanzar es el porcentaje de usuarios sin fallos y la tasa de `transfer_stopped` y `config_rejected` frente a la versión anterior ([monitoreo.md](monitoreo.md)).
 5. **Símbolos.** Subir los símbolos de depuración a Crashlytics en la misma canalización para que las trazas sean legibles.
 
@@ -151,7 +151,7 @@ Los tres más probables, con las señales que ya existen en [monitoreo.md](monit
 
 Dicho sin rodeos, porque nada de esto está hecho:
 
-- **Firma de publicación** de Android e iOS, y la canalización que compila y sube a las tiendas.
+- **Distribución por tiendas.** El APK de demostración está firmado con una clave de subida propia, pero no hay ficha en Play Store, ni firma de distribución para iOS, ni la canalización que compila, firma y sube a las tiendas.
 - **iOS.** La aplicación compila con `flutter build ios`, se instala y funciona en un iPhone físico con firma de desarrollo; el autor la recorrió allí sin encontrar fallos. Faltan repetir en iOS las comprobaciones detalladas hechas en Android, la clave APNs para las notificaciones y la firma de distribución.
 - **App Check**, para que Firestore y la API acepten solo la aplicación legítima.
 - **Restricción de las claves de cliente por aplicación** (paquete y huella en Android, identificador en iOS). Hoy solo están limitadas a las API de Firebase.

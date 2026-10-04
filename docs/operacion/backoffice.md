@@ -270,7 +270,7 @@ flutter build apk --release \
   --dart-define=ALLOW_FAULT_INJECTION=true
 ```
 
-`ALLOW_FAULT_INJECTION` solo tiene sentido en la demostración: permite que el laboratorio de resiliencia de la consola actúe sobre esta compilación. Firma: hoy la compilación de publicación usa la clave de depuración de la plantilla de Flutter, suficiente para instalar el APK a mano pero no para una tienda. Una firma propia necesita un almacén de claves fuera del repositorio y un `key.properties` ignorado por git; no está configurada.
+`ALLOW_FAULT_INJECTION` solo tiene sentido en la demostración: permite que el laboratorio de resiliencia de la consola actúe sobre esta compilación. Firma: la compilación de publicación se firma con la clave de subida cuando existe `apps/mobile/android/key.properties`, ignorado por git y con el almacén de claves fuera del repositorio; sin ese archivo usa la clave de depuración de la plantilla de Flutter, suficiente para instalar el APK a mano ([despliegue.md](despliegue.md)).
 
 ### Reversión
 

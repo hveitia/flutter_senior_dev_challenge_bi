@@ -55,7 +55,7 @@ Lo que se dejó fuera y por qué. Cada una se tomó para proteger lo que más pe
 | Pilas de navegación independientes por pestaña | No aportaban a ningún requisito | Cambiar el tipo de ruta contenedora |
 | Verificación de correo e identidad | Requiere un proveedor de identidad y un flujo de espera | Exigir correo verificado en las reglas y en el alta de cuentas |
 | Transferencias a terceros | Exigen beneficiarios, límites y prevención de fraude | El servidor ya decide en una función pura; habría que ampliar el modelo |
-| Firma de publicación y tiendas | No se entrega una aplicación publicada | Claves en un almacén de secretos y una canalización ([operacion/despliegue.md](operacion/despliegue.md)) |
+| Distribución por tiendas | El APK de demostración se entrega firmado en una publicación del repositorio; no hay aplicación publicada en una tienda | Claves en un almacén de secretos y una canalización ([operacion/despliegue.md](operacion/despliegue.md)) |
 | Un entorno de producción para el servidor | Lo desplegado es una demostración: un solo servicio para consola, API y aliados, sin dominio propio ni entorno previo | Separar consola, API y aliados, y añadir un entorno previo con promoción manual |
 | Límites de frecuencia y App Check | No cabían en el plazo. La demostración está expuesta sin ellos, con registro abierto y un depósito de demostración por cada alta; lo acota un tope de instancias | Imprescindibles antes de un uso real; mientras tanto, cuotas de alta y alerta de presupuesto en la consola de Firebase |
 | Aliados reales | No hay un tercero con quien integrar | El contenedor y el contrato no cambian; cambia el origen |

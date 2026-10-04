@@ -1,8 +1,8 @@
 # Comportamiento con conectividad degradada
 
-Qué hace la aplicación cuando la conexión falta, es lenta o un servicio no responde. Actualizado al cerrar la etapa 6: cubre el acceso, las cuentas y movimientos y el inicio. Las transferencias y los servicios de aliados añadirán sus apartados en sus etapas.
+Qué hace la aplicación cuando la conexión falta, es lenta o un servicio no responde. Cubre el acceso, las cuentas y movimientos, el inicio, las transferencias, las mini aplicaciones de aliados y las notificaciones.
 
-Cada apartado separa lo **implementado y visto en un dispositivo**, lo **implementado y cubierto solo por pruebas automáticas** y lo **planificado**. Las decisiones están en el [ADR 0009](../adr/0009-politica-de-resiliencia.md) (política de resiliencia), el [ADR 0012](../adr/0012-lectura-de-cuentas-y-movimientos.md) (lectura y caché) y el [ADR 0013](../adr/0013-registro-de-modulos-y-motor-del-inicio.md) (un estado por módulo del inicio).
+Cada apartado separa lo **implementado y visto en un dispositivo**, lo **implementado y cubierto solo por pruebas automáticas** y lo **no hecho**, que se lista al final. Las decisiones están en el [ADR 0009](../adr/0009-politica-de-resiliencia.md) (política de resiliencia), el [ADR 0012](../adr/0012-lectura-de-cuentas-y-movimientos.md) (lectura y caché) y el [ADR 0013](../adr/0013-registro-de-modulos-y-motor-del-inicio.md) (un estado por módulo del inicio).
 
 ## Principios
 
@@ -81,7 +81,7 @@ El peor caso de una lectura que nunca responde ronda los 25 s (tres intentos de 
 | Las cuentas fallan y el saldo no está publicado en ese inicio | El carrusel, o las inversiones, muestran su propio error con «Reintentar» en lugar de quedar en blanco | Pruebas automáticas |
 | Un módulo tarda en actualizarse más de 30 s, o falla al hacerlo | Los demás terminan, el indicador desaparece y la siguiente actualización funciona | Pruebas automáticas |
 | No se pueden leer los movimientos del periodo de la tendencia | El saldo se muestra sin la línea de tendencia | Pruebas automáticas |
-| La configuración publica un tipo de módulo que esta versión no conoce | Se omite y el resto del inicio se dibuja | Visto en un teléfono: el segmento del cliente de prueba publica un módulo de servicios recomendados que aún no existe |
+| La configuración publica un tipo de módulo que esta versión no conoce | Se omite y el resto del inicio se dibuja | Visto en un teléfono cuando el módulo de servicios recomendados aún no existía en la aplicación y la configuración ya lo publicaba. Hoy ese módulo existe; el caso lo cubren las pruebas con un tipo inventado |
 | Las cuentas fallan y nunca se vieron | Mensaje de error a pantalla completa con «Reintentar» | Pruebas automáticas |
 | Un documento con un formato que la aplicación no entiende | Ese elemento se omite; el resto se muestra | Pruebas automáticas |
 | Una categoría, un canal o un estado desconocidos | El movimiento se muestra como «Otros» o «Pendiente» | Pruebas automáticas |

@@ -2,7 +2,7 @@
 
 Rutas del servidor que la aplicación móvil llama en nombre del cliente que tiene la sesión iniciada. Viven en el mismo servidor Next.js que la consola (`apps/backoffice`), bajo `app/api/`. Las decisiones están en el [ADR 0016](../adr/0016-movimiento-de-dinero-en-el-servidor.md); la configuración y el arranque del servidor, en [backoffice.md](backoffice.md).
 
-Estado: construidas y probadas en local contra el proyecto real. Sin desplegar. La aplicación las usa para transferir y para el alta de cuentas.
+Estado: construidas, probadas en local contra el proyecto real y desplegadas con la consola en Firebase App Hosting (<https://backoffice--flutter-challenge-bi.us-east4.hosted.app>). En el servidor desplegado se comprobaron, con un token real de cliente, el alta de cuentas, una transferencia, su repetición y su reverso. La aplicación las usa para transferir y para el alta de cuentas.
 
 ## Lo común a todas las rutas
 
@@ -195,13 +195,13 @@ La dirección la decide el código, no lo que reciba la compilación (`apps/mobi
 
 En Android, el tráfico sin cifrar hacia esos tres servidores está permitido solo en las variantes de depuración y de perfil, por su configuración de seguridad de red; la de publicación no la tiene. El cliente no sigue redirecciones: el token es solo para ese servidor.
 
-## Cómo llega en un despliegue (descrito, no realizado)
+## Cómo llega en el despliegue
 
-Las rutas se despliegan con la consola, sin configuración propia: usan las mismas credenciales del servidor y la misma guarda de proyecto. La aplicación se compila con la dirección pública en `API_BASE_URL`. Una compilación de publicación solo arranca con una dirección `https`: sin ella, o con `http`, se detiene antes de mostrar nada.
+Las rutas están desplegadas con la consola, sin configuración propia: usan las mismas credenciales del servidor y la misma guarda de proyecto ([backoffice.md](backoffice.md#despliegue-en-firebase-app-hosting)). La aplicación se compila con la dirección pública en `API_BASE_URL`; el comando está en el [README](../../README.md). Una compilación de publicación solo arranca con una dirección `https`: sin ella, o con `http`, se detiene antes de mostrar nada. Una compilación así, instalada en un teléfono, inició sesión, cargó el inicio e hizo una transferencia de ida y vuelta contra el servidor desplegado.
 
 El depósito que acredita el alta de cuentas es dinero de demostración sin valor real, y el registro es abierto: no debe desplegarse así con dinero de verdad.
 
-Estas rutas no comprueban el origen de la petición, porque no dependen de cookies y una aplicación móvil no envía cabecera de origen. Lo que las protege es el token. Antes de exponerlas en producción hacen falta App Check y un límite de frecuencia, que no existen.
+Estas rutas no comprueban el origen de la petición, porque no dependen de cookies y una aplicación móvil no envía cabecera de origen. Lo que las protege es el token. La demostración está expuesta sin App Check ni límite de frecuencia, que no existen; son imprescindibles antes de un uso real.
 
 ## Operación
 

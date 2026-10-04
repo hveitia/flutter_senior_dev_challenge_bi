@@ -97,7 +97,7 @@ La configuración publicada es la primera palanca de reversión: apagar una func
   - la **API de clientes** recibe tráfico de todos los teléfonos y mueve dinero: escala y se limita por separado, detrás de App Check y de límites de frecuencia;
   - la **consola** es una herramienta interna: red restringida o acceso con identidad corporativa;
   - el **contenido de aliados** debe vivir en el origen de cada aliado. Compartir origen con la consola es aceptable solo en la demostración.
-- **Canalización.** `.github/workflows/backoffice.yml` ya ejecuta lint, compilación, tipos y pruebas. El despliegue sería un paso posterior en `main`, con promoción manual a producción.
+- **Canalización.** `.github/workflows/backoffice.yml` ejecuta lint, compilación, tipos y pruebas. El despliegue lo hace la propia plataforma: App Hosting compila y publica cada push a `main`, sin esperar a ese flujo. En producción habría un entorno previo y una promoción manual; en la demostración no existen.
 
 ## Reglas e índices de Firestore
 
@@ -148,7 +148,7 @@ Dicho sin rodeos, porque nada de esto está hecho:
 - **Restricción de las claves de cliente por aplicación** (paquete y huella en Android, identificador en iOS). Hoy solo están limitadas a las API de Firebase.
 - **Límites de frecuencia** en la API de clientes y en el acceso a la consola, y límites por cliente en las transferencias.
 - **Verificación de correo** y validación de identidad en el registro. El registro es abierto y cada cliente nuevo recibe un depósito de demostración ([ADR 0016](../adr/0016-movimiento-de-dinero-en-el-servidor.md)).
-- **Despliegue del servidor**, su dominio, y la separación de consola, API y aliados.
+- **Un entorno de producción para el servidor.** Lo desplegado es una demostración: sin dominio propio, sin entorno previo y con la consola, la API y los aliados en un mismo servicio, que habría que separar.
 - **Alertas configuradas.** Los eventos y las trazas se emiten; los umbrales y los avisos no están creados, y no se ha comprobado su llegada a la consola de Firebase.
 - **Conciliación** de saldos y movimientos, y copias de seguridad de Firestore con una restauración ensayada.
 - **Fijación de certificados** y detección de dispositivos comprometidos, habituales en banca y fuera del alcance de este reto.

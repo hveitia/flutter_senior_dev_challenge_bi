@@ -140,7 +140,7 @@ Las actualizaciones se revisan a mano: `npm audit` y `npm outdated` desde `apps/
 
 Para enviar a un cliente, la consola lee sus dispositivos de `users/{uid}/devices/*`, campo `token`, y deja fuera los marcados como `unregistered`. Nunca borra un documento de dispositivo. Para enviar a un segmento usa el tema `segment-<id del segmento>`.
 
-**Pendiente en la etapa de notificaciones.** La aplicación móvil todavía no escribe esos documentos ni se suscribe a esos temas. Para que pueda registrar su dispositivo hará falta una regla de Firestore que permita a cada cliente escribir en su propio `users/{uid}/devices`; hoy las reglas niegan toda escritura en subcolecciones. Esa regla pertenece a esa etapa y no se ha añadido aquí.
+La aplicación móvil escribe esos documentos y se suscribe a esos temas desde la etapa de notificaciones ([ADR 0018](../adr/0018-notificaciones-y-bandeja.md)). Las reglas de Firestore permiten a cada cliente escribir solo sus propios dispositivos, con una lista cerrada de campos. Al enviar, el servidor escribe además un aviso en la bandeja de cada destinatario (`users/{uid}/inbox`).
 
 ## Despliegue en Firebase App Hosting
 
@@ -167,9 +167,11 @@ Los dos últimos fallos se reprodujeron en local con el propio adaptador (`@apph
 - **Inicio de sesión desde el navegador.** Con una cuenta que no es de administrador, el formulario inicia sesión en Firebase desde el dominio publicado y la ruta de sesión la rechaza con el mensaje uniforme. No hizo falta añadir el dominio a los dominios autorizados de Authentication.
 - **Aplicación.** Una compilación de publicación apuntando al servidor publicado, instalada en un teléfono: inicio de sesión, inicio con sus módulos, una transferencia y su reverso, y la mini aplicación del seguro de viaje cargada desde el origen publicado.
 
+- **Administrador.** El autor inició sesión con su cuenta de administrador en el servidor publicado, recorrió las secciones de la consola y publicó un cambio que se reflejó en la aplicación en un teléfono. Eso comprueba la cookie de sesión y la publicación de configuración en el servidor desplegado.
+
 Sin comprobar:
 
-- **El inicio de sesión de un administrador en el servidor publicado**, y con él la creación de la cookie de sesión, la publicación de configuración y el cierre de sesión con revocación. Solo puede hacerlo quien tiene la cuenta.
+- **El cierre de sesión con revocación en el servidor publicado.** El cierre responde bien; no se comprobó después que la sesión anterior quedara rechazada, como sí se hizo en local.
 - **El envío de una notificación real desde el servidor publicado.** Ningún dispositivo estaba registrado durante la comprobación.
 - El laboratorio de resiliencia publicado desde la consola desplegada.
 
@@ -278,13 +280,15 @@ flutter build apk --release \
 
 ### Límites de costo y de abuso de una demostración pública
 
-El registro de clientes es abierto y cada alta recibe dinero de demostración. Lo que cubre la configuración es el tope de instancias. El resto son ajustes de la consola de Firebase y de Google Cloud que debe aplicar la persona propietaria:
+El registro de clientes es abierto y cada alta recibe dinero de demostración. Lo que cubre la configuración es el tope de instancias. El resto son ajustes de la consola de Firebase y de Google Cloud que solo puede aplicar la persona propietaria del proyecto. No se pueden comprobar desde el repositorio, así que aquí se listan como lo que la demostración necesita, sin afirmar que estén aplicados:
 
-- [ ] Alerta de presupuesto en la cuenta de facturación.
-- [ ] Cuota de altas por dirección IP en Authentication.
-- [ ] Restricción de las claves de API de Android e iOS por aplicación, cuando ya no haga falta compilar desde el código con otra firma.
-- [ ] App Check: trabajo futuro; hoy nada impide llamar a la API fuera de la aplicación con un token válido.
-- [ ] Retirar el servidor al terminar la evaluación.
+| Ajuste | Para qué | Cuándo |
+|---|---|---|
+| Alerta de presupuesto en la cuenta de facturación | Enterarse de un consumo anómalo | Mientras la demostración esté pública |
+| Cuota de altas por dirección IP en Authentication | Limitar la creación masiva de cuentas con depósito de demostración | Mientras la demostración esté pública |
+| Restricción de las claves de API de Android e iOS por aplicación | Que las claves solo sirvan desde la aplicación | Cuando ya no haga falta compilar desde el código con otra firma |
+| App Check | Que la API y Firestore solo acepten la aplicación legítima | Trabajo futuro: hoy nada impide llamar a la API fuera de la aplicación con un token válido |
+| Retirar el servidor y deshabilitar las cuentas de demostración | Cerrar la exposición | Al terminar la evaluación |
 
 ### En otro proveedor
 

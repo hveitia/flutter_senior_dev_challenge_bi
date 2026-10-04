@@ -167,5 +167,5 @@ Ninguna señal de las anteriores incluye datos del cliente. Los eventos del acce
 
 - Configurar las alertas en la consola de Firebase y decidir quién las recibe.
 - Verificar en un dispositivo que los informes, eventos y trazas llegan.
-- Monitoreo del lado del servidor (API de transferencias y envío de notificaciones), que se describirá con la etapa 8.
+- Monitoreo del lado del servidor. Hoy cada petición a la API de clientes deja una línea de registro estructurada, sin datos del cliente ([api.md](api.md#operación)), y `GET /api/health` dice si la configuración es válida; no hay métricas ni alertas construidas sobre ellas.
 - Subida de símbolos para leer las trazas de una compilación ofuscada.

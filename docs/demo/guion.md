@@ -4,7 +4,20 @@ Recorrido de unos 25 minutos, ordenado por lo que más pesa en la evaluación. C
 
 ## Preparación (antes de la sesión)
 
-Modo local, sin depender de la red del lugar ni de credenciales:
+Hay dos formas de prepararla. La primera es la que se comprobó de punta a punta en un teléfono.
+
+### Con la demostración desplegada
+
+- Consola: <https://backoffice--flutter-challenge-bi.us-east4.hosted.app>, con una cuenta de administrador. Las credenciales se entregan por privado; no están en el repositorio.
+- Aplicación: una compilación que apunta a ese servidor, con el comando de «Demostración publicada» del [README](../../README.md), instalada en un teléfono Android. Se entra con una cuenta de cliente de demostración, también entregada por privado, o registrando una nueva, que recibe sus cuentas al momento.
+- Perfil > Diagnóstico muestra la versión de la configuración publicada: sirve para comprobar que el teléfono y la consola hablan con el mismo servidor.
+- Tener abierto el repositorio en el editor y `tool/verify.sh` en verde.
+
+Depende de la red del lugar. Las notificaciones son reales: un envío desde la consola llega al teléfono.
+
+### En modo local
+
+Sin depender de la red del lugar ni de credenciales. El servidor y los emuladores se comprobaron así desde una copia limpia del repositorio; la aplicación en este modo se compiló, pero no se ha ejecutado en un dispositivo, así que conviene ensayarlo antes:
 
 ```bash
 tool/setup.sh
@@ -26,9 +39,9 @@ flutter run --dart-define=USE_FIREBASE_EMULATORS=true \
 - Aplicación: el cliente que imprime `seed`. Perfil > Diagnóstico debe decir «Entorno: Emuladores locales».
 - Tener abierto el repositorio en el editor y `tool/verify.sh` en verde.
 
-En modo local las notificaciones no salen del equipo: el envío queda «Validado». Para mostrar un push real hace falta el proyecto de Firebase y `PUSH_DELIVERY=live` ([operacion/backoffice.md](../operacion/backoffice.md)).
+En modo local las notificaciones no salen del equipo: el envío queda «Validado». Un push real solo se ve con la demostración desplegada ([operacion/backoffice.md](../operacion/backoffice.md)).
 
-**Plan B general.** Si el teléfono no coopera, un emulador de Android con los mismos comandos (los `adb reverse` también funcionan en él). Si tampoco, la galería del sistema de diseño (`flutter run -t lib/main_gallery.dart`) no necesita ningún servicio, y las capturas del recorrido están en la documentación de cada etapa.
+**Plan B general.** Si falla la red del lugar, pasar al modo local. Si el teléfono no coopera, un emulador de Android con los mismos comandos (los `adb reverse` también funcionan en él). Si tampoco, la galería del sistema de diseño (`flutter run -t lib/main_gallery.dart`) no necesita ningún servicio.
 
 ## Recorrido
 
@@ -41,9 +54,9 @@ En modo local las notificaciones no salen del equipo: el envío queda «Validado
 | 11–15 | **Estados degradados.** En la consola, Laboratorio de resiliencia: latencia de 5 s (aviso de conexión lenta); «movimientos no disponibles» (ese módulo muestra su error, el saldo sigue); quitar los fallos y ver la recuperación. Después, modo avión con datos guardados y «Actualizado hace…» | «La falla parcial sale de la arquitectura: un Bloc por módulo.» | Pensamiento de producto, calidad | Modo avión no depende de la consola |
 | 15–19 | **Transferencia.** Una normal y su movimiento. Saldo insuficiente. En modo avión queda «En cola»; al volver la conexión se liquida sola | «El identificador de la orden es la clave de idempotencia; una orden que pudo salir nunca se encola.» | Calidad, seguridad | Mostrar las pruebas de `default_transfers_repository_test.dart` |
 | 19–21 | Servicios: cotizar el seguro de viaje. Dar por caído al aliado desde la consola con la mini aplicación abierta | «El origen del aliado se fija al compilar; la página solo conoce idioma y segmento.» | Integración externa | Abrir Recargas, que no depende de ese fallo |
-| 21–22 | Bandeja: el aviso de la transferencia. Un envío desde la consola queda «Validado» | «La bandeja la escribe el servidor; el push solo la anuncia.» | Notificaciones | Explicar con [arquitectura/flujos.md](../arquitectura/flujos.md) |
-| 22–24 | `git log --oneline`, el hook y la CI en GitHub; el registro de uso de IA con lo que encontraron las revisiones | «Una rama, commits pequeños, la misma verificación en el hook y en la CI.» | Versionamiento, IA | — |
-| 24–25 | [alcance-y-riesgos.md](../alcance-y-riesgos.md): lo que quedó fuera y por qué | «iOS, despliegue y verificación de identidad quedaron fuera a propósito; está escrito.» | Pensamiento de producto | — |
+| 21–22 | Bandeja: el aviso de la transferencia. Un envío desde la consola llega al teléfono con la demostración desplegada; en modo local queda «Validado» | «La bandeja la escribe el servidor; el push solo la anuncia.» | Notificaciones | Explicar con [arquitectura/flujos.md](../arquitectura/flujos.md) |
+| 22–24 | `git log --oneline`, el hook y la CI en GitHub; el resumen de uso de IA | «Una rama, commits pequeños, la misma verificación en el hook y en la CI.» | Versionamiento, IA | — |
+| 24–25 | [alcance-y-riesgos.md](../alcance-y-riesgos.md): lo que quedó fuera y por qué | «iOS, la publicación en tiendas y la verificación de identidad quedaron fuera a propósito; está escrito.» | Pensamiento de producto | — |
 
 ## Ejercicios probables en vivo
 

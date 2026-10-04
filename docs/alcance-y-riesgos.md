@@ -1,8 +1,8 @@
 # Alcance, supuestos, riesgos y escalamiento
 
-Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se dejó fuera a propósito. Las cifras de pruebas son las de la última verificación completa (`tool/verify.sh`): 1866 pruebas de Dart en nueve paquetes, 566 del servidor y la consola, 110 de las reglas de Firestore y 31 de las herramientas de carga.
+Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se dejó fuera a propósito. Las cifras de pruebas son las de la última verificación completa (`tool/verify.sh`): 1866 pruebas de Dart en nueve paquetes, 615 del servidor y la consola, 110 de las reglas de Firestore y 31 de las herramientas de carga.
 
-«Dispositivo» significa un teléfono Android físico contra el proyecto real de Firebase y el servidor ejecutándose en local. iOS no se compiló ni se probó en ningún momento.
+«Dispositivo» significa un teléfono Android físico contra el proyecto real de Firebase. En casi todas las comprobaciones el servidor se ejecutaba en local; las que se hicieron contra el servidor desplegado lo dicen. iOS no se compiló ni se probó en ningún momento.
 
 ## Requisitos del reto
 
@@ -19,7 +19,7 @@ Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se 
 | Describir el comportamiento ante conectividad limitada, alta latencia o indisponibilidad parcial | [operacion/conectividad-degradada.md](operacion/conectividad-degradada.md), [ADR 0009](adr/0009-politica-de-resiliencia.md) | Cada fila del documento indica si se vio en dispositivo o solo en pruebas | Cumplido |
 | Pruebas unitarias, de widgets y al menos un flujo E2E crítico | `test/` de cada paquete; `apps/mobile/integration_test/transfer_flow_test.dart` | 1866 pruebas de Dart en CI. El flujo E2E (iniciar sesión, transferir, ver el movimiento) pasó en dispositivo contra servicios reales | Parcial en el E2E: la versión actual, que transfiere y devuelve para poder repetirse, no tiene todavía una ejecución válida; la que pasó era de un solo sentido. No corre en CI |
 | Documentar el uso de herramientas de IA y su impacto | [ia/registro-uso-ia.md](ia/registro-uso-ia.md) | Resumen de las herramientas, el método de trabajo, las decisiones del autor y el impacto en productividad, calidad, documentación y pruebas | Cumplido |
-| Demostrar el comportamiento degradado: estados de carga, reintentos, caché y recuperación | Laboratorio de resiliencia de la consola y de `firebase/seed/publish-config.mjs`; compilación con `ALLOW_FAULT_INJECTION` | Visto en dispositivo: esqueletos, sin conexión con datos guardados, conexión lenta, falla parcial, recuperación, transferencia en cola que se liquida sola, aliado caído | Cumplido. Sin ver en dispositivo: el error de pantalla completa del inicio y los fallos publicados desde la consola (se publicaron con la herramienta) |
+| Demostrar el comportamiento degradado: estados de carga, reintentos, caché y recuperación | Laboratorio de resiliencia de la consola y de `firebase/seed/publish-config.mjs`; compilación con `ALLOW_FAULT_INJECTION` | Visto en dispositivo: esqueletos, sin conexión con datos guardados, conexión lenta, falla parcial, recuperación, transferencia en cola que se liquida sola, aliado caído | Cumplido. Sin ver en dispositivo: el error de pantalla completa del inicio y los fallos publicados desde la consola (se publicaron con la herramienta de desarrollo; desde la consola se vio en el teléfono un cambio de orden de módulos) |
 
 ### Entregables
 
@@ -29,10 +29,10 @@ Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se 
 | README con instrucciones para configurar, ejecutar, probar y colaborar | [README.md](../README.md) | Cumplido. El modo local con emuladores permite ejecutar todo sin acceso al proyecto de Firebase |
 | Documentación de arquitectura y decisiones técnicas | [adr/](adr/) (19 decisiones con los cinco campos pedidos), [arquitectura/](arquitectura/) | Cumplido |
 | Documentación de estrategia de despliegue y operación | [operacion/despliegue.md](operacion/despliegue.md) y el resto de [operacion/](operacion/) | Cumplido. El servidor (consola, API de clientes y páginas de aliados) está desplegado como demostración en Firebase App Hosting; la aplicación no está publicada en ninguna tienda y el resto es estrategia |
-| Demostración funcional | [demo/guion.md](demo/guion.md); modo local o dispositivo | Cumplido. La aplicación no está en una tienda: se instala desde el código |
+| Demostración funcional | Servidor desplegado (<https://backoffice--flutter-challenge-bi.us-east4.hosted.app>), [demo/guion.md](demo/guion.md) y modo local | Cumplido. La consola desplegada se usa con una cuenta de administrador que se entrega por privado. La aplicación no está en una tienda: se instala desde una compilación que apunta al servidor desplegado, o desde el código en modo local |
 | Diagramas de componentes, flujos y dependencias | [arquitectura/componentes.md](arquitectura/componentes.md), [arquitectura/flujos.md](arquitectura/flujos.md), [arquitectura/publicar-configuracion.md](arquitectura/publicar-configuracion.md) | Cumplido |
 | Supuestos, riesgos técnicos y estrategia de escalamiento | Este documento | Cumplido |
-| Trunk Based Development | [ADR 0006](adr/0006-trunk-based-development.md) | Cumplido: una rama, commits pequeños, verificación antes de cada commit y CI en cada push. Dos commits locales defectuosos se repararon antes de publicarse y está registrado |
+| Trunk Based Development | [ADR 0006](adr/0006-trunk-based-development.md) | Cumplido: una rama, commits pequeños, verificación antes de cada commit y CI en cada push. Son más de 280 commits en dos días, subidos por lotes; dos lotes locales con commits defectuosos se repararon antes de publicarse. El ADR describe cómo se ve el historial y por qué |
 
 ### Bonus
 
@@ -40,7 +40,7 @@ Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se 
 | --- | --- | --- |
 | Capacidades avanzadas de personalización o asistencia | Segmentos, intereses, composición del inicio por segmento, módulo «Para ti» | Parcial. No hay asistente ni recomendaciones calculadas a partir del comportamiento |
 | Experiencias generadas dinámicamente | El inicio se arma en tiempo de ejecución desde un documento publicado; módulos desconocidos se omiten | Cumplido |
-| Automatizaciones para desarrollo, pruebas, despliegue o documentación | Hook de verificación acotada, dos flujos de CI, pruebas de reglas con emulador, Dependabot para las acciones, `tool/local-stack.sh`, herramientas de carga y publicación | Parcial. No hay despliegue automatizado ni publicación automática de la documentación |
+| Automatizaciones para desarrollo, pruebas, despliegue o documentación | Hook de verificación acotada, dos flujos de CI, pruebas de reglas con emulador, Dependabot para las acciones, `tool/local-stack.sh`, herramientas de carga y publicación | Parcial. El servidor se despliega solo con cada push a `main`; no hay canalización de publicación de la aplicación ni publicación automática de la documentación |
 
 ## Decisiones conscientes de alcance
 
@@ -56,8 +56,8 @@ Lo que se dejó fuera y por qué. Cada una se tomó para proteger lo que más pe
 | Verificación de correo e identidad | Requiere un proveedor de identidad y un flujo de espera | Exigir correo verificado en las reglas y en el alta de cuentas |
 | Transferencias a terceros | Exigen beneficiarios, límites y prevención de fraude | El servidor ya decide en una función pura; habría que ampliar el modelo |
 | Firma de publicación y tiendas | No se entrega una aplicación publicada | Claves en un almacén de secretos y una canalización ([operacion/despliegue.md](operacion/despliegue.md)) |
-| Despliegue del servidor | Exige una cuenta de servicio y un dominio; el modo local lo sustituye para evaluar | Elegir proveedor y separar consola, API y aliados |
-| Límites de frecuencia y App Check | Sin despliegue público no hay tráfico que limitar | Imprescindibles antes de exponer la API |
+| Un entorno de producción para el servidor | Lo desplegado es una demostración: un solo servicio para consola, API y aliados, sin dominio propio ni entorno previo | Separar consola, API y aliados, y añadir un entorno previo con promoción manual |
+| Límites de frecuencia y App Check | No cabían en el plazo. La demostración está expuesta sin ellos, con registro abierto y un depósito de demostración por cada alta; lo acota un tope de instancias | Imprescindibles antes de un uso real; mientras tanto, cuotas de alta y alerta de presupuesto en la consola de Firebase |
 | Aliados reales | No hay un tercero con quien integrar | El contenedor y el contrato no cambian; cambia el origen |
 | Cancelar una operación en curso y cortacircuitos por servicio | El peor caso está acotado en unos 25 segundos | Una señal de cancelación en la política de resiliencia ([ADR 0009](adr/0009-politica-de-resiliencia.md)) |
 | Bloqueo biométrico al volver de segundo plano | Se priorizó el bloqueo al abrir la aplicación | Observar el ciclo de vida y un tiempo de gracia |

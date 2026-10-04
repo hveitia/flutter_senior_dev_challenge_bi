@@ -151,6 +151,86 @@ void main() {
       expect(repository.sent, hasLength(1));
     });
 
+    test('opens on the order whose outcome is unknown, so the only thing to '
+        'send is that same order', () async {
+      repository
+        ..unresolved = const TransferOrder(
+          id: 'order-left',
+          fromAccountId: 'checking',
+          toAccountId: 'savings',
+          amountCents: 2500,
+          concept: 'Arriendo',
+        )
+        ..onSend = (_) async => const TransferCompleted(reference: 'TRF-9');
+
+      final created = cubit();
+
+      expect(created.state.step, TransferStep.done);
+      expect(created.state.outcome, isA<TransferNotSent>());
+      expect(created.state.fromAccountId, 'checking');
+      expect(created.state.toAccountId, 'savings');
+      expect(created.state.amountCents, 2500);
+
+      await created.retryRequested();
+
+      expect(repository.sent.single.id, 'order-left');
+      expect(repository.sent.single.concept, 'Arriendo');
+      expect(
+        created.state.outcome,
+        const TransferCompleted(reference: 'TRF-9'),
+      );
+    });
+
+    test('after an order the server says changed, starting over goes back to '
+        'the form and the next order has a new id', () async {
+      repository.onSend = (_) async =>
+          const TransferStopped(TransferStop.orderChanged);
+      final created = await readyToConfirm();
+      await created.confirmed();
+
+      created.startOverRequested();
+
+      expect(created.state.step, TransferStep.editing);
+      expect(created.state.outcome, isNull);
+      expect(created.state.amountCents, 15010);
+
+      repository.onSend = (_) async =>
+          const TransferCompleted(reference: 'TRF-2');
+      created.continueRequested();
+      await created.confirmed();
+
+      expect(repository.sent.map((order) => order.id), ['order-0', 'order-1']);
+    });
+
+    test('starting over is only for an order that cannot go on: one that '
+        'was carried out or may still be stays as it is', () async {
+      final created = await readyToConfirm();
+      await created.confirmed();
+
+      created.startOverRequested();
+
+      expect(created.state.step, TransferStep.done);
+
+      repository.onSend = (_) async => const TransferNotSent(TimeoutFailure());
+      final other = await readyToConfirm();
+      await other.confirmed();
+
+      other.startOverRequested();
+
+      expect(other.state.step, TransferStep.done);
+    });
+
+    test('an order that was stopped is not offered to be sent again', () async {
+      repository.onSend = (_) async =>
+          const TransferStopped(TransferStop.sessionExpired);
+      final created = await readyToConfirm();
+      await created.confirmed();
+
+      await created.retryRequested();
+
+      expect(repository.sent, hasLength(1));
+    });
+
     test('the form cannot be edited once the order is confirmed', () async {
       final created = await readyToConfirm();
 
@@ -268,6 +348,148 @@ void main() {
       await settle();
 
       expect(repository.settled, ['order-a', 'order-a']);
+    });
+
+    test('an order queued while another is being settled is settled too, '
+        'without waiting for anything else to happen', () async {
+      final firstSettles = Completer<TransferOutcome?>();
+      repository.onSettle = (id) => id == first.id
+          ? firstSettles.future
+          : Future.value(const TransferCompleted(reference: 'TRF-b'));
+      outbox();
+      repository.queued.add(const [first]);
+      await settle();
+      expect(repository.settled, [first.id]);
+
+      // The second order arrives while the first is still with the server.
+      repository.queued.add(const [first, second]);
+      await settle();
+      firstSettles.complete(const TransferCompleted(reference: 'TRF-a'));
+      await settle();
+      await settle();
+
+      expect(repository.settled, containsAllInOrder([first.id, second.id]));
+      expect(waits, isEmpty);
+    });
+
+    test('never settles two orders at once, however often the queue and the '
+        'connection change', () async {
+      var concurrent = 0;
+      var maxConcurrent = 0;
+      final gates = <Completer<void>>[];
+      repository.onSettle = (id) async {
+        concurrent++;
+        maxConcurrent = concurrent > maxConcurrent ? concurrent : maxConcurrent;
+        final gate = Completer<void>();
+        gates.add(gate);
+        await gate.future;
+        concurrent--;
+        return const TransferCompleted(reference: 'TRF');
+      };
+      outbox();
+      repository.queued.add(const [first, second]);
+      await settle();
+      onlineChanges.add(true);
+      repository.queued.add(const [first, second]);
+      onlineChanges.add(true);
+      await settle();
+
+      while (gates.any((gate) => !gate.isCompleted)) {
+        gates.firstWhere((gate) => !gate.isCompleted).complete();
+        await settle();
+        await settle();
+      }
+
+      expect(maxConcurrent, 1);
+    });
+
+    test('settles nothing once it is closed', () async {
+      final created = outbox();
+      await created.close();
+
+      repository.queued.add(const [first]);
+      onlineChanges.add(true);
+      await settle();
+
+      expect(repository.settled, isEmpty);
+    });
+
+    test('tells the customer when the bank turned a queued order away and '
+        'knows nothing of it', () async {
+      repository.onSettle = (_) async => null;
+      final created = outbox();
+
+      repository.refused.add(first.id);
+      await settle();
+      await settle();
+
+      expect(repository.settled, [first.id]);
+      expect(created.state.hasRefused, isTrue);
+
+      created.rejectionDismissed();
+      expect(created.state.hasRefused, isFalse);
+    });
+
+    test('an order turned away because the bank had already carried it out '
+        'needs no notice: its movement shows', () async {
+      repository.onSettle = (_) async =>
+          const TransferCompleted(reference: 'TRF-a');
+      final created = outbox();
+
+      repository.refused.add(first.id);
+      await settle();
+      await settle();
+
+      expect(created.state.hasRefused, isFalse);
+      expect(created.state.lastRejection, isNull);
+    });
+
+    test('an order turned away that the bank had refused says why', () async {
+      repository.onSettle = (_) async =>
+          const TransferRejected(TransferRejection.insufficientFunds);
+      final created = outbox();
+
+      repository.refused.add(first.id);
+      await settle();
+      await settle();
+
+      expect(
+        created.state.lastRejection,
+        TransferRejection.insufficientFunds,
+      );
+    });
+
+    test('a queued order the server cannot read is reported once and not '
+        'asked for again', () async {
+      repository.onSettle = (_) async =>
+          const TransferStopped(TransferStop.notAccepted);
+      final created = outbox();
+
+      repository.queued.add(const [first]);
+      await settle();
+      await settle();
+      repository.queued.add(const [first]);
+      await settle();
+      await settle();
+
+      expect(created.state.hasRefused, isTrue);
+      expect(repository.settled, [first.id]);
+      expect(waits, isEmpty);
+    });
+
+    test('tells apart the orders the bank already has from the ones that '
+        'exist only on this device', () async {
+      repository.onSettle = (_) async => null;
+      final created = outbox();
+
+      repository.queued.add(const [
+        QueuedTransfer(id: 'order-a', amountCents: 100, isDelivered: true),
+        second,
+      ]);
+      await settle();
+
+      expect(created.state.deliveredCount, 1);
+      expect(created.state.onDeviceOnlyCount, 1);
     });
 
     test('says there are orders unsent, for whoever is about to end the '

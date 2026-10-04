@@ -39,11 +39,19 @@ final class DefaultTransfersRepository implements TransfersRepository {
     // device without any doubt about what the server did with it.
     if (!await _isOnline()) return _enqueue(order);
 
-    final answer = await _settling(() => _api.submit(order));
+    // From the first attempt on, the request may have reached the server.
+    var left = false;
+    final answer = await _settling(() {
+      left = true;
+      _unresolved = order;
+      return _api.submit(order);
+    });
     switch (answer) {
       case Success(value: final ApiTransferCompleted completed):
+        _resolved(order.id);
         return _completed(completed);
       case Success(value: ApiTransferRejected(:final reason)):
+        _resolved(order.id);
         return _rejected(reason);
       case Success(value: ApiTransferNotFound()):
         // The online route creates the order; it cannot be missing.
@@ -53,13 +61,21 @@ final class DefaultTransfersRepository implements TransfersRepository {
             StackTrace.current,
           ),
         );
-      case Failed(failure: OfflineFailure()):
-        // The policy found no connection before trying: nothing was sent.
+      case Failed(failure: OfflineFailure()) when !left:
+        // The policy found no connection before the first attempt: nothing
+        // was sent, so the order can wait on the device.
         return _enqueue(order);
+      case Failed(failure: UnexpectedFailure(cause: final ApiContractError e)):
+        // The server answered, and the answer is about the request: no
+        // money moved and the same request would get the same answer.
+        _resolved(order.id);
+        return _stopped(e);
       case Failed(:final failure):
-        // A timeout or an error after the request left: the server may or
-        // may not have settled it. The customer repeats the same order,
-        // which is safe; queueing a copy would hide that doubt.
+        // A timeout or an error after the request left, including a
+        // connection lost between attempts: the server may or may not have
+        // settled it. The customer repeats the same order, which is safe;
+        // queueing a copy would say "it will be sent" about an order that
+        // may already be done.
         return _notSent(failure);
     }
   }
@@ -76,9 +92,12 @@ final class DefaultTransfersRepository implements TransfersRepository {
         outcome = TransferCompleted(reference: reference);
       case Success(value: ApiTransferRejected(:final reason)):
         outcome = TransferRejected(reason);
+      case Failed(failure: UnexpectedFailure(cause: final ApiContractError e)):
+        return _stopped(e);
       case Failed(:final failure):
         return TransferNotSent(failure);
     }
+    _resolved(transferId);
     _telemetry.event(
       TransfersTelemetry.queuedSettled,
       parameters: {
@@ -94,6 +113,37 @@ final class DefaultTransfersRepository implements TransfersRepository {
 
   @override
   Stream<List<QueuedTransfer>> watchQueued() => _queue.watchQueued();
+
+  @override
+  Stream<String> watchRefused() => _queue.refused;
+
+  @override
+  TransferOrder? get unresolved => _unresolved;
+
+  /// Kept for as long as the customer is signed in, not on disk: an order
+  /// carries an amount and two accounts, and nothing of the customer stays
+  /// on the device after the session.
+  TransferOrder? _unresolved;
+
+  void _resolved(String transferId) {
+    if (_unresolved?.id == transferId) _unresolved = null;
+  }
+
+  static const int _unauthorizedStatus = 401;
+  static const int _conflictStatus = 409;
+
+  TransferOutcome _stopped(ApiContractError error) {
+    final reason = switch (error.status) {
+      _unauthorizedStatus => TransferStop.sessionExpired,
+      _conflictStatus => TransferStop.orderChanged,
+      _ => TransferStop.notAccepted,
+    };
+    _telemetry.event(
+      TransfersTelemetry.stopped,
+      parameters: {TransfersTelemetry.reasonKey: reason.name},
+    );
+    return TransferStopped(reason);
+  }
 
   @override
   Future<Result<void>> provisionAccounts() async {

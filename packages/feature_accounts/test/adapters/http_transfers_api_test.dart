@@ -20,14 +20,22 @@ void main() {
 
   late List<http.Request> requests;
 
+  /// Whether each token request asked for a fresh one, in order.
+  late List<bool> refreshes;
+
   HttpTransfersApi api(
     http.Response Function(http.Request request) answer, {
     String? token = 'id-token',
   }) {
     requests = [];
+    refreshes = [];
     return HttpTransfersApi(
       baseUrl: Uri.parse('https://api.example.com/'),
-      idToken: () async => token,
+      idToken: ({required forceRefresh}) async {
+        refreshes.add(forceRefresh);
+        if (token == null) return null;
+        return forceRefresh ? '$token-fresh' : token;
+      },
       client: MockClient((request) async {
         requests.add(request);
         return answer(request);
@@ -40,6 +48,132 @@ void main() {
     status,
     headers: {'content-type': 'application/json; charset=utf-8'},
   );
+
+  group('a session the server does not accept', () {
+    test('is refreshed once and the same request is sent again with the new '
+        'token', () async {
+      final answer = await api(
+        (request) => request.headers['authorization'] == 'Bearer id-token-fresh'
+            ? json(200, {
+                'transfer': {'reference': 'TRF-1'},
+              })
+            : json(401, {'error': 'unauthorized'}),
+      ).submit(order);
+
+      expect(answer, isA<ApiTransferCompleted>());
+      expect(refreshes, [false, true]);
+      expect(requests, hasLength(2));
+      expect(requests.first.body, requests.last.body);
+    });
+
+    test('that is refused again after the refresh is reported as a session '
+        'problem, and asked no third time', () async {
+      await expectLater(
+        api((_) => json(401, {'error': 'unauthorized'})).submit(order),
+        throwsA(
+          isA<ApiContractError>().having((e) => e.status, 'status', 401),
+        ),
+      );
+      expect(requests, hasLength(2));
+    });
+  });
+
+  group('answers by status', () {
+    for (final (status, code) in [
+      (400, 'invalid-request'),
+      (400, 'invalid-json'),
+      (409, 'idempotency-key-reused'),
+      (413, 'payload-too-large'),
+      (415, 'unsupported-media-type'),
+    ]) {
+      test('$status $code is an answer about the request, with its status '
+          'and code', () {
+        expect(
+          api((_) => json(status, {'error': code})).submit(order),
+          throwsA(
+            isA<ApiContractError>()
+                .having((e) => e.status, 'status', status)
+                .having((e) => e.code, 'code', code),
+          ),
+        );
+      });
+    }
+
+    for (final status in [500, 502, 503]) {
+      test('$status is the server failing, worth another attempt', () {
+        expect(
+          api((_) => json(status, {'error': 'internal'})).submit(order),
+          throwsA(isA<ServiceUnavailableFailure>()),
+        );
+      });
+    }
+
+    test('a refusal whose body is not JSON keeps its status under an unknown '
+        'code', () {
+      expect(
+        api((_) => http.Response('<html>', 400)).submit(order),
+        throwsA(
+          isA<ApiContractError>()
+              .having((e) => e.status, 'status', 400)
+              .having((e) => e.code, 'code', 'unknown'),
+        ),
+      );
+    });
+
+    for (final rejection in TransferRejection.values) {
+      test('422 ${rejection.code} is read as that rejection', () async {
+        final answer = await api(
+          (_) => json(422, {
+            'error': 'transfer-rejected',
+            'reason': rejection.code,
+          }),
+        ).submit(order);
+
+        expect(
+          answer,
+          isA<ApiTransferRejected>().having(
+            (a) => a.reason,
+            'reason',
+            rejection,
+          ),
+        );
+      });
+    }
+
+    test('a rejection with a reason this version does not know is still a '
+        'rejection', () async {
+      final answer = await api(
+        (_) => json(422, {'error': 'transfer-rejected', 'reason': 'new-rule'}),
+      ).submit(order);
+
+      expect(answer, isA<ApiTransferRejected>());
+    });
+  });
+
+  group('redirects', () {
+    test(
+      'are not followed, so the token never travels to another address',
+      () async {
+        await api(
+          (_) => json(200, {
+            'transfer': {'reference': 'TRF-1'},
+          }),
+        ).submit(order);
+
+        expect(requests.single.followRedirects, isFalse);
+      },
+    );
+
+    test('a redirect answer is an answer the app does not act on', () {
+      expect(
+        api(
+          (_) =>
+              http.Response('', 302, headers: {'location': 'https://x.test'}),
+        ).submit(order),
+        throwsA(isA<ApiContractError>().having((e) => e.status, 'status', 302)),
+      );
+    });
+  });
 
   group('submit', () {
     test('posts the order with the customer token and exactly the fields '
@@ -142,7 +276,7 @@ void main() {
         'device being offline', () {
       final unreachable = HttpTransfersApi(
         baseUrl: Uri.parse('https://api.example.com/'),
-        idToken: () async => 'id-token',
+        idToken: ({required forceRefresh}) async => 'id-token',
         client: MockClient((_) => throw const SocketException('unreachable')),
       );
 

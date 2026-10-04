@@ -19,6 +19,14 @@ abstract final class TransfersTelemetry {
   /// The server could not be asked; carries the kind of failure.
   static const String notSent = 'transfer_not_sent';
 
+  /// The server answered that the request itself cannot go on (session not
+  /// accepted, id used for another order, request it cannot read); carries
+  /// which of the three.
+  static const String stopped = 'transfer_stopped';
+
+  /// The bank turned a queued order away instead of queueing it.
+  static const String queueRefused = 'transfer_queue_refused';
+
   /// A queued order reached the server; carries the outcome.
   static const String queuedSettled = 'transfer_queued_settled';
 

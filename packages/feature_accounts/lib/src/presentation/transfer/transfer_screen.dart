@@ -48,19 +48,26 @@ class TransferScreen extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(TransferStrings.title),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: TransferStrings.close,
-          onPressed: onClose,
+    // While the order is with the server there is no way out of this
+    // screen: leaving would drop the order's id, and confirming again from
+    // a new form would send a second order.
+    final isSending = state.step == TransferStep.sending;
+    return PopScope(
+      canPop: !isSending,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(TransferStrings.title),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: TransferStrings.close,
+            onPressed: isSending ? null : onClose,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: state.step == TransferStep.editing
-            ? const _TransferForm()
-            : const _TransferConfirmation(),
+        body: SafeArea(
+          child: state.step == TransferStep.editing
+              ? const _TransferForm()
+              : const _TransferConfirmation(),
+        ),
       ),
     );
   }
@@ -417,6 +424,9 @@ class _TransferResult extends StatelessWidget {
       cents: cubit.state.amountCents,
       size: AmountTextSize.display,
     );
+    // Only an order whose id is spent is started over; any other keeps it.
+    final canStartOver =
+        outcome == const TransferStopped(TransferStop.orderChanged);
     final (icon, tone, title) = switch (outcome) {
       TransferCompleted() => (
         Icons.check_circle_outline,
@@ -437,6 +447,11 @@ class _TransferResult extends StatelessWidget {
         Icons.cloud_off_outlined,
         AppTone.warning,
         TransferStrings.notSentTitle,
+      ),
+      TransferStopped() => (
+        Icons.error_outline,
+        AppTone.danger,
+        TransferStrings.rejectedTitle,
       ),
     };
 
@@ -500,6 +515,12 @@ class _TransferResult extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                 ],
+                TransferStopped(:final reason) => [
+                  Text(
+                    TransferStrings.stopped(reason),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               },
               SizedBox(height: context.metrics.moduleGap),
               if (outcome is TransferCompleted) ...[
@@ -517,10 +538,19 @@ class _TransferResult extends StatelessWidget {
                 ),
                 SizedBox(height: context.metrics.componentGap),
               ],
+              if (canStartOver) ...[
+                AppButton(
+                  label: TransferStrings.startOver,
+                  onPressed: cubit.startOverRequested,
+                ),
+                SizedBox(height: context.metrics.componentGap),
+              ],
               AppButton(
                 label: TransferStrings.backHome,
                 variant:
-                    outcome is TransferCompleted || outcome is TransferNotSent
+                    outcome is TransferCompleted ||
+                        outcome is TransferNotSent ||
+                        canStartOver
                     ? AppButtonVariant.secondary
                     : AppButtonVariant.primary,
                 onPressed: onDone,

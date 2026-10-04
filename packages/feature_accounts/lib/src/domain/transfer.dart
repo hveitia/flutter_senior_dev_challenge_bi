@@ -117,15 +117,48 @@ final class TransferNotSent extends TransferOutcome {
   List<Object?> get props => [failure.runtimeType];
 }
 
+/// Why an order cannot go any further as it stands. Trying the same order
+/// again would get the same answer, so none of these offers a retry.
+enum TransferStop {
+  /// The server no longer accepts the customer's session.
+  sessionExpired,
+
+  /// The id was already used for a different order.
+  orderChanged,
+
+  /// The server could not read the request.
+  notAccepted,
+}
+
+/// The server answered, and the answer is about the request itself: no
+/// money moved and repeating it will not change that.
+final class TransferStopped extends TransferOutcome {
+  const TransferStopped(this.reason);
+
+  final TransferStop reason;
+
+  @override
+  List<Object?> get props => [reason];
+}
+
 /// An order left on the device, waiting to be sent.
 final class QueuedTransfer extends Equatable {
-  const QueuedTransfer({required this.id, required this.amountCents});
+  const QueuedTransfer({
+    required this.id,
+    required this.amountCents,
+    this.isDelivered = false,
+  });
 
   final String id;
   final int amountCents;
 
+  /// Whether the bank already has the order. One that is delivered will be
+  /// carried out whatever happens on this device; one that is not exists
+  /// only here.
+  final bool isDelivered;
+
   @override
-  List<Object?> get props => [id, amountCents];
+  List<Object?> get props => [id, amountCents, isDelivered];
 }
 
 /// What is wrong with an order before it is sent.
@@ -165,17 +198,21 @@ TransferFormError? validateTransfer({
 List<Account> transferableAccounts(Iterable<Account> accounts) =>
     cashAccounts(accounts);
 
+/// The largest amount the entry field holds. It is far above any transfer
+/// limit: it only keeps a long paste from overflowing a number.
+const int maxTypedCents = 999999999;
+
 /// Reads an amount typed as digits, where the last two are the cents:
-/// `1501` is $15.01. Anything that is not a digit is ignored. Bounded so a
-/// long paste cannot overflow.
+/// `1501` is $15.01. Anything that is not a digit is ignored, and so are
+/// leading zeros. An amount too long to be real is held at [maxTypedCents]:
+/// cutting it to its first digits would show a different, plausible amount.
 int amountCentsFromDigits(String input) {
-  final digits = input.replaceAll(RegExp('[^0-9]'), '');
+  final digits = input
+      .replaceAll(RegExp('[^0-9]'), '')
+      .replaceFirst(RegExp('^0+'), '');
   if (digits.isEmpty) return 0;
-  const maxDigits = 9;
-  final kept = digits.length > maxDigits
-      ? digits.substring(0, maxDigits)
-      : digits;
-  return int.parse(kept);
+  if (digits.length > '$maxTypedCents'.length) return maxTypedCents;
+  return min(int.parse(digits), maxTypedCents);
 }
 
 /// Produces the id of a new order: 32 characters the server accepts as a

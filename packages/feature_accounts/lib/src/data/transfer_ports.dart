@@ -55,4 +55,8 @@ abstract interface class TransferQueue {
 
   /// The orders the server has not settled, as far as the device knows.
   Stream<List<QueuedTransfer>> watchQueued();
+
+  /// The id of each order the bank did not take into the queue: it left
+  /// the device and was turned away, so it is no longer waiting anywhere.
+  Stream<String> get refused;
 }

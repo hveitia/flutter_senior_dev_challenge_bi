@@ -17,14 +17,14 @@ import 'package:http/http.dart' as http;
 final class HttpTransfersApi implements TransfersApi {
   HttpTransfersApi({
     required Uri baseUrl,
-    required Future<String?> Function() idToken,
+    required Future<String?> Function({required bool forceRefresh}) idToken,
     required http.Client client,
   }) : _baseUrl = baseUrl,
        _idToken = idToken,
        _client = client;
 
   final Uri _baseUrl;
-  final Future<String?> Function() _idToken;
+  final Future<String?> Function({required bool forceRefresh}) _idToken;
   final http.Client _client;
 
   static const String _transfersPath = 'api/transfers';
@@ -66,21 +66,36 @@ final class HttpTransfersApi implements TransfersApi {
     if (response.statusCode != _ok) throw _failureOf(response);
   }
 
+  /// Posts with the customer's token. A token the server does not accept is
+  /// refreshed once and the same request sent again: tokens expire hourly,
+  /// and the device may be holding a stale one. A second refusal is final.
   Future<http.Response> _post(String path, [Map<String, Object?>? body]) async {
-    final token = await _idToken();
+    final first = await _send(path, body, forceRefresh: false);
+    if (first.statusCode != _unauthorized) return first;
+    return _send(path, body, forceRefresh: true);
+  }
+
+  Future<http.Response> _send(
+    String path,
+    Map<String, Object?>? body, {
+    required bool forceRefresh,
+  }) async {
+    final token = await _idToken(forceRefresh: forceRefresh);
     if (token == null) {
       throw const ApiContractError(_unauthorized, 'unauthorized');
     }
+    final request = http.Request('POST', _baseUrl.resolve(path))
+      // A redirect is never followed: the token is for this server only.
+      ..followRedirects = false
+      ..headers[HttpHeaders.authorizationHeader] = 'Bearer $token';
+    if (body != null) {
+      request
+        ..headers[HttpHeaders.contentTypeHeader] =
+            'application/json; charset=utf-8'
+        ..bodyBytes = utf8.encode(jsonEncode(body));
+    }
     try {
-      return await _client.post(
-        _baseUrl.resolve(path),
-        headers: {
-          HttpHeaders.authorizationHeader: 'Bearer $token',
-          if (body != null)
-            HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
-        },
-        body: body == null ? null : jsonEncode(body),
-      );
+      return await http.Response.fromStream(await _client.send(request));
     } on SocketException {
       // The device has a connection (the policy checked) but the server
       // did not take the call. That is the server being unavailable, worth

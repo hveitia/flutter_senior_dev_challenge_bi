@@ -197,11 +197,14 @@ void main() {
   });
 
   group('with transfers queued without a connection', () {
-    Future<void> askToSignOut(WidgetTester tester) async {
-      await pumpSignedIn(tester);
-      app.transfers.queued.add(const [
+    Future<void> askToSignOut(
+      WidgetTester tester, {
+      List<QueuedTransfer> queued = const [
         QueuedTransfer(id: 'order-0000000000000001', amountCents: 15010),
-      ]);
+      ],
+    }) async {
+      await pumpSignedIn(tester);
+      app.transfers.queued.add(queued);
       await tester.pump();
       await tester.tap(destination('Perfil'));
       await tester.pumpAndSettle();
@@ -221,6 +224,75 @@ void main() {
 
       expect(auth.signOutCalls, 0);
       expect(find.byType(AppBottomNavigation), findsOneWidget);
+    });
+
+    testWidgets('says that an order existing only on this phone is discarded', (
+      tester,
+    ) async {
+      await askToSignOut(tester);
+
+      expect(
+        find.text(
+          'Tienes 1 transferencia que solo existe en este teléfono. Si '
+          'cierras sesión ahora, se descarta y no se enviará.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Cerrar sesión y descartar'), findsOneWidget);
+    });
+
+    testWidgets('does not promise to discard an order the bank already has: '
+        'it says it will be carried out', (tester) async {
+      await askToSignOut(
+        tester,
+        queued: const [
+          QueuedTransfer(
+            id: 'order-0000000000000001',
+            amountCents: 15010,
+            isDelivered: true,
+          ),
+        ],
+      );
+
+      expect(
+        find.text(
+          'El banco ya recibió 1 transferencia y la realizará aunque '
+          'cierres sesión.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Cerrar sesión y descartar'), findsNothing);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cerrar sesión'));
+      await tester.pumpAndSettle();
+
+      expect(auth.signOutCalls, 1);
+    });
+
+    testWidgets('with both kinds, says what happens to each', (tester) async {
+      await askToSignOut(
+        tester,
+        queued: const [
+          QueuedTransfer(
+            id: 'order-0000000000000001',
+            amountCents: 15010,
+            isDelivered: true,
+          ),
+          QueuedTransfer(id: 'order-0000000000000002', amountCents: 100),
+          QueuedTransfer(id: 'order-0000000000000003', amountCents: 200),
+        ],
+      );
+
+      expect(
+        find.text(
+          'Tienes 2 transferencias que solo existen en este teléfono. Si '
+          'cierras sesión ahora, se descartan y no se enviarán.\n\n'
+          'El banco ya recibió 1 transferencia y la realizará aunque '
+          'cierres sesión.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Cerrar sesión y descartar'), findsOneWidget);
     });
 
     testWidgets('the session closes only when the customer says to discard '

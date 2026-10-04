@@ -76,12 +76,22 @@ void main() {
 
     test('queues the order when the connection drops just before the '
         'request leaves', () async {
-      api.onCall = () => throw const OfflineFailure();
+      // The repository saw a connection; the policy, a moment later, does
+      // not, and so never starts the request.
+      final justDropped = DefaultTransfersRepository(
+        api: api,
+        queue: queue,
+        telemetry: telemetry,
+        isOnline: () async => true,
+        policy: ResiliencePolicy(isOffline: () => true, delay: (_) async {}),
+      );
 
-      final outcome = await repository.send(order);
+      final outcome = await justDropped.send(order);
 
       expect(outcome, const TransferQueued());
       expect(queue.orders, [order]);
+      expect(api.submitted, isEmpty);
+      expect(justDropped.unresolved, isNull);
     });
 
     test('after a timeout, tries the same order again and, if it still does '
@@ -99,18 +109,123 @@ void main() {
       expect(queue.orders, isEmpty);
     });
 
-    test('an answer the app cannot act on is not retried and reaches the '
-        'customer as not sent', () async {
-      api.onCall = () => throw const ApiContractError(409, 'key-reused');
+    test('an order whose request already left is never queued, even if the '
+        'connection is gone by the next attempt', () async {
+      api.onCall = () {
+        // The request leaves and gets no answer in time; by the time the
+        // policy tries again the device is offline.
+        online = false;
+        return Future.delayed(
+          const Duration(seconds: 1),
+          () => const ApiTransferCompleted('late'),
+        );
+      };
 
       final outcome = await repository.send(order);
 
+      // The server may have settled it: only the same order, sent again,
+      // can tell. A queued copy would promise something else.
       expect(outcome, isA<TransferNotSent>());
-      expect(api.submitted, hasLength(1));
+      expect(queue.orders, isEmpty);
+      expect(api.submitted, [order]);
+    });
+
+    for (final (status, stop) in [
+      (401, TransferStop.sessionExpired),
+      (409, TransferStop.orderChanged),
+      (400, TransferStop.notAccepted),
+      (413, TransferStop.notAccepted),
+      (415, TransferStop.notAccepted),
+    ]) {
+      test('a $status is an answer about the request: it stops the order as '
+          '${stop.name}, is asked once and queues nothing', () async {
+        api.onCall = () => throw ApiContractError(status, 'code');
+
+        final outcome = await repository.send(order);
+
+        expect(outcome, TransferStopped(stop));
+        expect(api.submitted, hasLength(1));
+        expect(queue.orders, isEmpty);
+      });
+    }
+  });
+
+  group('unresolved', () {
+    test('is the order that left without a final answer', () async {
+      api.onCall = () => Future.delayed(
+        const Duration(seconds: 1),
+        () => const ApiTransferCompleted('late'),
+      );
+
+      await repository.send(order);
+
+      expect(repository.unresolved, order);
+    });
+
+    test('is cleared once the same order gets a final answer', () async {
+      api.onCall = () => Future.delayed(
+        const Duration(seconds: 1),
+        () => const ApiTransferCompleted('late'),
+      );
+      await repository.send(order);
+
+      api.onCall = () async => const ApiTransferCompleted('TRF-1');
+      await repository.send(order);
+
+      expect(repository.unresolved, isNull);
+    });
+
+    test(
+      'is nothing after an order the server settled, refused or stopped',
+      () async {
+        await repository.send(order);
+        expect(repository.unresolved, isNull);
+
+        api.onCall = () async =>
+            const ApiTransferRejected(TransferRejection.insufficientFunds);
+        await repository.send(order);
+        expect(repository.unresolved, isNull);
+
+        api.onCall = () => throw const ApiContractError(409, 'key-reused');
+        await repository.send(order);
+        expect(repository.unresolved, isNull);
+      },
+    );
+
+    test('is nothing for an order that never left the device', () async {
+      online = false;
+
+      await repository.send(order);
+
+      expect(repository.unresolved, isNull);
+    });
+  });
+
+  group('watchRefused', () {
+    test('passes on the id of a queued order the bank turned away', () async {
+      final refused = <String>[];
+      final subscription = repository.watchRefused().listen(refused.add);
+      addTearDown(subscription.cancel);
+
+      queue.refusals.add(order.id);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(refused, [order.id]);
     });
   });
 
   group('settle', () {
+    test('an answer about the request itself stops the queued order instead '
+        'of asking again for ever', () async {
+      api.onCall = () => throw const ApiContractError(400, 'invalid-request');
+
+      expect(
+        await repository.settle(order.id),
+        const TransferStopped(TransferStop.notAccepted),
+      );
+      expect(api.processed, [order.id]);
+    });
+
     test('returns the outcome of a queued order the server settled', () async {
       api.onCall = () async => const ApiTransferCompleted('TRF-2');
 

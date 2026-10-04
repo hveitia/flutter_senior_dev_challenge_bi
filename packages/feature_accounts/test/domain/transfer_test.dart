@@ -103,8 +103,26 @@ void main() {
       expect(amountCentsFromDigits('-100'), 100);
     });
 
-    test('keeps a long paste within what a number holds', () {
-      expect(amountCentsFromDigits('9' * 40), 999999999);
+    test('is zero when nothing typed is a digit', () {
+      expect(amountCentsFromDigits('abc'), 0);
+      expect(amountCentsFromDigits(' '), 0);
+    });
+
+    test(
+      'reads a paste with leading zeros by its value, not by its length',
+      () {
+        expect(amountCentsFromDigits('0000005000'), 5000);
+        expect(amountCentsFromDigits('0' * 30), 0);
+        expect(amountCentsFromDigits('${'0' * 30}1'), 1);
+      },
+    );
+
+    test('an amount too long to be real is held at the largest one shown, '
+        'never cut to its first digits', () {
+      expect(amountCentsFromDigits('9' * 40), maxTypedCents);
+      // Cutting to nine digits would have read this as 123456789.
+      expect(amountCentsFromDigits('12345678901'), maxTypedCents);
+      expect(maxTypedCents, greaterThan(TransferLimits.maxCents));
     });
   });
 

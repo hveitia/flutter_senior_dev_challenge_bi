@@ -1,4 +1,5 @@
 import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/api_base_url.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 
@@ -12,14 +13,15 @@ abstract final class BuildFlags {
     'ALLOW_FAULT_INJECTION',
   );
 
-  /// Where the customer API lives (`docs/operacion/api.md`), set with
-  /// `--dart-define=API_BASE_URL=https://…/`. The default is the API
-  /// running on the developer's machine, which a phone reaches through
-  /// `adb reverse tcp:3210 tcp:3210`.
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:3210/',
-  );
+  /// Where the customer API lives (`docs/operacion/api.md`), as given with
+  /// `--dart-define=API_BASE_URL=https://…/`. Empty when not given. It is
+  /// never used as it is: `apiBaseUrlFor` decides what this build may use.
+  static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  /// How this app was built.
+  static const BuildMode mode = kReleaseMode
+      ? BuildMode.release
+      : (kProfileMode ? BuildMode.profile : BuildMode.debug);
 }
 
 /// Reasons attached to errors that no feature caught.

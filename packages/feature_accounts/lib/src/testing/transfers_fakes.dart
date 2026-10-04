@@ -45,6 +45,15 @@ final class FakeTransfersRepository implements TransfersRepository {
   @override
   Stream<List<QueuedTransfer>> watchQueued() => queued.stream;
 
+  /// Ids of the queued orders the bank turned away.
+  final StreamController<String> refused = StreamController.broadcast();
+
+  @override
+  Stream<String> watchRefused() => refused.stream;
+
+  @override
+  TransferOrder? unresolved;
+
   @override
   Future<Result<void>> provisionAccounts() {
     provisionCalls++;
@@ -99,4 +108,10 @@ final class InMemoryTransferQueue implements TransferQueue {
 
   @override
   Stream<List<QueuedTransfer>> watchQueued() => _changes.stream;
+
+  /// Add an id here to play the bank turning a queued order away.
+  final StreamController<String> refusals = StreamController.broadcast();
+
+  @override
+  Stream<String> get refused => refusals.stream;
 }

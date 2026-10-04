@@ -22,9 +22,37 @@ abstract final class ShellStrings {
       'Pronto encontrarás aquí productos del banco y de nuestros aliados.';
   static const String signOut = 'Cerrar sesión';
   static const String unsentTransfersTitle = 'Tienes transferencias sin enviar';
-  static const String unsentTransfersMessage =
-      'Están en cola hasta que recuperes la conexión. Si cierras sesión '
-      'ahora, se descartan y no se enviarán.';
+
+  /// What ending the session does to the queued transfers. It tells apart
+  /// the ones that exist only on this phone, which are lost with the
+  /// session, from the ones the bank already has, which nothing on this
+  /// phone can stop.
+  static String unsentTransfersMessage({
+    required int onDeviceOnly,
+    required int delivered,
+  }) {
+    final discarded = switch (onDeviceOnly) {
+      <= 0 => null,
+      1 =>
+        'Tienes 1 transferencia que solo existe en este teléfono. Si '
+            'cierras sesión ahora, se descarta y no se enviará.',
+      _ =>
+        'Tienes $onDeviceOnly transferencias que solo existen en este '
+            'teléfono. Si cierras sesión ahora, se descartan y no se '
+            'enviarán.',
+    };
+    final carriedOut = switch (delivered) {
+      <= 0 => null,
+      1 =>
+        'El banco ya recibió 1 transferencia y la realizará aunque '
+            'cierres sesión.',
+      _ =>
+        'El banco ya recibió $delivered transferencias y las realizará '
+            'aunque cierres sesión.',
+    };
+    return [?discarded, ?carriedOut].join('\n\n');
+  }
+
   static const String staySignedIn = 'Seguir aquí';
   static const String signOutAndDiscard = 'Cerrar sesión y descartar';
   static const String personalization = 'Personalización';
@@ -145,20 +173,32 @@ class ProfileScreen extends StatelessWidget {
   /// finish: from that call on it delivers nothing, errors included.
   ///
   /// Closing the session wipes what the device saved, and that includes
-  /// transfers queued without a connection: they would never be sent. So
-  /// while there are any, the session stays open unless the customer says
-  /// in so many words that they are to be discarded.
+  /// transfers queued without a connection that have not left the phone:
+  /// they would never be sent. One the bank already has is a different
+  /// matter: no client can take it back, so the dialog says it will be
+  /// carried out and does not offer to discard it. While there are any of
+  /// either kind, the session stays open unless the customer confirms.
   static Future<void> _signOut(BuildContext context) async {
-    if (context.read<TransferOutboxCubit>().state.hasUnsent) {
+    final outbox = context.read<TransferOutboxCubit>().state;
+    if (outbox.hasUnsent) {
       final discard = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text(ShellStrings.unsentTransfersTitle),
-          content: const Text(ShellStrings.unsentTransfersMessage),
+          content: Text(
+            ShellStrings.unsentTransfersMessage(
+              onDeviceOnly: outbox.onDeviceOnlyCount,
+              delivered: outbox.deliveredCount,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text(ShellStrings.signOutAndDiscard),
+              child: Text(
+                outbox.onDeviceOnlyCount > 0
+                    ? ShellStrings.signOutAndDiscard
+                    : ShellStrings.signOut,
+              ),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(false),

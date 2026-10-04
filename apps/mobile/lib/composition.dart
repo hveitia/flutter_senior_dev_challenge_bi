@@ -1,5 +1,6 @@
 import 'package:app_platform/adapters.dart';
 import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/api_base_url.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/bootstrap.dart';
 import 'package:banca_digital/published_faults.dart';
@@ -22,6 +23,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// This is the only place that knows the concrete implementations.
 Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
+  // Decided before anything else, so a build that would send the session
+  // token unencrypted, or to nowhere, stops here instead of at the first
+  // transfer.
+  final apiBaseUrl = apiBaseUrlFor(
+    BuildFlags.apiBaseUrl,
+    mode: BuildFlags.mode,
+  );
   final preferences = await SharedPreferences.getInstance();
   final package = await PackageInfo.fromPlatform();
 
@@ -78,8 +86,9 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
     // document when there is no connection to ask with.
     transfersRepositoryFor: (uid) => DefaultTransfersRepository(
       api: HttpTransfersApi(
-        baseUrl: Uri.parse(BuildFlags.apiBaseUrl),
-        idToken: () async => FirebaseAuth.instance.currentUser?.getIdToken(),
+        baseUrl: apiBaseUrl,
+        idToken: ({required forceRefresh}) async =>
+            FirebaseAuth.instance.currentUser?.getIdToken(forceRefresh),
         client: apiClient,
       ),
       queue: FirestoreTransferQueue(

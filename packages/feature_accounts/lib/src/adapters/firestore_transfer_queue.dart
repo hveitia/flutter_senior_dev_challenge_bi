@@ -53,21 +53,30 @@ final class FirestoreTransferQueue implements TransferQueue {
     TransferFields.createdAt: FieldValue.serverTimestamp(),
   };
 
+  final StreamController<String> _refused = StreamController.broadcast();
+
+  @override
+  Stream<String> get refused => _refused.stream;
+
   @override
   void enqueue(TransferOrder order) {
     // Not awaited: without a connection the write only completes once the
     // server has it, which is exactly what is being waited out.
     unawaited(
-      _transfers
-          .doc(order.id)
-          .set(encode(order))
-          .catchError(
-            (Object error, StackTrace stackTrace) => _telemetry.recordError(
-              RedactedError(error.runtimeType),
-              stackTrace,
-              reason: _writeRefused,
-            ),
-          ),
+      _transfers.doc(order.id).set(encode(order)).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        // The server turned the write away (the rules, or an order with
+        // that id already settled). Firestore then drops it from the
+        // device, so without this the order would vanish unexplained.
+        _telemetry.recordError(
+          RedactedError(error.runtimeType),
+          stackTrace,
+          reason: _writeRefused,
+        );
+        if (!_refused.isClosed) _refused.add(order.id);
+      }),
     );
   }
 
@@ -82,7 +91,12 @@ final class FirestoreTransferQueue implements TransferQueue {
           for (final document in snapshot.docs)
             if (document.data()[TransferFields.amountCents]
                 case final int cents)
-              QueuedTransfer(id: document.id, amountCents: cents),
+              QueuedTransfer(
+                id: document.id,
+                amountCents: cents,
+                // No pending write means the bank has the document.
+                isDelivered: !document.metadata.hasPendingWrites,
+              ),
         ],
       );
 }

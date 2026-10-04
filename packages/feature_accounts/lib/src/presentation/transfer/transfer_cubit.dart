@@ -79,7 +79,8 @@ final class TransferCubit extends Cubit<TransferState> {
        _telemetry = telemetry,
        _accounts = accounts,
        _newId = newId,
-       super(_initial(accounts(), fromAccountId)) {
+       super(_initial(accounts(), fromAccountId, repository.unresolved)) {
+    _orderId = repository.unresolved?.id;
     _telemetry.event(TransfersTelemetry.started);
   }
 
@@ -93,7 +94,26 @@ final class TransferCubit extends Cubit<TransferState> {
 
   /// Starts from the account the customer came from, and to the other one
   /// when there are exactly two: the common case needs no picking.
-  static TransferState _initial(List<Account> all, String? fromAccountId) {
+  ///
+  /// When an earlier order left this device without a final answer, the
+  /// screen opens on it instead: until its outcome is known, the only safe
+  /// thing to send is that same order, under its same id. A new form here
+  /// could move the money a second time.
+  static TransferState _initial(
+    List<Account> all,
+    String? fromAccountId,
+    TransferOrder? unresolved,
+  ) {
+    if (unresolved != null) {
+      return TransferState(
+        fromAccountId: unresolved.fromAccountId,
+        toAccountId: unresolved.toAccountId,
+        amountCents: unresolved.amountCents,
+        concept: unresolved.concept,
+        step: TransferStep.done,
+        outcome: const TransferNotSent(TimeoutFailure()),
+      );
+    }
     final accounts = transferableAccounts(all);
     final from = accounts.where((account) => account.id == fromAccountId);
     final source = from.isEmpty
@@ -190,6 +210,29 @@ final class TransferCubit extends Cubit<TransferState> {
       return;
     }
     await _send();
+  }
+
+  /// Back to the form after an order that cannot go any further, to place
+  /// a new one under a new id.
+  ///
+  /// Only for an order the server said no longer matches its id: that id
+  /// is spent. An order that may still be carried out keeps its id.
+  void startOverRequested() {
+    if (state.step != TransferStep.done) return;
+    final outcome = state.outcome;
+    if (outcome is! TransferStopped ||
+        outcome.reason != TransferStop.orderChanged) {
+      return;
+    }
+    _orderId = null;
+    emit(
+      TransferState(
+        fromAccountId: state.fromAccountId,
+        toAccountId: state.toAccountId,
+        amountCents: state.amountCents,
+        concept: state.concept,
+      ),
+    );
   }
 
   Future<void> _send() async {

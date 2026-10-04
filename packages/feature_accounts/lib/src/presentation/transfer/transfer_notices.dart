@@ -17,7 +17,9 @@ class QueuedTransfersNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<TransferOutboxCubit>().state;
     final rejection = state.lastRejection;
-    if (!state.hasUnsent && rejection == null) return const SizedBox.shrink();
+    if (!state.hasUnsent && rejection == null && !state.hasRefused) {
+      return const SizedBox.shrink();
+    }
 
     final margin = context.metrics.screenMargin;
     return Padding(
@@ -43,6 +45,16 @@ class QueuedTransfersNotice extends StatelessWidget {
                 message: TransferStrings.queuedRejected(rejection),
               ),
             ),
+          ],
+          if (state.hasRefused) ...[
+            if (state.hasUnsent || rejection != null)
+              const SizedBox(height: AppSpacing.x2),
+            Semantics(
+              liveRegion: true,
+              child: const InlineAlert(message: TransferStrings.queuedRefused),
+            ),
+          ],
+          if (rejection != null || state.hasRefused) ...[
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: TextButton(

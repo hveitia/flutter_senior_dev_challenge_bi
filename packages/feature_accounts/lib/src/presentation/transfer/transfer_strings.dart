@@ -71,6 +71,25 @@ abstract final class TransferStrings {
       'No pudimos procesar la solicitud. Inténtalo de nuevo.',
   };
 
+  static const String startOver = 'Empezar de nuevo';
+
+  /// What to say about an order that cannot go on. Each says whether money
+  /// moved, because that is what the customer needs to know first.
+  static String stopped(TransferStop reason) => switch (reason) {
+    TransferStop.sessionExpired =>
+      'Tu sesión venció. Inicia sesión de nuevo para transferir. '
+          'No se movió dinero.',
+    TransferStop.orderChanged =>
+      'Esta transferencia ya no coincide con la que se envió primero. '
+          'Revisa tus movimientos y empieza una nueva.',
+    TransferStop.notAccepted =>
+      'El banco no pudo procesar esta solicitud. No se movió dinero.',
+  };
+
+  static const String queuedRefused =
+      'Una transferencia en cola no se pudo enviar. Revisa tus '
+      'movimientos antes de repetirla.';
+
   static String queuedNotice(int count) => count == 1
       ? 'Tienes 1 transferencia en cola. La enviaremos cuando recuperes '
             'la conexión.'

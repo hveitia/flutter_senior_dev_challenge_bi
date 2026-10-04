@@ -212,6 +212,142 @@ void main() {
     );
   });
 
+  testWidgets('while the order is with the server, neither the system back '
+      'nor the close button leaves the screen', (tester) async {
+    final answer = Completer<TransferOutcome>();
+    repository.onSend = (_) => answer.future;
+    await pump(tester);
+
+    // Before sending, both ways out are open.
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isTrue);
+    expect(
+      tester.widget<IconButton>(find.byType(IconButton)).onPressed,
+      isNotNull,
+    );
+
+    await typeAmount(tester, '15010');
+    await tap(tester, 'Continuar');
+    await tap(tester, 'Confirmar transferencia');
+
+    expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isFalse);
+    expect(
+      tester.widget<IconButton>(find.byType(IconButton)).onPressed,
+      isNull,
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(closed, 0);
+    expect(find.text('Confirma tu transferencia'), findsOneWidget);
+
+    answer.complete(const TransferCompleted(reference: 'TRF-1'));
+    await tester.pump();
+    expect(find.text('Transferencia realizada'), findsOneWidget);
+  });
+
+  testWidgets('a transfer the bank does not allow between those accounts '
+      'says so', (tester) async {
+    repository.onSend = (_) async =>
+        const TransferRejected(TransferRejection.accountNotEligible);
+    await pump(tester);
+    await typeAmount(tester, '15010');
+    await tap(tester, 'Continuar');
+    await tap(tester, 'Confirmar transferencia');
+    await tester.pump();
+
+    expect(
+      find.text('Una de las cuentas no admite transferencias.'),
+      findsOneWidget,
+    );
+    expect(find.text('Reintentar'), findsNothing);
+  });
+
+  testWidgets('a session the bank no longer accepts asks to sign in again '
+      'and offers no retry', (tester) async {
+    repository.onSend = (_) async =>
+        const TransferStopped(TransferStop.sessionExpired);
+    await pump(tester);
+    await typeAmount(tester, '15010');
+    await tap(tester, 'Continuar');
+    await tap(tester, 'Confirmar transferencia');
+    await tester.pump();
+
+    expect(
+      find.text(
+        'Tu sesión venció. Inicia sesión de nuevo para transferir. '
+        'No se movió dinero.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Reintentar'), findsNothing);
+    expect(find.text('Empezar de nuevo'), findsNothing);
+    await tap(tester, 'Volver al inicio');
+    expect(done, 1);
+  });
+
+  testWidgets('an order the bank says changed offers to start a new one, '
+      'not to repeat it', (tester) async {
+    repository.onSend = (_) async =>
+        const TransferStopped(TransferStop.orderChanged);
+    await pump(tester);
+    await typeAmount(tester, '15010');
+    await tap(tester, 'Continuar');
+    await tap(tester, 'Confirmar transferencia');
+    await tester.pump();
+
+    expect(
+      find.text(
+        'Esta transferencia ya no coincide con la que se envió primero. '
+        'Revisa tus movimientos y empieza una nueva.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Reintentar'), findsNothing);
+
+    await tap(tester, 'Empezar de nuevo');
+
+    expect(find.text('Continuar'), findsOneWidget);
+    expect(find.text('Monto'), findsOneWidget);
+  });
+
+  testWidgets('a request the bank cannot read says no money moved and '
+      'offers no retry', (tester) async {
+    repository.onSend = (_) async =>
+        const TransferStopped(TransferStop.notAccepted);
+    await pump(tester);
+    await typeAmount(tester, '15010');
+    await tap(tester, 'Continuar');
+    await tap(tester, 'Confirmar transferencia');
+    await tester.pump();
+
+    expect(
+      find.text(
+        'El banco no pudo procesar esta solicitud. No se movió dinero.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Reintentar'), findsNothing);
+    expect(find.text('Empezar de nuevo'), findsNothing);
+  });
+
+  testWidgets('opens on the result of an order whose outcome is unknown, '
+      'offering only to send that same order', (tester) async {
+    repository.unresolved = const TransferOrder(
+      id: 'order-left-0000000001',
+      fromAccountId: 'savings',
+      toAccountId: 'checking',
+      amountCents: 2500,
+    );
+    await pump(tester);
+
+    expect(find.text('No pudimos enviar la transferencia'), findsOneWidget);
+    expect(find.text('Continuar'), findsNothing);
+
+    await tap(tester, 'Reintentar');
+    await tester.pump();
+
+    expect(repository.sent.single.id, 'order-left-0000000001');
+  });
+
   testWidgets('a transfer that could not be sent offers to retry the same '
       'order', (tester) async {
     repository.onSend = (_) async => const TransferNotSent(TimeoutFailure());
@@ -304,6 +440,29 @@ void main() {
       await tester.pump();
 
       expect(find.textContaining('Tienes 2 transferencias en cola'), findsOne);
+    });
+
+    testWidgets('says that a queued transfer could not be sent, until it is '
+        'dismissed', (tester) async {
+      repository.onSettle = (_) async => null;
+      await pumpNotice(tester);
+
+      repository.refused.add('a');
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.text(
+          'Una transferencia en cola no se pudo enviar. Revisa tus '
+          'movimientos antes de repetirla.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Entendido'));
+      await tester.pump();
+
+      expect(tester.getSize(find.byType(QueuedTransfersNotice)).height, 0);
     });
   });
 }

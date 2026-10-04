@@ -16,6 +16,14 @@ abstract interface class TransfersRepository {
   /// The orders left on this device that the server has not settled.
   Stream<List<QueuedTransfer>> watchQueued();
 
+  /// The id of each queued order the bank turned away instead of queueing.
+  Stream<String> watchRefused();
+
+  /// The order whose request left this device without a final answer. Its
+  /// outcome is unknown, so the only safe next step is to send that same
+  /// order again. Null when there is none.
+  TransferOrder? get unresolved;
+
   /// Opens the customer's first accounts. Asking again changes nothing.
   Future<Result<void>> provisionAccounts();
 }

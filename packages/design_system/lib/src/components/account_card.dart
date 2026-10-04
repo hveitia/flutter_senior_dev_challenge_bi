@@ -52,6 +52,9 @@ class AccountCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: _spokenLabel,
+      // The card below is excluded so it is read as one item; the action
+      // has to be offered here or a screen reader could not open it.
+      onTap: onTap,
       child: ExcludeSemantics(
         child: Material(
           color: scheme.surface,

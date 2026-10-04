@@ -52,4 +52,17 @@ void main() {
     );
     handle.dispose();
   });
+
+  testWidgets('can be opened with a screen reader', (tester) async {
+    final handle = tester.ensureSemantics();
+    var taps = 0;
+    await pumpCard(tester, onTap: () => taps++);
+
+    final node = tester.getSemantics(find.byType(AccountCard));
+    expect(node, containsSemantics(hasTapAction: true));
+    tester.semantics.tap(find.semantics.byLabel(node.label));
+
+    expect(taps, 1);
+    handle.dispose();
+  });
 }

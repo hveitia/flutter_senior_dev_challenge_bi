@@ -44,6 +44,21 @@ Map<String, Widget> componentCatalog() {
       label: 'Nombres y apellidos',
       enabled: false,
     ),
+    'NumericKeypad': NumericKeypad(
+      onDigit: (_) {},
+      onDecimalPoint: noop,
+      onDelete: noop,
+      onClear: noop,
+    ),
+    'NumericKeypad disabled': NumericKeypad(
+      enabled: false,
+      onDigit: (_) {},
+      onDecimalPoint: noop,
+      onDelete: noop,
+    ),
+    'AmountEntryText empty': const AmountEntryText(typed: ''),
+    'AmountEntryText partly typed': const AmountEntryText(typed: '1250.5'),
+    'AmountEntryText longest': const AmountEntryText(typed: '1234567.89'),
     'AppChip': Wrap(
       spacing: AppSpacing.x2,
       children: [

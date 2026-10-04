@@ -2,6 +2,7 @@
 library;
 
 export 'src/components/account_card.dart';
+export 'src/components/amount_entry_text.dart';
 export 'src/components/amount_text.dart';
 export 'src/components/app_bottom_navigation.dart';
 export 'src/components/app_button.dart';
@@ -17,6 +18,7 @@ export 'src/components/inline_error.dart';
 export 'src/components/link_card.dart';
 export 'src/components/module_container.dart';
 export 'src/components/movement_row.dart';
+export 'src/components/numeric_keypad.dart';
 export 'src/components/radio_card.dart';
 export 'src/components/requirement_item.dart';
 export 'src/components/skeleton_block.dart';
@@ -28,6 +30,7 @@ export 'src/components/toggle_row.dart';
 export 'src/components/trend_line.dart';
 export 'src/components/wordmark.dart';
 export 'src/formatting/amount_formatter.dart';
+export 'src/formatting/typed_amount.dart';
 export 'src/theme/app_metrics.dart';
 export 'src/theme/app_semantic_colors.dart';
 export 'src/theme/app_theme.dart';

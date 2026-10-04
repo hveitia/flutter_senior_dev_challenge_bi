@@ -99,6 +99,15 @@ La configuración publicada es la primera palanca de reversión: apagar una func
   - el **contenido de aliados** debe vivir en el origen de cada aliado. Compartir origen con la consola es aceptable solo en la demostración.
 - **Canalización.** `.github/workflows/backoffice.yml` ejecuta lint, compilación, tipos y pruebas. El despliegue lo hace la propia plataforma: App Hosting compila y publica cada push a `main`, sin esperar a ese flujo. En producción habría un entorno previo y una promoción manual; en la demostración no existen.
 
+## Sitio de entrega
+
+`apps/showroom/public` es un sitio estático, sin paso de compilación: el punto de entrada que recibe quien evalúa, con los pasos para probar la demostración, capturas, flujos, la guía de la consola y los avisos. No contiene credenciales; estas se envían por correo.
+
+- **Dónde.** Firebase Hosting, en el mismo proyecto. La configuración está en el bloque `hosting` de `firebase.json`: cabeceras de seguridad, una política de contenido que solo admite recursos del propio sitio, `noindex` y la página de error.
+- **Cómo.** `firebase deploy --only hosting`, después de `tool/verify.sh`, que comprueba enlaces, imágenes, avisos y que no haya nada con aspecto de credencial. A la fecha de este documento no se ha desplegado.
+- **Instalador de la aplicación.** Su dirección se indica en un único archivo, `apps/showroom/public/assets/js/config.js`. Mientras esté vacío, el sitio dice que el instalador lo entrega el autor junto con las credenciales.
+- **Retirada.** El sitio, el servidor desplegado, las cuentas de demostración y sus datos se eliminan cuando termine el proceso de selección: `firebase hosting:disable` para el sitio, y la eliminación del backend y de los datos desde la consola de Firebase.
+
 ## Reglas e índices de Firestore
 
 Se despliegan desde el repositorio, después de sus pruebas con el emulador (110 casos en `firebase/test`), con `firebase deploy --only firestore:rules,firestore:indexes`. Hoy el despliegue al proyecto de demostración se hizo a mano tras pasar las pruebas; en una canalización sería un trabajo de `main` con una cuenta de servicio de permisos mínimos. Orden cuando un cambio abarca reglas y aplicación: primero las reglas que **permiten** lo nuevo, después la aplicación; para retirar un permiso, al revés.

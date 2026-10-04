@@ -4,6 +4,7 @@ Plataforma financiera digital sin atención física. Una aplicación móvil en F
 
 Este repositorio es la solución a la prueba técnica de Front-End Senior. Los datos son de demostración: no se ejecutan operaciones bancarias reales y los saldos de apertura no tienen valor.
 
+- **Sitio de entrega:** el punto de entrada para quien evalúa, con los pasos para probar la demostración, capturas, flujos y la guía de la consola. Su código está en `apps/showroom/`. La dirección se añade aquí cuando se publique.
 - **Qué se pidió y qué hay, requisito por requisito:** [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md)
 - **Decisiones de arquitectura (19):** [docs/adr/](docs/adr/)
 - **Guion de la demostración:** [docs/demo/guion.md](docs/demo/guion.md)
@@ -214,6 +215,7 @@ Comprueba el formato, el análisis estático, que no quede ninguna prueba enfoca
 | `packages/feature_services` | 189 | Regla de origen, contrato de mensajes, contenedor (cargas reemplazadas, tiempo límite, caídas), borrado de datos, «Para ti» | ídem |
 | `apps/mobile` | 169 | Navegación por sesión, composición real con dependencias simuladas, orden del cierre de sesión, destinos, entorno y direcciones permitidas | ídem |
 | Servidor y consola | 615 | Edición y publicación con control de versión, sesión de administradores, API de clientes y liquidación, notificaciones, aliados | `npm run verify` en `apps/backoffice` |
+| Sitio de entrega | 9 | Enlaces, anclas e imágenes que resuelven, texto alternativo, avisos y `noindex` en cada página, y que no haya direcciones de correo ni contraseñas | `node --test apps/showroom/test/site.test.mjs` |
 | Reglas de Firestore | 110 | Qué puede leer y escribir cada quien, caso permitido y casos denegados, contra el emulador | `npm ci` y `npm test` en `firebase` (Node, y Java 21 o superior el primero del `PATH`) |
 | Herramientas de carga | 31 | Saldos que cuadran con sus movimientos, documento publicado, identidades locales | `npm run test:seed` en `firebase` |
 
@@ -259,6 +261,7 @@ apps/
   mobile/                 Aplicación Flutter. Raíz de composición: rutas, dependencias y tema.
   backoffice/             Servidor Next.js: consola de experiencia, API de clientes (app/api)
                           y páginas de los aliados simulados (app/partners).
+  showroom/               Sitio de entrega: páginas estáticas en public/ y su comprobación en test/.
 packages/
   design_system/          Tokens, tema y componentes. Referencia en tokens/tokens.json.
   app_platform/           Configuración publicada, resiliencia, conectividad y telemetría.

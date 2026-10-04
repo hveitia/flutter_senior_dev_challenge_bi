@@ -75,6 +75,39 @@ export type BodyRead =
   | { ok: false; status: 400 | 413 | 415; error: string };
 
 /**
+ * Reads at most [limit] bytes of [body]. Null when the body is longer: the
+ * rest is abandoned unread.
+ */
+async function readUpTo(
+  body: ReadableStream<Uint8Array> | null,
+  limit: number,
+): Promise<Uint8Array | null> {
+  if (body === null) return new Uint8Array();
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.byteLength;
+    if (length > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+/**
  * Reads a small JSON body. Anything that is not JSON, is declared as
  * something else or is larger than [MAX_BODY_BYTES] is refused before it is
  * parsed.
@@ -85,12 +118,24 @@ export async function readJsonBody(request: Request): Promise<BodyRead> {
     return { ok: false, status: 415, error: "unsupported-media-type" };
   }
 
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
-    return { ok: false, status: 413, error: "too-large" };
+  // What the request says about its own size is checked first: a body
+  // that declares itself too large is refused without reading a byte.
+  const declared = request.headers.get("content-length");
+  if (declared !== null) {
+    if (!/^\d+$/.test(declared)) {
+      return { ok: false, status: 400, error: "bad-length" };
+    }
+    if (Number(declared) > MAX_BODY_BYTES) {
+      return { ok: false, status: 413, error: "too-large" };
+    }
   }
 
+  // The declaration is not trusted either: reading stops at the limit.
+  const bytes = await readUpTo(request.body, MAX_BODY_BYTES);
+  if (bytes === null) return { ok: false, status: 413, error: "too-large" };
+
   try {
+    const text = new TextDecoder().decode(bytes);
     return { ok: true, body: JSON.parse(text) as unknown };
   } catch {
     return { ok: false, status: 400, error: "not-json" };

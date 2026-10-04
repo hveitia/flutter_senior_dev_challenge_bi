@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MAX_BODY_BYTES } from "@/lib/partners/http";
+import nextConfig from "@/next.config";
 import { GET as rechargePage } from "./recharge/route";
 import { POST as topUp } from "./recharge/top-up/route";
 import { POST as quote } from "./travel-insurance/quote/route";
@@ -200,6 +201,47 @@ describe.each([
     expect(await response.json()).toEqual({ error: "too-large" });
   });
 
+  it("refuses a declared length above the limit without reading the body", async () => {
+    const request = post({}, { "Content-Length": String(MAX_BODY_BYTES + 1) });
+
+    const response = await handler(request);
+
+    expect(response.status).toBe(413);
+    expect(request.bodyUsed).toBe(false);
+  });
+
+  it("refuses a declared length that is not a number", async () => {
+    const response = await handler(post({}, { "Content-Length": "many" }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "bad-length" });
+  });
+
+  it("stops reading a body that grows past the limit, whatever it declared", async () => {
+    let chunksRead = 0;
+    const chunk = new TextEncoder().encode("x".repeat(1024));
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunksRead += 1;
+        controller.enqueue(chunk);
+      },
+    });
+    const request = new Request("https://partners.example.com/partners/x", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: endless,
+      // Required by the runtime for a streamed request body.
+      duplex: "half",
+    } as RequestInit);
+
+    const response = await handler(request);
+
+    expect(response.status).toBe(413);
+    // The limit is two chunks; a few more may be buffered, never an
+    // endless stream.
+    expect(chunksRead).toBeLessThan(8);
+  });
+
   it("answers 422, not 500, for JSON that is not an object", async () => {
     for (const body of ["null", "[]", '"text"', "7"]) {
       expect((await handler(post(body))).status).toBe(422);
@@ -212,6 +254,32 @@ describe.each([
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(response.headers.get("Set-Cookie")).toBeNull();
+  });
+});
+
+describe("the travel insurance page", () => {
+  it("says which discount exists and for whom", async () => {
+    const html = await insurancePage().text();
+
+    expect(html).toContain("5 % de descuento");
+    expect(html).toContain("segmento Familia");
+  });
+});
+
+describe("the headers the server adds to every partner route", () => {
+  it("ask for no referrer, after the console's own rule so it wins", async () => {
+    const rules = (await nextConfig.headers?.()) ?? [];
+    const partners = rules.findIndex((rule) => rule.source === "/partners/:path*");
+    const everything = rules.findIndex((rule) => rule.source === "/:path*");
+
+    expect(everything).toBeGreaterThanOrEqual(0);
+    // The framework applies matching rules in order and the last value of
+    // a header stands.
+    expect(partners).toBeGreaterThan(everything);
+    expect(rules[partners]?.headers).toContainEqual({
+      key: "Referrer-Policy",
+      value: "no-referrer",
+    });
   });
 });
 

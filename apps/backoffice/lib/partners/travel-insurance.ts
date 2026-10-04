@@ -21,10 +21,6 @@ export const MAX_TRIP_DAYS = 90;
 /** How far ahead a trip may start. */
 export const MAX_DAYS_AHEAD = 365;
 
-/** Travelers from which the group discount applies. */
-export const GROUP_SIZE = 4;
-export const GROUP_DISCOUNT_PERCENT = 10;
-
 /** The segment the family discount is for, as the host app names it. */
 export const FAMILY_SEGMENT = "family";
 export const FAMILY_DISCOUNT_PERCENT = 5;
@@ -168,7 +164,7 @@ export function parseQuoteRequest(body: unknown, today: number): QuoteParse {
 
 /**
  * Prices a trip: days, both ends included, times travelers times the daily
- * rate of the region, less the discounts. Whole cents throughout; a discount
+ * rate of the region, less the family discount. Whole cents throughout; a discount
  * is rounded down, in the partner's favor by less than a cent.
  */
 export function quote(request: QuoteRequest): Quote {
@@ -176,9 +172,10 @@ export function quote(request: QuoteRequest): Quote {
   const days = request.returnDay - request.departureDay + 1;
   const baseCents = days * request.travelers * region.dailyRateCents;
 
+  // The one discount there is. It is stated on the page, and it is all the
+  // partner does with what the host app tells it about the customer.
   const discountPercent =
-    (request.travelers >= GROUP_SIZE ? GROUP_DISCOUNT_PERCENT : 0) +
-    (request.segment === FAMILY_SEGMENT ? FAMILY_DISCOUNT_PERCENT : 0);
+    request.segment === FAMILY_SEGMENT ? FAMILY_DISCOUNT_PERCENT : 0;
   const discountCents = Math.floor((baseCents * discountPercent) / 100);
 
   return {

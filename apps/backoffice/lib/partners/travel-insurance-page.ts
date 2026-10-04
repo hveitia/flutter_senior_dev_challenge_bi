@@ -1,5 +1,9 @@
 import { escapeHtml, renderPage } from "./page";
-import { MAX_TRAVELERS, REGIONS } from "./travel-insurance";
+import {
+  FAMILY_DISCOUNT_PERCENT,
+  MAX_TRAVELERS,
+  REGIONS,
+} from "./travel-insurance";
 
 const PARTNER = "Aliado Seguros";
 
@@ -66,6 +70,7 @@ const BODY = `
 
   <p class="note">La cotización y la cobertura son responsabilidad de ${escapeHtml(PARTNER)}.
     <a href="${escapeHtml(CONDITIONS_URL)}">Condiciones generales</a>.</p>
+  <p class="note">Los clientes del segmento Familia reciben un ${FAMILY_DISCOUNT_PERCENT} % de descuento.</p>
   <p class="note">Demostración: no se emite ninguna póliza ni se realiza ningún cobro.</p>
 </main>
 `;

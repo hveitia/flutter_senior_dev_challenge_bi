@@ -153,26 +153,33 @@ describe("quote", () => {
     expect(result.totalCents).toBe(250);
   });
 
-  it("takes ten percent off from four travelers on", () => {
-    const three = quote(parsed({ ...valid, travelers: 3 }));
+  it("gives no discount for the size of the group", () => {
     const four = quote(parsed({ ...valid, travelers: 4 }));
+    const six = quote(parsed({ ...valid, travelers: MAX_TRAVELERS }));
 
-    expect(three.discountPercent).toBe(0);
-    expect(three.totalCents).toBe(14_400);
-    // 10 days x 4 x 4.80 = 192.00, less 19.20.
-    expect(four.discountPercent).toBe(10);
-    expect(four.totalCents).toBe(17_280);
+    // 10 days x 4 x 4.80 and 10 days x 6 x 4.80, in full.
+    expect(four.discountPercent).toBe(0);
+    expect(four.totalCents).toBe(19_200);
+    expect(six.discountPercent).toBe(0);
+    expect(six.totalCents).toBe(28_800);
   });
 
-  it("takes five percent off for the family segment, on top of the group", () => {
+  it("takes five percent off for the family segment, and never more", () => {
     const family = quote(parsed({ ...valid, segment: "family" }));
     const familyGroup = quote(parsed({ ...valid, travelers: 4, segment: "family" }));
 
     // 96.00 less 4.80.
+    expect(family.discountPercent).toBe(5);
     expect(family.totalCents).toBe(9120);
-    // 192.00 less 15 percent, 28.80.
-    expect(familyGroup.discountPercent).toBe(15);
-    expect(familyGroup.totalCents).toBe(16_320);
+    // 192.00 less 9.60: the only discount there is, whatever the group.
+    expect(familyGroup.discountPercent).toBe(5);
+    expect(familyGroup.totalCents).toBe(18_240);
+  });
+
+  it("gives no discount to any other segment", () => {
+    for (const segment of ["starting", "wealth", "Family", "familyPlus"]) {
+      expect(quote(parsed({ ...valid, segment })).discountPercent).toBe(0);
+    }
   });
 
   it("rounds a discount down to whole cents", () => {
@@ -190,7 +197,7 @@ describe("quote", () => {
       parsed({ region: "restOfWorld", departure: "2026-11-10", return: "2027-02-07", travelers: MAX_TRAVELERS }),
     );
 
-    // 90 x 6 x 5.60 = 3,024.00, less 10 percent.
-    expect(result.totalCents).toBe(272_160);
+    // 90 x 6 x 5.60 = 3,024.00.
+    expect(result.totalCents).toBe(302_400);
   });
 });

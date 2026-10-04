@@ -20,7 +20,16 @@ const nextConfig: NextConfig = {
   turbopack: { root: repositoryRoot },
   outputFileTracingRoot: repositoryRoot,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The partners' mini apps stand in for a third party's server: their
+      // addresses are handed to nobody. Listed last so it replaces the
+      // policy above for these routes.
+      {
+        source: "/partners/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ];
   },
 };
 

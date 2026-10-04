@@ -5,6 +5,7 @@ import { dateTimeLabel, destinationLabel } from "@/lib/config/labels";
 import {
   BODY_MAX_LENGTH,
   TITLE_MAX_LENGTH,
+  inboxNote,
   type PushField,
   type PushRecord,
   type PushStatus,
@@ -160,6 +161,10 @@ export function PushCard({
             maxLength={BODY_MAX_LENGTH}
             placeholder="Escribe un mensaje claro y breve"
           />
+          <p className="mt-1 text-secondary">
+            No incluyas montos, números de cuenta ni datos personales: el aviso puede
+            verse con el teléfono bloqueado. El detalle queda en la bandeja del cliente.
+          </p>
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Audiencia" htmlFor="push-audience">
@@ -237,6 +242,9 @@ export function PushCard({
                         {row.deliveredCount} de {row.deliveredCount + row.failedCount}{" "}
                         dispositivos
                       </span>
+                    ) : null}
+                    {inboxNote(row) ? (
+                      <span className="block text-secondary">{inboxNote(row)}</span>
                     ) : null}
                     {row.retryable ? (
                       <button

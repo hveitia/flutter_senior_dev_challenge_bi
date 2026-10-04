@@ -20,6 +20,9 @@ function row(overrides: Partial<PushRecord>): PushRecord {
     error: null,
     deliveredCount: null,
     failedCount: null,
+    inboxCount: null,
+    inboxTruncated: false,
+    inboxFailed: false,
     retryable: false,
     ...overrides,
   };
@@ -38,6 +41,48 @@ function renderCard(history: PushRecord[]) {
 }
 
 const historyRow = (title: string) => screen.getByText(title).closest("tr")!;
+
+describe("PushCard composer", () => {
+  it("tells the administrator what a notification must not say", () => {
+    renderCard([]);
+
+    expect(
+      screen.getByText(/No incluyas montos, números de cuenta ni datos personales/),
+    ).toBeTruthy();
+  });
+});
+
+describe("PushCard inbox outcome", () => {
+  it("says how many inboxes a sent notification was filed in", () => {
+    renderCard([row({ status: "sent", inboxCount: 12 })]);
+
+    const cells = within(historyRow("Una novedad para ti"));
+    expect(cells.getByText("En la bandeja de 12 clientes.")).toBeTruthy();
+  });
+
+  it("says when the inbox was written only for the first customers", () => {
+    renderCard([row({ status: "sent", inboxCount: 500, inboxTruncated: true })]);
+
+    const cells = within(historyRow("Una novedad para ti"));
+    expect(
+      cells.getByText("Enviada. Bandeja escrita para los primeros 500 clientes."),
+    ).toBeTruthy();
+  });
+
+  it("says when the notification went out but the inbox could not be written", () => {
+    renderCard([row({ status: "sent", inboxFailed: true })]);
+
+    const cells = within(historyRow("Una novedad para ti"));
+    expect(cells.getByText("Enviada. No se pudo guardar en la bandeja.")).toBeTruthy();
+  });
+
+  it("says nothing about the inbox for a send that never reached it", () => {
+    renderCard([row({ status: "validated" })]);
+
+    const cells = within(historyRow("Una novedad para ti"));
+    expect(cells.queryByText(/bandeja/i)).toBeNull();
+  });
+});
 
 describe("PushCard history", () => {
   it("labels a partial delivery as such, with the devices reached", () => {

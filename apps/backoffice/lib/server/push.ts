@@ -386,6 +386,10 @@ export function pushRecordOf(id: string, stored: StoredPush): PushRecord {
     error: stored.error,
     deliveredCount: stored.deliveredCount ?? null,
     failedCount: stored.failedCount ?? null,
+    inboxCount: stored.inboxCount ?? null,
+    inboxTruncated: stored.inboxTruncated === true,
+    // The stored error code stays on the server: the table only says it failed.
+    inboxFailed: stored.inboxError !== undefined,
   };
 }
 
@@ -423,8 +427,8 @@ export async function sendPush(
     dryRun: settings.pushDryRun,
   };
   const id = await ports.history.add(stored);
-  await fileInInboxes(ports, id, stored, now);
-  return pushRecordOf(id, stored);
+  const inbox = await fileInInboxes(ports, id, stored, now);
+  return pushRecordOf(id, { ...stored, ...inbox });
 }
 
 /**
@@ -459,6 +463,6 @@ export async function retryPush(
   const retried = { ...stored, ...patch };
   // A retry that finally goes out is filed like a first send, under the same
   // id: the inbox gets it once however many attempts it took.
-  await fileInInboxes(ports, id, retried, now);
-  return pushRecordOf(id, retried);
+  const inbox = await fileInInboxes(ports, id, retried, now);
+  return pushRecordOf(id, { ...retried, ...inbox });
 }

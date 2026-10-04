@@ -191,6 +191,10 @@ describe("sendPush", () => {
       error: null,
       deliveredCount: null,
       failedCount: null,
+      // The two customers of the segment in these ports found it in their inbox.
+      inboxCount: 2,
+      inboxTruncated: false,
+      inboxFailed: false,
       retryable: false,
     });
     expect(p.records.get("push-1")).toMatchObject({

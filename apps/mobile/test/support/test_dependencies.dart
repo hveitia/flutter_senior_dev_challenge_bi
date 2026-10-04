@@ -161,7 +161,12 @@ final class TestDependencies {
       allowFaultInjection: true,
       delay: (_) async {},
     );
-    faults.onChanged = policy.faultsChanged;
+    // Added to whatever already listens, never in its place.
+    final previous = faults.onChanged;
+    faults.onChanged = () {
+      previous?.call();
+      policy.faultsChanged();
+    };
     return policy;
   }
 

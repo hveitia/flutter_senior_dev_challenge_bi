@@ -1,0 +1,19 @@
+# Launcher icons for Android and iOS, generated from assets/icon.
+# Regenerate after changing an image: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  # The full icon: used as is on iOS and for Android versions without
+  # adaptive icons.
+  image_path: "assets/icon/app_icon.png"
+  # App Store icons must be opaque.
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  # Adaptive icon: the brand color (brand/500 in the design tokens) behind the
+  # letter alone. The foreground already keeps the letter inside the safe
+  # zone, so a round or squircle mask never clips it; no extra inset.
+  adaptive_icon_background: "#EA8E29"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  adaptive_icon_foreground_inset: 0
+  # Themed icons use only the shape of this layer.
+  adaptive_icon_monochrome: "assets/icon/app_icon_foreground.png"

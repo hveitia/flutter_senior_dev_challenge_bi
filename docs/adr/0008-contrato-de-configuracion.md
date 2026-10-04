@@ -72,6 +72,21 @@ El analizador nunca lanza una excepción. Devuelve `ConfigAccepted` o `ConfigRej
 | Tiene un segmento sin `label` | Rechaza | Usa el identificador del segmento |
 | Tiene un segmento sin `features`, o con un valor que no es booleano | Rechaza | Funcionalidad apagada |
 | Tiene un módulo sin `type`, o con `props` o `visible` de otro tipo | Rechaza | Omite el módulo, o usa el valor por defecto |
+| Supera un límite de tamaño (tabla siguiente) | Rechaza | Conserva lo que cabe y omite el resto |
+
+**Límites de tamaño.** El esquema acota cuánto puede publicarse y el analizador aplica los mismos números como tope de lo que conserva, de modo que leer un documento desmedido cuesta una cantidad acotada de trabajo y de memoria. Los valores están definidos una sola vez en cada lado: en el esquema y en `ConfigLimits`.
+
+| Campo | Límite | Qué hace el analizador al superarlo |
+|---|---|---|
+| `destinations` | 32 destinos, de hasta 64 caracteres | Conserva los primeros 32 |
+| `segments` | 12 segmentos; identificador de hasta 32 caracteres, con forma de identificador | Conserva los primeros 12 y omite un segmento con identificador más largo. No exige la forma del identificador |
+| `modules` de un segmento | 24 módulos | Conserva los primeros 24 |
+| `id` y `type` de un módulo | 48 caracteres | Omite el módulo |
+| `label` de un segmento | 40 caracteres | Lo acepta: es texto para la consola y la aplicación no lo dibuja |
+| `props` de un módulo | 24 propiedades | Las acepta; la profundidad sigue limitada a 32 niveles |
+| `schemaVersion`, `configVersion` | 2 147 483 647 | Los acepta como enteros |
+
+El esquema no puede acotar el texto anidado dentro de `props` sin tipar cada módulo. Ese hueco lo cubre la consola, que rechaza un documento de más de 256 KB antes de validarlo ([decisión 0014](0014-consola-de-experiencia.md)).
 
 Tres reglas no pueden expresarse en el esquema y quedan a cargo de la consola: no repetir el `id` de un módulo dentro de un segmento (el analizador conserva el primero), no usar destinos fuera de la lista (el analizador elimina la acción) y no publicar un `schemaVersion` que las aplicaciones en uso no entiendan (el analizador rechaza el documento).
 
@@ -79,7 +94,7 @@ Los campos `locale` y `currency` del ejemplo no los lee ninguna versión de la a
 
 ```mermaid
 flowchart LR
-  consola[Consola web, planificada] -- publica --> doc[(Firestore config/home)]
+  consola[Consola web] -- publica --> doc[(Firestore config/home)]
   doc -- tiempo real --> source[FirestoreConfigSource]
   source --> repo[ConfigRepository]
   cache[(Preferencias del dispositivo)] <--> repo
@@ -116,7 +131,7 @@ Una prueba de arquitectura falla si un archivo fuera de `adapters/` referencia a
 - **Se gana:** una aplicación antigua sigue funcionando cuando el contrato evoluciona, con la última configuración que entendió.
 - **Se paga:** el modelo existe en dos lenguajes. El esquema y el ejemplo compartidos son la referencia, y una prueba verifica que el recurso incluido coincide con el ejemplo.
 - **Se paga:** la tolerancia puede ocultar errores de publicación. Por eso la consola debe validar contra el esquema antes de publicar, y la aplicación informa cada rechazo.
-- **Se paga:** la aplicación no valida contra el esquema JSON en el dispositivo, así que el esquema y el analizador son dos definiciones. Una prueba valida el ejemplo contra el esquema y fija cada diferencia conocida entre ambos, de modo que una divergencia nueva no pasa inadvertida. La validación antes de publicar corresponde a la consola (etapa 7).
+- **Se paga:** la aplicación no valida contra el esquema JSON en el dispositivo, así que el esquema y el analizador son dos definiciones. Una prueba valida el ejemplo contra el esquema y fija cada diferencia conocida entre ambos, de modo que una divergencia nueva no pasa inadvertida. La validación antes de publicar la hace la consola, contra este mismo archivo de esquema.
 - **Se paga:** la regla de destinos es estructural: cualquier objeto con un campo `destination` se trata como una acción. Un módulo no puede usar ese nombre para otra cosa.
 - **Limitación:** al guardar el documento en el dispositivo, los valores que JSON no puede representar (por ejemplo una marca de tiempo de Firestore) se guardan como nulos. No afecta a la lectura, porque el analizador trata un nulo como un campo ausente.
 - **Limitación:** la configuración de último recurso no tiene módulos, porque la plataforma no conoce los tipos de módulo. El inicio (etapa 6) debe mostrar un estado explícito para ese caso.

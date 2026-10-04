@@ -17,7 +17,9 @@ import 'package:integration_test/integration_test.dart';
 ///       --dart-define=E2E_EMAIL=... --dart-define=E2E_PASSWORD=... \
 ///       --dart-define=API_BASE_URL=http://localhost:3210/
 ///
-/// Each run moves $1.00 from the savings account to the checking account.
+/// Each run moves $1.00 from the savings account to the checking account and
+/// back, as two orders, so the balances end as they started and the test
+/// can be run any number of times. It writes four real movements per run.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -85,42 +87,70 @@ void main() {
     }
     await waitFor(tester, find.textContaining('Hola,'));
 
-    await tap(
-      tester,
-      find.descendant(
-        of: find.byType(AppBottomNavigation),
-        matching: find.text('Cuentas'),
-      ),
+    /// Moves $1.00 out of the account named [from] to the customer's other
+    /// spendable account, and checks that the movement the account then
+    /// lists is this transfer's. Returns the server's reference.
+    Future<String> transferOneDollarFrom(
+      String from, {
+      required String movement,
+    }) async {
+      await tap(
+        tester,
+        find.descendant(
+          of: find.byType(AppBottomNavigation),
+          matching: find.text('Cuentas'),
+        ),
+      );
+      await tap(tester, find.text(from));
+      await tap(tester, find.widgetWithText(AppButton, 'Transferir'));
+
+      await waitFor(tester, field('Monto'));
+      await tester.enterText(field('Monto'), '100');
+      await tester.enterText(field('Concepto (opcional)'), concept);
+      // On a real device the keyboard covers the button below; it is put
+      // away as a customer would, and the layout given time to settle.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump(keyboardTime);
+      await tap(tester, find.widgetWithText(AppButton, 'Continuar'));
+      await tap(
+        tester,
+        find.widgetWithText(AppButton, 'Confirmar transferencia'),
+      );
+
+      await waitFor(tester, find.text('Transferencia realizada'));
+      // The reference the server gave this transfer: what proves, below,
+      // that the movement found is this one and not an older transfer.
+      final reference = tester
+          .widget<Text>(find.textContaining(RegExp('^TRF-')).first)
+          .data!;
+
+      await tap(tester, find.widgetWithText(AppButton, 'Ver movimiento'));
+
+      // The movement arrives through the same listener every screen
+      // follows; the newest is listed first.
+      await tap(tester, find.text(movement));
+      await waitFor(tester, find.text(reference));
+      expect(find.text(reference), findsOneWidget);
+
+      // Close the movement and the account, back to the sections.
+      await tester.binding.handlePopRoute();
+      await tester.pump(keyboardTime);
+      await tester.binding.handlePopRoute();
+      await tester.pump(keyboardTime);
+      return reference;
+    }
+
+    final sent = await transferOneDollarFrom(
+      'Cuenta de ahorros',
+      movement: 'Transferencia a Cuenta corriente',
     );
-    await tap(tester, find.text('Cuenta de ahorros'));
-    await tap(tester, find.widgetWithText(AppButton, 'Transferir'));
-
-    await waitFor(tester, field('Monto'));
-    await tester.enterText(field('Monto'), '100');
-    await tester.enterText(field('Concepto (opcional)'), concept);
-    // On a real device the keyboard covers the button below; it is put
-    // away as a customer would, and the layout given time to settle.
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pump(keyboardTime);
-    await tap(tester, find.widgetWithText(AppButton, 'Continuar'));
-    await tap(
-      tester,
-      find.widgetWithText(AppButton, 'Confirmar transferencia'),
+    // The way back, as a second order of its own: the run leaves both
+    // balances as it found them, so it can be repeated for ever.
+    final returned = await transferOneDollarFrom(
+      'Cuenta corriente',
+      movement: 'Transferencia a Cuenta de ahorros',
     );
 
-    await waitFor(tester, find.text('Transferencia realizada'));
-    // The reference the server gave this transfer: what proves, below, that
-    // the movement found is this one and not an older transfer.
-    final reference = tester
-        .widget<Text>(find.textContaining(RegExp('^TRF-')).first)
-        .data!;
-
-    await tap(tester, find.widgetWithText(AppButton, 'Ver movimiento'));
-
-    // The movement arrives through the same listener every screen follows;
-    // the newest is listed first.
-    await tap(tester, find.text('Transferencia a Cuenta corriente'));
-    await waitFor(tester, find.text(reference));
-    expect(find.text(reference), findsOneWidget);
+    expect(returned, isNot(sent), reason: 'two orders, two references');
   });
 }

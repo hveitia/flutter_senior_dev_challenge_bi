@@ -107,26 +107,19 @@ final class DefaultAccountsRepository implements AccountsRepository {
     // unreadable ones are reported when their number changes, not each time.
     var reportedSkipped = 0;
 
-    return deliveries.expand((delivery) {
-      // A service the resilience lab took down does not deliver through its
-      // listener either: an outage that kept the data live would not be one.
-      // Thrown here, it reaches the listener as an error of the stream.
-      if (_policy.isTakenDown(service)) {
-        throw ServiceUnavailableFailure(service);
-      }
-
+    DataSnapshot<List<T>>? snapshotOf(SourceSnapshot<T> delivery) {
       final items = arrange?.call(delivery.items) ?? delivery.items;
       final skipped = delivery.skipped;
       if (skipped != reportedSkipped) {
         reportedSkipped = skipped;
         _reportSkipped(skipped, service);
       }
-      if (!delivery.fromCache) return [_fresh(items, dataSet, skipped)];
+      if (!delivery.fromCache) return _fresh(items, dataSet, skipped);
 
       final syncedAt = _syncTimes.lastSync(dataSet);
       // A device that never synchronized has an empty copy whatever the
       // customer owns. Showing it would claim "no accounts" without knowing.
-      if (items.isEmpty && syncedAt == null) return const [];
+      if (items.isEmpty && syncedAt == null) return null;
 
       if (!reportedCache) {
         reportedCache = true;
@@ -138,15 +131,65 @@ final class DefaultAccountsRepository implements AccountsRepository {
           },
         );
       }
-      return [
-        DataSnapshot(
-          value: items,
-          origin: DataOrigin.cache,
-          syncedAt: syncedAt,
-          skipped: skipped,
-        ),
-      ];
-    });
+      return DataSnapshot(
+        value: items,
+        origin: DataOrigin.cache,
+        syncedAt: syncedAt,
+        skipped: skipped,
+      );
+    }
+
+    // A service the resilience lab took down does not deliver through its
+    // listener either: an outage that kept the data live would not be one.
+    // The outage starts and ends when it is published, so the listener
+    // looks again whenever the faults change, not only when data arrives.
+    late final StreamController<DataSnapshot<List<T>>> controller;
+    StreamSubscription<SourceSnapshot<T>>? source;
+    StreamSubscription<void>? faults;
+    SourceSnapshot<T>? latest;
+    var isDown = false;
+
+    void pass(SourceSnapshot<T> delivery) {
+      final snapshot = snapshotOf(delivery);
+      if (snapshot != null) controller.add(snapshot);
+    }
+
+    void onDelivery(SourceSnapshot<T> delivery) {
+      latest = delivery;
+      isDown = _policy.isTakenDown(service);
+      if (isDown) {
+        controller.addError(ServiceUnavailableFailure(service));
+      } else {
+        pass(delivery);
+      }
+    }
+
+    void onFaultsChanged() {
+      final wasDown = isDown;
+      isDown = _policy.isTakenDown(service);
+      if (isDown == wasDown) return;
+
+      if (isDown) {
+        controller.addError(ServiceUnavailableFailure(service));
+      } else if (latest case final delivery?) {
+        pass(delivery);
+      }
+    }
+
+    controller = StreamController<DataSnapshot<List<T>>>(
+      onListen: () {
+        faults = _policy.faultChanges.listen((_) => onFaultsChanged());
+        source = deliveries.listen(
+          onDelivery,
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+      },
+      onCancel: () async {
+        await Future.wait([?source?.cancel(), ?faults?.cancel()]);
+      },
+    );
+    return controller.stream;
   }
 
   Future<Result<DataSnapshot<List<T>>>> _refresh<T>(

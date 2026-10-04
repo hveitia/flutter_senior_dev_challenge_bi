@@ -94,10 +94,14 @@ class _ConfigFollower extends StatefulWidget {
 }
 
 class _ConfigFollowerState extends State<_ConfigFollower> {
+  late final Future<void> Function() _stopFollowing;
+
   @override
   void initState() {
     super.initState();
-    widget.publishedFaults.follow(context.read<RemoteConfigCubit>());
+    _stopFollowing = widget.publishedFaults.follow(
+      context.read<RemoteConfigCubit>(),
+    );
   }
 
   @override
@@ -112,8 +116,9 @@ class _ConfigFollowerState extends State<_ConfigFollower> {
 
   @override
   void dispose() {
-    // A fault published for a session must not outlive it.
-    unawaited(widget.publishedFaults.stop());
+    // A fault published for a session must not outlive it. Stopping only
+    // undoes this follower: the next customer's may already be in place.
+    unawaited(_stopFollowing());
     super.dispose();
   }
 

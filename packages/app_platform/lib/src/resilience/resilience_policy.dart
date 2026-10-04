@@ -81,6 +81,9 @@ final class ResiliencePolicy {
   final Delay _delay;
   final double Function() _random;
 
+  final StreamController<void> _faultChanges =
+      StreamController<void>.broadcast();
+
   final StreamController<bool> _slowChanges =
       StreamController<bool>.broadcast();
   int _slowRuns = 0;
@@ -97,6 +100,18 @@ final class ResiliencePolicy {
   /// outage that kept delivering through it would not be an outage.
   bool isTakenDown(String serviceId) =>
       _faults?.call().isUnavailable(serviceId) ?? false;
+
+  /// Fires when the published faults changed. A live listener asks
+  /// [isTakenDown] again on it, so an outage starts and ends when it is
+  /// published, not at the listener's next delivery. Silent in a build that
+  /// does not allow fault injection.
+  Stream<void> get faultChanges => _faultChanges.stream;
+
+  /// Told by whoever follows the configuration that it now publishes
+  /// different faults.
+  void faultsChanged() {
+    if (_allowFaultInjection) _faultChanges.add(null);
+  }
 
   /// Runs [operation] and returns its value or the failure that ended it.
   ///

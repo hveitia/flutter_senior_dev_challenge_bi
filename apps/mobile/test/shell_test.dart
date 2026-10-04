@@ -176,6 +176,24 @@ void main() {
     expect(find.byType(AppBottomNavigation), findsNothing);
   });
 
+  testWidgets('stops reading the published configuration before the session '
+      'is closed, so closing it is not reported as a failed read', (
+    tester,
+  ) async {
+    await pumpSignedIn(tester);
+    expect(app.config.hasListener, isTrue);
+    bool? listeningWhenSessionClosed;
+    auth.onSignOut = () => listeningWhenSessionClosed = app.config.hasListener;
+
+    await tester.tap(destination('Perfil'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cerrar sesión'));
+    await tester.pumpAndSettle();
+
+    expect(listeningWhenSessionClosed, isFalse);
+    expect(auth.signOutCalls, 1);
+  });
+
   testWidgets('stops following the accounts once signed out', (tester) async {
     await pumpSignedIn(tester);
     expect(accounts.accounts.hasListener, isTrue);

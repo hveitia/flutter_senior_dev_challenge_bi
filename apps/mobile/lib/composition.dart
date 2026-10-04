@@ -41,6 +41,9 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
     isOffline: () => connectivity.state == ConnectivityStatus.offline,
     telemetry: telemetry,
   );
+  // A fault published or lifted takes effect on what is already listening,
+  // not only on the next request.
+  publishedFaults.onChanged = policy.faultsChanged;
   connectivity = ConnectivityCubit(
     monitor: ConnectivityPlusMonitor(Connectivity()),
     slowChanges: policy.slowChanges,

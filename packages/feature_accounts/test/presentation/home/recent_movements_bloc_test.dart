@@ -157,6 +157,26 @@ void main() {
       await bloc.close();
     });
 
+    test('recovers by itself when the same listener delivers again, as it '
+        'does when a published outage is lifted', () async {
+      final bloc = build()..add(const RecentMovementsStarted());
+      await pumpEventQueue();
+      repository.recentMovements.addError(
+        const ServiceUnavailableFailure(ServiceIds.movements),
+        StackTrace.current,
+      );
+      await pumpEventQueue();
+      expect(bloc.state.movements.failure, LoadFailure.unavailable);
+
+      repository.recentMovements.add(fresh);
+      await pumpEventQueue();
+
+      expect(bloc.state.movements.failure, isNull);
+      expect(bloc.state.movements.data, [salary, coffee]);
+      expect(repository.recentListeners, [limit]);
+      await bloc.close();
+    });
+
     test('is followed again when the customer retries', () async {
       final bloc = build()..add(const RecentMovementsStarted());
       await pumpEventQueue();

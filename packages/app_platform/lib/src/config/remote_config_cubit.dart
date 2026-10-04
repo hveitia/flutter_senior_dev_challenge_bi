@@ -46,6 +46,17 @@ final class RemoteConfigCubit extends Cubit<RemoteConfigState> {
     emit(RemoteConfigState(snapshot: state.snapshot, segmentId: segmentId));
   }
 
+  /// Stops listening and keeps the configuration in use.
+  ///
+  /// Meant for the moment a session is about to be closed: the published
+  /// document can only be read with a session, so a listener left running
+  /// would see the read refused and report it as a failure it is not.
+  Future<void> stop() async {
+    final subscription = _subscription;
+    _subscription = null;
+    await subscription?.cancel();
+  }
+
   @override
   Future<void> close() async {
     await _subscription?.cancel();

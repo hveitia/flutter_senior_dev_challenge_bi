@@ -606,6 +606,34 @@ void main() {
       down = true;
       expect(lab.isTakenDown(ServiceIds.movements), isTrue);
     });
+
+    test('passes on that the published faults changed, so a listener can '
+        'look again without waiting for data', () async {
+      final lab = policy(allowFaultInjection: true, faults: everythingDown);
+      var heard = 0;
+      final subscription = lab.faultChanges.listen((_) => heard++);
+
+      lab.faultsChanged();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(heard, 1);
+      await subscription.cancel();
+    });
+
+    test(
+      'says nothing about fault changes in a build that ignores them',
+      () async {
+        final production = policy(faults: everythingDown);
+        var heard = 0;
+        final subscription = production.faultChanges.listen((_) => heard++);
+
+        production.faultsChanged();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(heard, 0);
+        await subscription.cancel();
+      },
+    );
   });
 
   group('timers', () {

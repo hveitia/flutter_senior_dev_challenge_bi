@@ -15,6 +15,7 @@ void main() {
   late InMemoryTelemetry telemetry;
   late bool offline;
   late ResilienceSettings faults;
+  late ResiliencePolicy policy;
 
   final earlier = now.subtract(const Duration(minutes: 8));
 
@@ -24,7 +25,7 @@ void main() {
       syncTimes: syncTimes,
       telemetry: telemetry,
       now: () => now,
-      policy: ResiliencePolicy(
+      policy: policy = ResiliencePolicy(
         isOffline: () => offline,
         faults: () => faults,
         allowFaultInjection: true,
@@ -458,6 +459,74 @@ void main() {
         isA<ServiceUnavailableFailure>(),
         isA<DataSnapshot<List<Movement>>>(),
       ]);
+    });
+
+    test('fails the moment the fault is published, without waiting for the '
+        'next delivery', () async {
+      final repo = repository();
+      final received = <Object>[];
+      final subscription = repo
+          .watchMovements('savings', limit: 20)
+          .listen(received.add, onError: received.add);
+      source.movements.add(SourceSnapshot([salary], fromCache: false));
+      await pumpEventQueue();
+
+      faults = movementsDown;
+      policy.faultsChanged();
+      await pumpEventQueue();
+      await subscription.cancel();
+
+      expect(received, [
+        isA<DataSnapshot<List<Movement>>>(),
+        isA<ServiceUnavailableFailure>(),
+      ]);
+    });
+
+    test(
+      'delivers what it last received the moment the fault is lifted',
+      () async {
+        faults = movementsDown;
+        final repo = repository();
+        final received = <Object>[];
+        final subscription = repo
+            .watchMovements('savings', limit: 20)
+            .listen(received.add, onError: received.add);
+        source.movements.add(SourceSnapshot([salary], fromCache: false));
+        await pumpEventQueue();
+
+        faults = ResilienceSettings.none;
+        policy.faultsChanged();
+        await pumpEventQueue();
+        await subscription.cancel();
+
+        expect(received, [
+          isA<ServiceUnavailableFailure>(),
+          isA<DataSnapshot<List<Movement>>>().having(
+            (snapshot) => snapshot.value,
+            'movements',
+            [salary],
+          ),
+        ]);
+      },
+    );
+
+    test('says nothing new when the faults change without touching its '
+        'service', () async {
+      final repo = repository();
+      final received = <Object>[];
+      final subscription = repo.watchAccounts().listen(
+        received.add,
+        onError: received.add,
+      );
+      source.accounts.add(const SourceSnapshot([savings], fromCache: false));
+      await pumpEventQueue();
+
+      faults = movementsDown;
+      policy.faultsChanged();
+      await pumpEventQueue();
+      await subscription.cancel();
+
+      expect(received, [isA<DataSnapshot<List<Account>>>()]);
     });
 
     test('leaves the listeners of other services alone', () async {

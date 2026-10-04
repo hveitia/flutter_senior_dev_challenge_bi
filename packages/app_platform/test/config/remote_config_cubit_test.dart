@@ -133,6 +133,20 @@ void main() {
     },
   );
 
+  test('stops listening when asked and keeps the configuration it has, so '
+      'what is on screen stays while a session is being closed', () async {
+    final config = cubit()..start();
+    await pumpEventQueue();
+    final before = config.state;
+
+    await config.stop();
+
+    expect(remote.hasListener, isFalse);
+    expect(config.state, same(before));
+    expect(config.isClosed, isFalse);
+    await config.close();
+  });
+
   test('stops listening to the remote source when closed', () async {
     final config = cubit()..start();
     await pumpEventQueue();

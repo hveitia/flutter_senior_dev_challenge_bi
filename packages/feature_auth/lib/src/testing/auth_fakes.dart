@@ -252,9 +252,14 @@ final class FakeAuthRepository implements AuthRepository {
     return passwordResetResult;
   }
 
+  /// Runs when a sign-out starts, before the session is announced as
+  /// closed: a test reads here what was still alive at that moment.
+  void Function()? onSignOut;
+
   @override
   Future<void> signOut() async {
     signOutCalls++;
+    onSignOut?.call();
     announce(const SignedOutSession());
   }
 }

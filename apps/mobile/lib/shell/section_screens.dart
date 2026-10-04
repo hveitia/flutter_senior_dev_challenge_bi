@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/shell/diagnostics_card.dart';
 import 'package:design_system/design_system.dart';
@@ -93,12 +96,23 @@ class ProfileScreen extends StatelessWidget {
           AppButton(
             label: ShellStrings.signOut,
             variant: AppButtonVariant.secondary,
-            onPressed: () => context.read<SessionBloc>().add(
-              const SessionSignOutRequested(),
-            ),
+            onPressed: () => _signOut(context),
           ),
         ],
       ),
     );
+  }
+
+  /// Stops reading the published configuration, then closes the session.
+  ///
+  /// The order matters: the document can only be read with a session, so a
+  /// listener still running when the session closes would see the read
+  /// refused and report a failure that is only a sign-out.
+  ///
+  /// Asking the listener to stop is enough, without waiting for it to
+  /// finish: from that call on it delivers nothing, errors included.
+  static void _signOut(BuildContext context) {
+    unawaited(context.read<RemoteConfigCubit>().stop());
+    context.read<SessionBloc>().add(const SessionSignOutRequested());
   }
 }

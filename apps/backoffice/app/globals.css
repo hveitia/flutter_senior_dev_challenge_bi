@@ -1,1 +1,68 @@
 @import "tailwindcss";
+
+/*
+ * Values come from packages/design_system/tokens/tokens.json, injected as
+ * --ds-* custom properties by the root layout. This file only names them for
+ * the utility classes; it never repeats a value.
+ */
+@theme inline {
+  --color-brand-500: var(--ds-brand-500);
+  --color-brand-700: var(--ds-brand-700);
+  --color-brand-50: var(--ds-brand-50);
+  --color-ink-900: var(--ds-ink-900);
+  --color-ink-300: var(--ds-ink-300);
+  --color-secondary: var(--ds-text-secondary-aa);
+  --color-line: var(--ds-border-line);
+  --color-surface-0: var(--ds-surface-0);
+  --color-surface-1: var(--ds-surface-1);
+  --color-surface-2: var(--ds-surface-2);
+  --color-success-500: var(--ds-success-500);
+  --color-success-tint: var(--ds-success-tint);
+  --color-danger-500: var(--ds-danger-500);
+  --color-danger-tint: var(--ds-danger-tint);
+  --color-warning-500: var(--ds-warning-500);
+  --color-warning-tint: var(--ds-warning-tint);
+  --color-info-500: var(--ds-info-500);
+  --color-info-tint: var(--ds-info-tint);
+
+  --radius-admin: var(--ds-radius-admin);
+  --radius-card: var(--ds-radius-card);
+  --radius-chip: var(--ds-radius-chip);
+
+  --font-heading: var(--font-poppins), sans-serif;
+  --font-sans: var(--font-open-sans), sans-serif;
+
+  --text-title: var(--ds-type-title-size);
+  --text-title--line-height: var(--ds-type-title-height);
+  --text-subtitle: var(--ds-type-subtitle-size);
+  --text-subtitle--line-height: var(--ds-type-subtitle-height);
+  --text-body: var(--ds-type-body-size);
+  --text-body--line-height: var(--ds-type-body-height);
+  --text-caption: var(--ds-type-caption-size);
+  --text-caption--line-height: var(--ds-type-caption-height);
+  --text-overline: var(--ds-type-overline-size);
+  --text-overline--line-height: var(--ds-type-overline-height);
+
+  --shadow-floating: var(--ds-shadow-floating);
+}
+
+body {
+  background: var(--ds-surface-1);
+  color: var(--ds-ink-900);
+  font-family: var(--font-open-sans), sans-serif;
+  font-size: var(--ds-type-body-size);
+  line-height: var(--ds-type-body-height);
+}
+
+/* One focus indicator for every control, as in the mobile app. */
+:focus-visible {
+  outline: var(--ds-focus-width) solid var(--ds-focus-color);
+  outline-offset: var(--ds-focus-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

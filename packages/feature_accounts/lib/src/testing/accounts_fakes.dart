@@ -94,6 +94,9 @@ final class FakeAccountsRepository implements AccountsRepository {
   int accountRefreshes = 0;
   int movementRefreshes = 0;
 
+  /// How many times the accounts were asked to be followed.
+  int accountListeners = 0;
+
   /// The account and limit of every movements listener, in order.
   final List<(String accountId, int limit)> movementListeners = [];
 
@@ -102,7 +105,10 @@ final class FakeAccountsRepository implements AccountsRepository {
       movementStreams.last;
 
   @override
-  Stream<DataSnapshot<List<Account>>> watchAccounts() => accounts.stream;
+  Stream<DataSnapshot<List<Account>>> watchAccounts() {
+    accountListeners++;
+    return accounts.stream;
+  }
 
   @override
   Future<Result<DataSnapshot<List<Account>>>> refreshAccounts() {

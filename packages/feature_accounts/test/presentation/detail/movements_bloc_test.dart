@@ -269,6 +269,58 @@ void main() {
     expect('${report.error}', isNot(contains('1850')));
   });
 
+  group('after the listener broke', () {
+    Future<MovementsBloc> broken() async {
+      final bloc = await started(onRefresh: () async => page([salary]).ok);
+      repository.movements.addError(StateError('permission denied'));
+      await pumpEventQueue();
+      return bloc;
+    }
+
+    test('it counts as a failed load of the movements service', () async {
+      await broken();
+
+      final failures = telemetry.events.where(
+        (event) => event.name == AccountsTelemetry.loadFailed,
+      );
+      expect(failures.single.parameters, {
+        AccountsTelemetry.serviceKey: AccountsTelemetry.movementsService,
+        AccountsTelemetry.reasonKey: LoadFailure.unexpected.name,
+      });
+    });
+
+    test(
+      'a retry follows the account again, so changes keep arriving',
+      () async {
+        final bloc = await broken();
+        final brokenListener = repository.movements;
+
+        bloc.add(const MovementsRefreshRequested(isRetry: true));
+        await pumpEventQueue();
+
+        expect(repository.movementListeners, [
+          ('savings', pageSize),
+          ('savings', pageSize),
+        ]);
+        expect(brokenListener.hasListener, isFalse);
+        expect(bloc.state.movements.failure, isNull);
+
+        await deliver(page([salary, groceries]));
+
+        expect(visibleIds(bloc), ['salary', 'groceries']);
+      },
+    );
+
+    test('a refresh while the listener works does not listen twice', () async {
+      final bloc = await started(onRefresh: () async => page([salary]).ok);
+
+      bloc.add(const MovementsRefreshRequested());
+      await pumpEventQueue();
+
+      expect(repository.movementListeners, hasLength(1));
+    });
+  });
+
   test('times the first load and says how many movements were shown', () async {
     final refresh = Completer<Result<_Snapshot>>();
     await started(onRefresh: () => refresh.future);

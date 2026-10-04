@@ -227,6 +227,66 @@ void main() {
     },
   );
 
+  group('after the listener broke', () {
+    Future<AccountsBloc> broken() async {
+      repository.onRefreshAccounts = () async => Success(fresh);
+      final bloc = build()..add(const AccountsStarted());
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+      repository.accounts.addError(StateError('permission denied'));
+      await pumpEventQueue();
+      return bloc;
+    }
+
+    test('it counts as a failed load of the accounts service', () async {
+      await broken();
+
+      final failures = telemetry.events.where(
+        (event) => event.name == AccountsTelemetry.loadFailed,
+      );
+      expect(failures.single.parameters, {
+        AccountsTelemetry.serviceKey: AccountsTelemetry.accountsService,
+        AccountsTelemetry.reasonKey: LoadFailure.unexpected.name,
+      });
+    });
+
+    test(
+      'a retry follows the accounts again, so changes keep arriving',
+      () async {
+        final bloc = await broken();
+        expect(repository.accountListeners, 1);
+
+        bloc.add(const AccountsRefreshRequested(isRetry: true));
+        await pumpEventQueue();
+        expect(repository.accountListeners, 2);
+        expect(bloc.state.accounts.failure, isNull);
+
+        repository.accounts.add(
+          _Snapshot(
+            value: const [savings],
+            origin: DataOrigin.server,
+            syncedAt: now,
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(bloc.state.accounts.data, [savings]);
+      },
+    );
+
+    test('a refresh while the listener works does not listen twice', () async {
+      repository.onRefreshAccounts = () async => Success(fresh);
+      final bloc = build()..add(const AccountsStarted());
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      bloc.add(const AccountsRefreshRequested());
+      await pumpEventQueue();
+
+      expect(repository.accountListeners, 1);
+    });
+  });
+
   blocTest<AccountsBloc, AccountsState>(
     'starting twice listens and asks only once',
     build: build,

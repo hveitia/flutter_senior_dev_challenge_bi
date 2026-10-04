@@ -85,6 +85,7 @@ final class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   final Telemetry _telemetry;
 
   StreamSubscription<DataSnapshot<List<Account>>>? _subscription;
+  bool _listenerBroke = false;
   FirstLoadTrace? _firstLoad;
 
   Future<void> _onStarted(
@@ -97,12 +98,26 @@ final class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       _telemetry,
       AccountsTelemetry.accountsFirstLoad,
     );
+    _listen();
+    await _refresh(emit);
+  }
+
+  void _listen() {
+    _listenerBroke = false;
     _subscription = _repository.watchAccounts().listen(
       (snapshot) => add(_AccountsDelivered(snapshot)),
       onError: (Object error, StackTrace stackTrace) =>
           add(_AccountsListenerFailed(error, stackTrace)),
     );
-    await _refresh(emit);
+  }
+
+  /// A listener that reported an error delivers nothing more. Asking the
+  /// backend once would bring the data up to date and then leave it frozen,
+  /// so the accounts are followed again before asking.
+  void _listenAgainIfBroken() {
+    if (!_listenerBroke) return;
+    unawaited(_subscription?.cancel());
+    _listen();
   }
 
   Future<void> _onRefreshRequested(
@@ -119,6 +134,7 @@ final class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
         },
       );
     }
+    _listenAgainIfBroken();
     await _refresh(emit);
   }
 
@@ -139,17 +155,27 @@ final class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     emit(AccountsState(accounts: accounts));
   }
 
-  /// A broken listener means no more live updates. It is shown like any
-  /// other failure; what was already on screen stays there.
+  /// A broken listener means no more live updates until the customer asks
+  /// again. It is shown like any other failure; what was already on screen
+  /// stays there.
   void _onListenerFailed(
     _AccountsListenerFailed event,
     Emitter<AccountsState> emit,
   ) {
-    _telemetry.recordError(
-      RedactedError(event.error.runtimeType),
-      event.stackTrace,
-      reason: AccountsTelemetry.unexpectedError,
-    );
+    _listenerBroke = true;
+    _telemetry
+      ..event(
+        AccountsTelemetry.loadFailed,
+        parameters: {
+          AccountsTelemetry.serviceKey: AccountsTelemetry.accountsService,
+          AccountsTelemetry.reasonKey: LoadFailure.unexpected.name,
+        },
+      )
+      ..recordError(
+        RedactedError(event.error.runtimeType),
+        event.stackTrace,
+        reason: AccountsTelemetry.unexpectedError,
+      );
     final accounts = state.accounts.withRefresh(
       Failed(UnexpectedFailure(event.error, event.stackTrace)),
     );

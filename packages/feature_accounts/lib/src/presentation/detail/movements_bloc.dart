@@ -142,6 +142,7 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
   final DateTime Function() _now;
 
   StreamSubscription<DataSnapshot<List<Movement>>>? _subscription;
+  bool _listenerBroke = false;
   FirstLoadTrace? _firstLoad;
 
   Future<void> _onStarted(
@@ -171,6 +172,13 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
           AccountsTelemetry.serviceKey: AccountsTelemetry.movementsService,
         },
       );
+    }
+    // A listener that reported an error delivers nothing more: the account
+    // is followed again, or the list would be brought up to date once and
+    // then stay frozen.
+    if (_listenerBroke) {
+      unawaited(_subscription?.cancel());
+      _listen(state.limit);
     }
     await _refresh(emit);
   }
@@ -219,11 +227,20 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
     _MovementsListenerFailed event,
     Emitter<MovementsState> emit,
   ) {
-    _telemetry.recordError(
-      RedactedError(event.error.runtimeType),
-      event.stackTrace,
-      reason: AccountsTelemetry.unexpectedError,
-    );
+    _listenerBroke = true;
+    _telemetry
+      ..event(
+        AccountsTelemetry.loadFailed,
+        parameters: {
+          AccountsTelemetry.serviceKey: AccountsTelemetry.movementsService,
+          AccountsTelemetry.reasonKey: LoadFailure.unexpected.name,
+        },
+      )
+      ..recordError(
+        RedactedError(event.error.runtimeType),
+        event.stackTrace,
+        reason: AccountsTelemetry.unexpectedError,
+      );
     final movements = state.movements.withRefresh(
       Failed(UnexpectedFailure(event.error, event.stackTrace)),
     );
@@ -232,6 +249,7 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
   }
 
   void _listen(int limit) {
+    _listenerBroke = false;
     _subscription = _repository
         .watchMovements(accountId, limit: limit)
         .listen(

@@ -112,7 +112,10 @@ final class FakePushMessaging implements PushMessaging {
   }
 
   @override
-  Future<NotificationPermission> permission() async => current;
+  Future<NotificationPermission> permission() async {
+    if (failing.contains('permission')) throw StateError('permission');
+    return current;
+  }
 
   @override
   Future<NotificationPermission> requestPermission() async {
@@ -186,6 +189,26 @@ final class FakeDeviceIdentity implements DeviceIdentity {
 
   @override
   String get platform => 'android';
+}
+
+final class FakeRegistrationMemory implements RegistrationMemory {
+  FakeRegistrationMemory({this.uid, Set<String> topics = const {}})
+    : topics = {...topics};
+
+  @override
+  String? uid;
+
+  @override
+  Set<String> topics;
+
+  @override
+  Future<void> save({
+    required String? uid,
+    required Set<String> topics,
+  }) async {
+    this.uid = uid;
+    this.topics = {...topics};
+  }
 }
 
 final class FakePrimerMemory implements PrimerMemory {

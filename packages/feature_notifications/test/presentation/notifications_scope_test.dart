@@ -29,6 +29,8 @@ void main() {
             // Built inside the test's own zone: a future made in setUp
             // would never complete under the test's fake clock.
             registrar: created ??= DeviceRegistrar(
+              uid: 'uid-1',
+              memory: FakeRegistrationMemory(),
               messaging: messaging,
               devices: devices,
               identity: const FakeDeviceIdentity(),

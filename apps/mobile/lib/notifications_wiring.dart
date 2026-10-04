@@ -13,10 +13,14 @@ final class NotificationsDependencies {
     required this.repositoryFor,
     required this.devicesFor,
     required this.identity,
+    required this.registrationMemory,
     required this.messaging,
     required this.memory,
     required this.settings,
   });
+
+  /// What this installation remembers about its own registration.
+  final RegistrationMemory registrationMemory;
 
   /// The inbox of the customer with the given uid.
   final NotificationsRepository Function(String uid) repositoryFor;
@@ -71,6 +75,8 @@ class _CustomerNotificationsState extends State<CustomerNotifications> {
     _uid = uid;
     _repository = dependencies.repositoryFor(uid);
     _registrar = DeviceRegistrar(
+      uid: uid,
+      memory: dependencies.registrationMemory,
       messaging: dependencies.messaging,
       devices: dependencies.devicesFor(uid),
       identity: dependencies.identity,

@@ -198,6 +198,24 @@ void main() {
       },
     );
 
+    test('remembers who the device is registered for across restarts, and '
+        'forgets it when told to', () async {
+      final memory = SharedPreferencesRegistrationMemory(preferences);
+      expect(memory.uid, isNull);
+      expect(memory.topics, isEmpty);
+
+      await memory.save(uid: 'uid-1', topics: {'segment-family'});
+      final afterRestart = SharedPreferencesRegistrationMemory(preferences);
+
+      expect(afterRestart.uid, 'uid-1');
+      expect(afterRestart.topics, {'segment-family'});
+
+      await afterRestart.save(uid: null, topics: {});
+
+      expect(SharedPreferencesRegistrationMemory(preferences).uid, isNull);
+      expect(SharedPreferencesRegistrationMemory(preferences).topics, isEmpty);
+    });
+
     test('remembers that the invitation was answered', () async {
       final memory = SharedPreferencesPrimerMemory(preferences);
       expect(memory.wasAnswered, isFalse);

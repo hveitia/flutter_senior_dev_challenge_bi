@@ -22,6 +22,7 @@ NotificationsDependencies composeNotifications({
     ),
     devicesFor: (uid) => FirestoreDeviceStore(firestore, uid: uid),
     identity: SharedPreferencesDeviceIdentity(preferences),
+    registrationMemory: SharedPreferencesRegistrationMemory(preferences),
     messaging: FirebasePushMessaging(FirebaseMessaging.instance, preferences),
     memory: SharedPreferencesPrimerMemory(preferences),
     settings: const ChannelSystemSettings(),

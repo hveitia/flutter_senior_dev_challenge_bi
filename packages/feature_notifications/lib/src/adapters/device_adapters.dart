@@ -71,6 +71,37 @@ final class SharedPreferencesDeviceIdentity implements DeviceIdentity {
       defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
 }
 
+/// [RegistrationMemory] on the device. It is not part of what is wiped when
+/// a session ends: it is what the clean-up after a session reads.
+final class SharedPreferencesRegistrationMemory implements RegistrationMemory {
+  SharedPreferencesRegistrationMemory(this._preferences);
+
+  static const String _uidKey = 'notifications.registered_for';
+  static const String _topicsKey = 'notifications.topics';
+
+  final SharedPreferences _preferences;
+
+  @override
+  String? get uid => _preferences.getString(_uidKey);
+
+  @override
+  Set<String> get topics =>
+      _preferences.getStringList(_topicsKey)?.toSet() ?? {};
+
+  @override
+  Future<void> save({
+    required String? uid,
+    required Set<String> topics,
+  }) async {
+    if (uid == null) {
+      await _preferences.remove(_uidKey);
+    } else {
+      await _preferences.setString(_uidKey, uid);
+    }
+    await _preferences.setStringList(_topicsKey, topics.toList());
+  }
+}
+
 /// [PrimerMemory] on the device. It is about the device, not the customer:
 /// whoever answered "Ahora no" on this phone is not asked again by the app.
 final class SharedPreferencesPrimerMemory implements PrimerMemory {

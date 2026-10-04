@@ -62,6 +62,20 @@ abstract interface class DeviceIdentity {
   String get platform;
 }
 
+/// What this installation remembers about its own registration: who it was
+/// last registered for and which topics it may still be subscribed to.
+///
+/// It lives on the device, outside any session, so a phone that changes
+/// hands can be cleaned before the next customer is registered on it. It
+/// holds an identifier and topic names, never anything about the customer.
+abstract interface class RegistrationMemory {
+  String? get uid;
+
+  Set<String> get topics;
+
+  Future<void> save({required String? uid, required Set<String> topics});
+}
+
 /// Remembers, on this device, that the customer already answered the
 /// invitation to turn notifications on.
 abstract interface class PrimerMemory {

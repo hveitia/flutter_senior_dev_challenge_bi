@@ -111,6 +111,7 @@ final class TestDependencies {
         repositoryFor: (_) => inbox,
         devicesFor: (_) => devices,
         identity: const FakeDeviceIdentity(),
+        registrationMemory: registrationMemory,
         messaging: messaging,
         memory: primerMemory,
         settings: FakeSystemSettings(),
@@ -121,6 +122,7 @@ final class TestDependencies {
   /// The customer's inbox, driven by hand.
   final FakeNotificationsRepository inbox = FakeNotificationsRepository();
   final FakeDeviceStore devices = FakeDeviceStore();
+  final FakeRegistrationMemory registrationMemory = FakeRegistrationMemory();
 
   /// The system has not asked about notifications, and the customer already
   /// answered the app's invitation on this device: nothing interrupts a test

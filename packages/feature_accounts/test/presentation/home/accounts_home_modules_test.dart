@@ -120,10 +120,11 @@ void main() {
     );
   });
 
-  test('registers the three modules the accounts domain owns', () {
+  test('registers the modules the accounts domain owns', () {
     expect(registry.types, {
       AccountsModuleTypes.totalBalance,
       AccountsModuleTypes.accountCarousel,
+      AccountsModuleTypes.investmentSummary,
       AccountsModuleTypes.recentMovements,
     });
   });
@@ -454,6 +455,128 @@ void main() {
       await settle(tester);
 
       expect(find.text('Aún no tienes movimientos'), findsOneWidget);
+    });
+  });
+
+  group('with investments', () {
+    Future<Result<AccountsSnapshot>> withFund() async =>
+        Success(accountsSnapshot(const [savings, checking, fund]));
+
+    testWidgets('the total is the money the customer can spend, unless the '
+        'configuration asks to include what is invested', (tester) async {
+      repository.onRefreshAccounts = withFund;
+
+      await pumpModules(tester, const [AccountsModuleTypes.totalBalance]);
+      await settle(tester);
+      expect(find.text(r'$4,820.35', findRichText: true), findsOneWidget);
+
+      await pumpModules(
+        tester,
+        const [AccountsModuleTypes.totalBalance],
+        props: const {'includesInvestments': true},
+      );
+      await settle(tester);
+      expect(find.text(r'$29,420.35', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('the carousel shows the spending accounts only', (
+      tester,
+    ) async {
+      repository.onRefreshAccounts = withFund;
+
+      await pumpModules(tester, const [AccountsModuleTypes.accountCarousel]);
+      await settle(tester);
+
+      expect(find.byType(AccountCard), findsNWidgets(2));
+      expect(find.text('Fondo de inversión'), findsNothing);
+    });
+
+    testWidgets('the investments module says what is invested, product by '
+        'product', (tester) async {
+      repository.onRefreshAccounts = withFund;
+
+      await pumpModules(tester, const [AccountsModuleTypes.investmentSummary]);
+      await settle(tester);
+
+      expect(find.text('Inversiones'), findsOneWidget);
+      expect(find.text('Fondo de inversión'), findsOneWidget);
+      expect(find.text(r'$24,600.00', findRichText: true), findsWidgets);
+      expect(
+        host.statuses[AccountsModuleTypes.investmentSummary],
+        HomeModuleStatus.ready,
+      );
+    });
+
+    testWidgets('the investments module hides its amounts with the eye', (
+      tester,
+    ) async {
+      repository.onRefreshAccounts = withFund;
+
+      await pumpModules(tester, const [
+        AccountsModuleTypes.totalBalance,
+        AccountsModuleTypes.investmentSummary,
+      ]);
+      await settle(tester);
+      await tester.tap(find.byTooltip('Ocultar montos'));
+      await tester.pump();
+
+      expect(find.text(r'$24,600.00', findRichText: true), findsNothing);
+    });
+
+    testWidgets('the investments module takes no space for a customer '
+        'without investments', (tester) async {
+      repository.onRefreshAccounts = bothAccounts;
+
+      await pumpModules(tester, const [AccountsModuleTypes.investmentSummary]);
+      await settle(tester);
+
+      expect(find.text('Inversiones'), findsNothing);
+      expect(
+        host.statuses[AccountsModuleTypes.investmentSummary],
+        HomeModuleStatus.hidden,
+      );
+    });
+
+    testWidgets('the investments module leaves a failure for the balance to '
+        'say', (tester) async {
+      repository.onRefreshAccounts = () async => const Failed(TimeoutFailure());
+
+      await pumpModules(tester, const [
+        AccountsModuleTypes.totalBalance,
+        AccountsModuleTypes.investmentSummary,
+      ]);
+      await settle(tester);
+
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(
+        host.statuses[AccountsModuleTypes.investmentSummary],
+        HomeModuleStatus.hidden,
+      );
+    });
+
+    testWidgets('the investments module says the failure itself when '
+        'published without the balance', (tester) async {
+      repository.onRefreshAccounts = () async => const Failed(TimeoutFailure());
+
+      await pumpModules(tester, const [AccountsModuleTypes.investmentSummary]);
+      await settle(tester);
+
+      expect(find.text('No pudimos cargar tus inversiones'), findsOneWidget);
+      expect(
+        host.statuses[AccountsModuleTypes.investmentSummary],
+        HomeModuleStatus.failed,
+      );
+    });
+
+    testWidgets('the investments module takes to the accounts when the app '
+        'can', (tester) async {
+      repository.onRefreshAccounts = withFund;
+
+      await pumpModules(tester, const [AccountsModuleTypes.investmentSummary]);
+      await settle(tester);
+      await tester.tap(find.text('Ver inversiones'));
+
+      expect(destinations.opened, [Destinations.accounts]);
     });
   });
 

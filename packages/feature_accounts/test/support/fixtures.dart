@@ -23,6 +23,16 @@ const Account checking = Account(
   currency: 'USD',
 );
 
+const Account fund = Account(
+  id: 'fund',
+  name: 'Fondo de inversión',
+  kind: AccountKind.investment,
+  number: '30007744',
+  availableCents: 2460000,
+  ledgerCents: 2460000,
+  currency: 'USD',
+);
+
 Movement movement({
   required String id,
   required String description,

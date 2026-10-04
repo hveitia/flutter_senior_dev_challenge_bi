@@ -3,13 +3,20 @@ import 'package:equatable/equatable.dart';
 /// What an account is for. It decides the order accounts are listed in.
 enum AccountKind {
   savings('savings'),
-  checking('checking')
+  checking('checking'),
+
+  /// Money placed in an investment product: part of what the customer owns,
+  /// not of what they can spend today.
+  investment('investment')
   ;
 
   const AccountKind(this.id);
 
   /// The value stored with the account.
   final String id;
+
+  /// Whether the balance is money the customer can spend right now.
+  bool get isCash => this != investment;
 
   /// The kind stored as [id], or null when this version does not know it.
   static AccountKind? fromId(Object? id) {
@@ -81,6 +88,18 @@ int? totalAvailableCents(Iterable<Account> accounts) {
     (total, account) => total + account.availableCents,
   );
 }
+
+/// The accounts whose balance can be spent, in the order given.
+List<Account> cashAccounts(Iterable<Account> accounts) => [
+  for (final account in accounts)
+    if (account.kind.isCash) account,
+];
+
+/// The investments among [accounts], in the order given.
+List<Account> investmentAccounts(Iterable<Account> accounts) => [
+  for (final account in accounts)
+    if (!account.kind.isCash) account,
+];
 
 /// [accounts] in the order they are listed: by kind, then by name.
 List<Account> inListingOrder(Iterable<Account> accounts) {

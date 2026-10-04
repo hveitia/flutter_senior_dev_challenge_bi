@@ -7,13 +7,13 @@
 // from the gcloud CLI), which bypass the security rules exactly as the
 // server will. Nothing secret is read from or written to the repository.
 //
-//   node seed/seed.mjs --email cliente@example.com [--dry-run]
+//   node seed/seed.mjs --email cliente@example.com [--segment wealth] [--dry-run]
 //
 // Running it again rewrites the same documents.
 import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 
-import { buildSeed } from './seed-data.mjs';
+import { SEGMENTS, buildSeed } from './seed-data.mjs';
 
 /** The only project this tool writes to unless told otherwise. */
 const DEMO_PROJECT = 'flutter-challenge-bi';
@@ -25,6 +25,9 @@ const { values: options } = parseArgs({
     project: { type: 'string', default: DEMO_PROJECT },
     'allow-other-project': { type: 'boolean', default: false },
     'dry-run': { type: 'boolean', default: false },
+    // Which data set to write: `wealth` adds an investment product to the
+    // two accounts. It does not touch the segment of the customer's profile.
+    segment: { type: 'string', default: 'starting' },
   },
 });
 
@@ -35,6 +38,9 @@ function fail(message) {
 
 if (!options.email) {
   fail('missing --email, the address the customer signed up with');
+}
+if (!SEGMENTS.includes(options.segment)) {
+  fail(`unknown --segment "${options.segment}": use ${SEGMENTS.join(', ')}`);
 }
 if (options.project !== DEMO_PROJECT && !options['allow-other-project']) {
   fail(
@@ -113,9 +119,10 @@ function dollars(cents) {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
-const seed = buildSeed(new Date());
+const seed = buildSeed(new Date(), { segment: options.segment });
 
 console.log(`Project:  ${options.project}`);
+console.log(`Data set: ${options.segment}`);
 console.log(`Customer: ${options.email}`);
 console.log('Will write:');
 for (const { id, data } of seed.accounts) {

@@ -30,6 +30,12 @@ class TotalBalanceModule extends StatelessWidget {
   /// The current moment, for saying how old saved data is.
   final DateTime Function() now;
 
+  /// Name of the setting that adds the investments to the total.
+  static const String includesInvestmentsProp = 'includesInvestments';
+
+  bool get _includesInvestments =>
+      module.props[includesInvestmentsProp] == true;
+
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<AccountsBloc>();
@@ -78,7 +84,11 @@ class TotalBalanceModule extends StatelessWidget {
 
     final hidden = context.watch<AmountVisibilityCubit>().state;
     final showsAge = accounts.origin == DataOrigin.cache || accounts.isOutdated;
-    final total = totalAvailableCents(data);
+    // Without the setting the total is the money that can be spent; what is
+    // invested is added only when the configuration asks for it.
+    final total = totalAvailableCents(
+      _includesInvestments ? data : cashAccounts(data),
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +113,9 @@ class TotalBalanceModule extends StatelessWidget {
                 FreshnessCaption(syncedAt: accounts.syncedAt, now: now)
               else
                 Text(
-                  AccountsStrings.balanceCaption,
+                  _includesInvestments
+                      ? AccountsStrings.balanceWithInvestmentsCaption
+                      : AccountsStrings.balanceCaption,
                   style: AppTypography.caption.copyWith(
                     color: context.colors.textSecondary,
                   ),

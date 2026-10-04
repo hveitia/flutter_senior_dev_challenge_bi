@@ -127,3 +127,40 @@ describe('movements', () => {
     }
   });
 });
+
+describe('the wealth profile', () => {
+  const wealth = buildSeed(NOW, { segment: 'wealth' });
+
+  test('adds one investment product to the same two accounts', () => {
+    assert.deepEqual(
+      wealth.accounts.map((candidate) => candidate.id),
+      ['savings', 'checking', 'fund'],
+    );
+    const fund = wealth.accounts.find((candidate) => candidate.id === 'fund');
+    assert.equal(fund.data.kind, 'investment');
+    assert.equal(fund.data.availableCents, 2460000);
+    assert.equal(fund.data.currency, 'USD');
+  });
+
+  test('adds up to the total of the design with what can be spent', () => {
+    const total = wealth.accounts.reduce(
+      (sum, candidate) => sum + candidate.data.availableCents,
+      0,
+    );
+    assert.equal(total, 2942035);
+  });
+
+  test('leaves the movements exactly as they are for everyone else', () => {
+    assert.deepEqual(wealth.movements, seed.movements);
+  });
+
+  test('is not written for the other profiles', () => {
+    for (const segment of ['starting', 'family']) {
+      assert.equal(buildSeed(NOW, { segment }).accounts.length, 2);
+    }
+  });
+
+  test('refuses a profile it does not know', () => {
+    assert.throws(() => buildSeed(NOW, { segment: 'premium' }), /premium/);
+  });
+});

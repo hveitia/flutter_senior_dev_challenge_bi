@@ -57,7 +57,7 @@ void main() {
       expect(
         FirestoreAccountsSource.decodeAccount(
           'savings',
-          document()..[AccountFields.kind] = 'investment',
+          document()..[AccountFields.kind] = 'pension',
         ),
         isNull,
       );

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:feature_accounts/src/presentation/accounts_routes.dart';
 import 'package:feature_accounts/src/presentation/home/account_carousel_module.dart';
+import 'package:feature_accounts/src/presentation/home/accounts_module_state.dart';
+import 'package:feature_accounts/src/presentation/home/investment_summary_module.dart';
 import 'package:feature_accounts/src/presentation/home/recent_movements_module.dart';
 import 'package:feature_accounts/src/presentation/home/total_balance_module.dart';
 import 'package:flutter/widgets.dart';
@@ -11,8 +13,9 @@ import 'package:module_kit/module_kit.dart';
 /// The home modules the accounts domain owns, by the type the published
 /// configuration names them with.
 abstract final class AccountsModuleTypes {
-  static const String totalBalance = 'totalBalance';
+  static const String totalBalance = totalBalanceType;
   static const String accountCarousel = 'accountCarousel';
+  static const String investmentSummary = 'investmentSummary';
   static const String recentMovements = 'recentMovements';
 }
 
@@ -41,6 +44,10 @@ void registerAccountsHomeModules(
       AccountsModuleTypes.accountCarousel,
       (context, module) =>
           AccountCarouselModule(module: module, onOpenAccount: openAccount),
+    )
+    ..register(
+      AccountsModuleTypes.investmentSummary,
+      (context, module) => InvestmentSummaryModule(module: module),
     )
     ..register(
       AccountsModuleTypes.recentMovements,

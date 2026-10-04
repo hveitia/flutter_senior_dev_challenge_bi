@@ -64,7 +64,23 @@ void main() {
 
   test('an account kind this version does not know is not guessed', () {
     expect(AccountKind.fromId('savings'), AccountKind.savings);
-    expect(AccountKind.fromId('investment'), isNull);
+    expect(AccountKind.fromId('investment'), AccountKind.investment);
+    expect(AccountKind.fromId('pension'), isNull);
     expect(AccountKind.fromId(7), isNull);
+  });
+
+  group('investments', () {
+    test('are told apart from the money the customer can spend', () {
+      expect(cashAccounts([savings, fund, checking]), [savings, checking]);
+      expect(investmentAccounts([savings, fund, checking]), [fund]);
+    });
+
+    test('are listed after the spending accounts', () {
+      expect(inListingOrder([fund, checking, savings]).map((a) => a.id), [
+        'savings',
+        'checking',
+        'fund',
+      ]);
+    });
   });
 }

@@ -15,6 +15,12 @@ abstract final class AccountsStrings {
   static const String balanceCaption = 'Todo tu dinero, en un solo lugar';
   static const String balanceFailed = 'No pudimos cargar tu saldo';
   static const String carouselFailed = 'No pudimos cargar tus cuentas';
+  static const String investmentsTitle = 'Inversiones';
+  static const String investedTotal = 'Total invertido';
+  static const String seeInvestments = 'Ver inversiones';
+  static const String investmentsFailed = 'No pudimos cargar tus inversiones';
+  static const String balanceWithInvestmentsCaption =
+      'Tus cuentas y tus inversiones';
   static const String hideAmounts = 'Ocultar montos';
   static const String showAmounts = 'Mostrar montos';
   static const String recentMovementsTitle = 'Últimos movimientos';

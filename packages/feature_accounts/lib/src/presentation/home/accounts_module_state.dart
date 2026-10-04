@@ -32,6 +32,19 @@ HomeModuleStatus moduleStatus(
 HomeModuleStatus accountsModuleStatus(LoadState<List<Account>> accounts) =>
     moduleStatus(accounts, hasContent: showableAccounts(accounts) != null);
 
+/// The type of the module that says when the accounts cannot be loaded.
+/// It lives here, and not with the registration, so the modules that defer
+/// to it do not import the file that imports them.
+const String totalBalanceType = 'totalBalance';
+
+/// Whether the balance module is published in the same home as [module].
+/// When it is, it is the one that says the accounts failed and offers the
+/// retry, and the other modules on the same data draw nothing: two errors
+/// about the same thing would only add noise. Published without it, each
+/// says the failure itself.
+bool balanceSaysAccountsFailure(HomeModuleContext module) =>
+    module.composedTypes.contains(totalBalanceType);
+
 /// Asks [bloc] for the accounts again and completes when it has answered.
 Future<void> refreshAccounts(AccountsBloc bloc, {bool isRetry = false}) {
   bloc.add(AccountsRefreshRequested(isRetry: isRetry));

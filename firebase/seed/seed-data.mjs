@@ -23,6 +23,25 @@ const ACCOUNTS = [
   },
 ];
 
+/**
+ * What a customer of the wealth profile has besides the two accounts: one
+ * investment product. With the accounts it adds up to the $29,420.35 of the
+ * design. It has no movements: the app follows the movements of the money
+ * that can be spent.
+ */
+const INVESTMENTS = [
+  {
+    id: 'fund',
+    name: 'Fondo de inversión',
+    kind: 'investment',
+    number: '30007744',
+    balanceCents: 2460000,
+  },
+];
+
+/** The data sets the tool can write, named after the customer segments. */
+export const SEGMENTS = ['starting', 'family', 'wealth'];
+
 /** How long ago the opening deposit of each account was made, in days. */
 const OPENING_DAYS_AGO = 45;
 
@@ -92,14 +111,25 @@ function reference(postedAt, number) {
 }
 
 /**
- * Two accounts and their movements, with dates relative to `now`.
+ * Two accounts and their movements, with dates relative to `now`, plus an
+ * investment product when `segment` is `wealth`.
  *
  * Each account opens with a deposit sized so that its movements add up
  * exactly to its balance. Ids depend only on the position of each movement,
  * so running the seed again rewrites the same documents.
+ *
+ * `segment` chooses what is written. It does not change the segment of the
+ * customer's profile, which the customer sets in the app.
  */
-export function buildSeed(now) {
-  const accounts = ACCOUNTS.map((account) => ({
+export function buildSeed(now, { segment = 'starting' } = {}) {
+  if (!SEGMENTS.includes(segment)) {
+    throw new RangeError(
+      `unknown segment "${segment}": expected one of ${SEGMENTS.join(', ')}`,
+    );
+  }
+  const owned = segment === 'wealth' ? [...ACCOUNTS, ...INVESTMENTS] : ACCOUNTS;
+
+  const accounts = owned.map((account) => ({
     id: account.id,
     data: {
       name: account.name,

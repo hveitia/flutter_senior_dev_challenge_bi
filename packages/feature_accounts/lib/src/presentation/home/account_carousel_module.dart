@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:design_system/design_system.dart';
+import 'package:feature_accounts/src/domain/account.dart';
 import 'package:feature_accounts/src/presentation/accounts/accounts_bloc.dart';
 import 'package:feature_accounts/src/presentation/accounts_strings.dart';
 import 'package:feature_accounts/src/presentation/home/accounts_home_modules.dart';
@@ -36,14 +37,17 @@ class AccountCarouselModule extends StatelessWidget {
   Widget build(BuildContext context) {
     final bloc = context.read<AccountsBloc>();
     final accounts = context.watch<AccountsBloc>().state.accounts;
-    final data = showableAccounts(accounts);
+    // The cards are the accounts the customer spends from. What is invested
+    // has a module of its own.
+    final data = switch (showableAccounts(accounts)) {
+      null => null,
+      final all => cashAccounts(all),
+    };
 
     final hasFailed = data == null && accounts.failure != null;
-    final balanceSaysIt = module.composedTypes.contains(
-      AccountsModuleTypes.totalBalance,
-    );
     final drawsNothing =
-        (hasFailed && balanceSaysIt) || (data?.isEmpty ?? false);
+        (hasFailed && balanceSaysAccountsFailure(module)) ||
+        (data?.isEmpty ?? false);
 
     return HomeModuleBinding(
       module: module,

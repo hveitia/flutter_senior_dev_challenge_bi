@@ -57,7 +57,8 @@ function admit(decoded: DecodedToken, settings: ServerSettings): Admission {
   }
   if (decoded.email_verified !== true) {
     return { ok: false, reason: "unverified" };
-  }  return { ok: true, admin: { uid: decoded.uid, email } };
+  }
+  return { ok: true, admin: { uid: decoded.uid, email } };
 }
 
 /** Exchanges a fresh identity token for a session cookie. */

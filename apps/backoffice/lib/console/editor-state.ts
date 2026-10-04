@@ -102,5 +102,6 @@ export function canPublish(state: EditorState): boolean {
     state.publication.failure.kind === "conflict"
   ) {
     return false;
-  }  return pendingChanges(state) > 0 || state.source === "example";
+  }
+  return pendingChanges(state) > 0 || state.source === "example";
 }

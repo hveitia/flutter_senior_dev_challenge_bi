@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 # Single definition of "green" for the workspace.
 #
-#   tool/verify.sh             everything: what CI runs on every push
+#   tool/verify.sh             everything, the web console included
+#   tool/verify.sh --without-console
+#                              everything but the web console: what the
+#                              workspace's CI job runs, because the console
+#                              has a CI workflow of its own
 #   tool/verify.sh --affected  what the staged changes can break: what the
 #                              pre-commit hook runs
 #
-# Both modes check the format and the analysis of the whole repository,
+# Every mode checks the format and the analysis of the whole repository,
 # which are fast. They differ only in which tests run, and in whether the web
-# console is verified: always in the first, only when it or the contract
-# changed in the second.
+# console is verified: always in the first, never in the second, only when it
+# or the contract changed in the third.
+#
+# Leaving the console out is always a decision somebody wrote down. The full
+# mode fails when the console's dependencies are not installed, so it can
+# never pass without having verified it.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -19,9 +27,11 @@ fail() {
 }
 
 mode=all
+with_console=true
 case "${1:-}" in
   "") ;;
   --affected) mode=affected ;;
+  --without-console) with_console=false ;;
   *) fail "unknown argument: $1" ;;
 esac
 
@@ -115,7 +125,12 @@ depends_on() {
 
 if [ "$mode" = all ]; then
   selected=("${members[@]}")
-  run_console=true
+  run_console=$with_console
+  # Checked before the tests, which take the longest: a run that cannot
+  # verify the console should say so at once.
+  if $run_console && [ ! -d apps/backoffice/node_modules ]; then
+    fail "apps/backoffice/node_modules is missing. Run 'npm ci' in apps/backoffice/, or pass --without-console to leave the console to its own CI workflow."
+  fi
 else
   echo "==> Affected by the staged changes"
   # The pre-commit hook passes the list it read from the commit's own index.
@@ -187,13 +202,14 @@ done
 
 # --- Web console --------------------------------------------------------------
 # Not a Dart package: it has its own lint, type check, tests and build, and a
-# CI workflow of its own. Here it runs when its dependencies are installed.
+# CI workflow of its own. The full mode has already refused to start without
+# its dependencies; only the pre-commit mode may go on without them.
 
 if $run_console; then
   echo "==> Console"
   if [ ! -d apps/backoffice/node_modules ]; then
     echo "    apps/backoffice/node_modules is missing (run 'npm ci' in apps/backoffice/)."
-    echo "    The console was NOT verified here; its CI workflow verifies it."
+    echo "    The console was NOT verified by this commit hook; its CI workflow verifies it."
   else
     (cd apps/backoffice && npm run --silent verify)
   fi

@@ -171,7 +171,7 @@ Para la demostración de «cambiar la experiencia sin publicar la aplicación»:
 tool/verify.sh
 ```
 
-Ejecuta, en este orden, la comprobación de formato, el análisis estático y las pruebas de cada paquete del workspace. Es exactamente lo que ejecuta la integración continua en cada push.
+Ejecuta, en este orden, la comprobación de formato, el análisis estático, las pruebas de cada paquete del workspace y la verificación de la consola web. Requiere haber ejecutado `npm ci` en `apps/backoffice/`; si faltan esas dependencias, falla en lugar de omitir la consola. La integración continua ejecuta lo mismo en cada push, repartido en dos flujos: el del workspace usa `tool/verify.sh --without-console` y la consola tiene el suyo.
 
 El hook `pre-commit` usa el mismo script en modo acotado:
 

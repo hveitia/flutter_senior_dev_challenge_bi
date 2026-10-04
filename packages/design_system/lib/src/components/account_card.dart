@@ -16,6 +16,7 @@ class AccountCard extends StatelessWidget {
     required this.maskedNumber,
     required this.balanceCents,
     required this.onTap,
+    this.balanceObscured = false,
     super.key,
   });
 
@@ -28,12 +29,18 @@ class AccountCard extends StatelessWidget {
   final int balanceCents;
   final VoidCallback onTap;
 
+  /// Hides the balance, on screen and when read aloud.
+  final bool balanceObscured;
+
   /// What hides the start of the number, dropped when reading it aloud.
   static final RegExp _mask = RegExp(r'^\D+');
 
   String get _spokenLabel {
     final ending = maskedNumber.replaceFirst(_mask, '');
-    return '$name, terminada en $ending, ${amountSemanticLabel(balanceCents)}';
+    final balance = balanceObscured
+        ? AmountText.obscuredLabel
+        : amountSemanticLabel(balanceCents);
+    return '$name, terminada en $ending, $balance';
   }
 
   @override
@@ -95,7 +102,7 @@ class AccountCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.x1),
-                  AmountText(cents: balanceCents),
+                  AmountText(cents: balanceCents, obscured: balanceObscured),
                 ],
               ),
             ),

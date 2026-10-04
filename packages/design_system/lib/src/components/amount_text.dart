@@ -26,8 +26,15 @@ class AmountText extends StatelessWidget {
     required this.cents,
     this.size = AmountTextSize.title,
     this.signDisplay = AmountSignDisplay.negativeOnly,
+    this.obscured = false,
     super.key,
   });
+
+  /// Drawn in place of an obscured amount.
+  static const String obscuredText = '••••••';
+
+  /// Read aloud in place of an obscured amount.
+  static const String obscuredLabel = 'Monto oculto';
 
   /// Amount in minor units: `482035` is `$4,820.35`.
   ///
@@ -37,8 +44,24 @@ class AmountText extends StatelessWidget {
   final AmountTextSize size;
   final AmountSignDisplay signDisplay;
 
+  /// Hides the figure, for a customer who does not want it on screen. The
+  /// amount is neither drawn nor read aloud.
+  final bool obscured;
+
   @override
   Widget build(BuildContext context) {
+    if (obscured) {
+      return Text(
+        obscuredText,
+        maxLines: 1,
+        softWrap: false,
+        semanticsLabel: obscuredLabel,
+        style: size.style.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      );
+    }
+
     final amount = formatAmount(cents, signDisplay: signDisplay);
     final isIncome = signDisplay == AmountSignDisplay.always && cents > 0;
     final color = isIncome

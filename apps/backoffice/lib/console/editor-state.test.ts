@@ -130,6 +130,55 @@ describe("editor state", () => {
     expect(canPublish(state)).toBe(false);
   });
 
+  it("stays locked after a conflict even if the draft is edited or discarded", () => {
+    let state = editorReducer(edited(loaded()), { type: "publish-started" });
+    const conflict = { kind: "conflict", storedVersion: 16 } as const;
+    state = editorReducer(state, { type: "publish-failed", failure: conflict });
+
+    const afterEdit = editorReducer(state, {
+      type: "edited",
+      draft: setModuleVisible(state.draft, "starting", "services", false),
+    });
+    const afterDiscard = editorReducer(state, { type: "discarded" });
+
+    expect(afterEdit.publication).toEqual({ status: "failed", failure: conflict });
+    expect(canPublish(afterEdit)).toBe(false);
+    expect(afterDiscard.publication).toEqual({ status: "failed", failure: conflict });
+    expect(canPublish(afterDiscard)).toBe(false);
+  });
+
+  it("ignores edits and discards while a publication is in flight", () => {
+    const publishing = editorReducer(edited(loaded()), { type: "publish-started" });
+
+    const afterEdit = editorReducer(publishing, {
+      type: "edited",
+      draft: setModuleVisible(publishing.draft, "starting", "services", false),
+    });
+    const afterDiscard = editorReducer(publishing, { type: "discarded" });
+
+    expect(afterEdit).toBe(publishing);
+    expect(afterDiscard).toBe(publishing);
+    expect(canPublish(afterEdit)).toBe(false);
+  });
+
+  it("takes as live exactly the draft that was sent", () => {
+    let state = editorReducer(edited(loaded()), { type: "publish-started" });
+    const sent = state.draft;
+    state = editorReducer(state, {
+      type: "edited",
+      draft: setModuleVisible(state.draft, "starting", "services", false),
+    });
+
+    state = editorReducer(state, {
+      type: "publish-succeeded",
+      version: 15,
+      publishedAt: "2026-10-03T14:00:00.000Z",
+    });
+
+    expect(state.published).toEqual({ ...sent, configVersion: 15 });
+    expect(pendingChanges(state)).toBe(0);
+  });
+
   it("can publish the contract example when nothing is live yet", () => {
     const state = initialEditorState({
       config: exampleConfig(),

@@ -111,6 +111,41 @@ describe("Console", () => {
     expect((publishButton() as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("keeps publish disabled when the draft is edited after a conflict", async () => {
+    const publish = renderConsole();
+    publish.mockResolvedValue({ ok: false, kind: "conflict", storedVersion: 16 });
+
+    await hidePromo();
+    await userEvent.click(publishButton());
+    await screen.findByRole("alert");
+    await userEvent.click(screen.getByRole("switch", { name: "Mostrar Para ti" }));
+
+    expect((publishButton() as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain("versión v16");
+    expect(publish).toHaveBeenCalledOnce();
+  });
+
+  it("locks the editing controls while a publication is in flight", async () => {
+    const publish = renderConsole();
+    let finish: (outcome: PublishOutcome) => void = () => {};
+    publish.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+
+    await hidePromo();
+    await userEvent.click(publishButton());
+
+    const anySwitch = screen.getByRole("switch", { name: "Mostrar Para ti" });
+    expect(anySwitch.matches(":disabled")).toBe(true);
+    expect(
+      screen.getByLabelText("Título", { selector: "#promo-title" }).matches(":disabled"),
+    ).toBe(true);
+
+    finish({ ok: true, version: 15, publishedAt: "2026-10-03T14:00:00.000Z" });
+    expect(await screen.findByText("Configuración v15")).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "Mostrar Para ti" }).matches(":disabled"),
+    ).toBe(false);
+  });
+
   it("shows the preview in the order and visibility of the draft", async () => {
     renderConsole();
     expect(previewText().indexOf("Saldo total")).toBeLessThan(

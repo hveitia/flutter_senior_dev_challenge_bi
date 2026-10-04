@@ -43,6 +43,26 @@ export type EditorAction =
 
 const IDLE: Publication = { status: "idle" };
 
+export function isPublishing(state: EditorState): boolean {
+  return state.publication.status === "publishing";
+}
+
+/** After a conflict the base version is no longer the live one. */
+export function hasConflict(state: EditorState): boolean {
+  return (
+    state.publication.status === "failed" &&
+    state.publication.failure.kind === "conflict"
+  );
+}
+
+/**
+ * Editing dismisses a failure notice, except a conflict: nothing typed into
+ * this editor makes its base version current again, only a reload does.
+ */
+function afterEdit(state: EditorState): Publication {
+  return hasConflict(state) ? state.publication : IDLE;
+}
+
 export function initialEditorState(loaded: LoadedConfig): EditorState {
   return {
     published: loaded.config,
@@ -61,10 +81,16 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return action.segmentId in state.draft.segments
         ? { ...state, selectedSegment: action.segmentId }
         : state;
+    // While a publication is in flight the draft is exactly what was sent:
+    // an edit now would later be marked as published without having been.
     case "edited":
-      return { ...state, draft: action.draft, publication: IDLE };
+      return isPublishing(state)
+        ? state
+        : { ...state, draft: action.draft, publication: afterEdit(state) };
     case "discarded":
-      return { ...state, draft: state.published, publication: IDLE };
+      return isPublishing(state)
+        ? state
+        : { ...state, draft: state.published, publication: afterEdit(state) };
     case "publish-started":
       return { ...state, publication: { status: "publishing" } };
     case "publish-succeeded": {
@@ -96,12 +122,6 @@ export function pendingChanges(state: EditorState): number {
  * must still be the live one: after a conflict the editor has to be reloaded.
  */
 export function canPublish(state: EditorState): boolean {
-  if (state.publication.status === "publishing") return false;
-  if (
-    state.publication.status === "failed" &&
-    state.publication.failure.kind === "conflict"
-  ) {
-    return false;
-  }
+  if (isPublishing(state) || hasConflict(state)) return false;
   return pendingChanges(state) > 0 || state.source === "example";
 }

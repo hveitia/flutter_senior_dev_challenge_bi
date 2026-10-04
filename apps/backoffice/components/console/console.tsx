@@ -16,6 +16,7 @@ import {
   canPublish,
   editorReducer,
   initialEditorState,
+  isPublishing,
   pendingChanges,
   type LoadedConfig,
 } from "@/lib/console/editor-state";
@@ -98,7 +99,7 @@ export function Console({
         lastPublishedAt={state.lastPublishedAt}
         changes={pendingChanges(state)}
         canPublish={canPublish(state)}
-        publishing={state.publication.status === "publishing"}
+        publishing={isPublishing(state)}
         adminEmail={adminEmail}
         onPublish={publishDraft}
         onDiscard={() => dispatch({ type: "discarded" })}
@@ -121,6 +122,12 @@ export function Console({
               onSignIn={() => router.replace(LOGIN_PATH)}
             />
           ) : null}
+          {/* Disabled as a group while publishing: the draft on screen is
+              what was sent, and stays that way until the answer arrives. */}
+          <fieldset
+            disabled={isPublishing(state)}
+            className="m-0 grid min-w-0 gap-5 border-0 p-0"
+          >
           <ModulesCard
             modules={segment.modules}
             onMove={(from, to) => edit(moveModule(state.draft, segmentId, from, to))}
@@ -145,6 +152,7 @@ export function Console({
               onChange={(patch) => edit(setResilience(state.draft, patch))}
             />
           ) : null}
+          </fieldset>
           <PushCard
             segmentId={segmentId}
             segmentLabel={segment.label}

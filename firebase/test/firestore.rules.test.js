@@ -635,6 +635,26 @@ describe('users/{uid}/devices: the devices that receive notifications', () => {
       setDoc(doc(asOwner(), `users/${OWNER}/devices/${'d'.repeat(65)}`), device()),
     );
   });
+
+  test('a device identifier is made of letters, digits, hyphens and underscores',
+    async () => {
+      await assertSucceeds(
+        setDoc(doc(asOwner(), `users/${OWNER}/devices/a1-B2_c3`), device()),
+      );
+      for (const id of ['with space', 'dot.ted', 'acentuación', 'a$b']) {
+        await assertFails(
+          setDoc(doc(asOwner(), `users/${OWNER}/devices/${id}`), device()),
+        );
+      }
+    });
+
+  test('another customer cannot update or replace a customer\'s device',
+    async () => {
+      await seed(OWN, device({ updatedAt: Timestamp.now() }));
+      await assertFails(
+        setDoc(doc(asOtherCustomer(), OWN), device({ token: 'theirs' })),
+      );
+    });
 });
 
 describe('users/{uid}/inbox: notifications written by the server', () => {
@@ -693,6 +713,24 @@ describe('users/{uid}/inbox: notifications written by the server', () => {
         setDoc(doc(asOwner(), `users/${OWNER}/inbox/n-2`), notification()),
       );
     });
+
+  test('nobody else can write a notification into a customer\'s inbox',
+    async () => {
+      const target = `users/${OWNER}/inbox/n-forged`;
+      await assertFails(setDoc(doc(asOtherCustomer(), target), notification()));
+      await assertFails(setDoc(doc(asVisitor(), target), notification()));
+    });
+
+  test('a notification stored without its read mark cannot be marked by a client',
+    async () => {
+      await seed(OWN, without(notification(), 'read'));
+      await assertFails(updateDoc(doc(asOwner(), OWN), { read: true }));
+    });
+
+  test('the read mark is true or false, nothing else', async () => {
+    await assertFails(updateDoc(doc(asOwner(), OWN), { read: 'true' }));
+    await assertFails(updateDoc(doc(asOwner(), OWN), { read: 1 }));
+  });
 
   test('a customer cannot delete a notification', async () => {
     await assertFails(deleteDoc(doc(asOwner(), OWN)));

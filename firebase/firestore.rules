@@ -129,7 +129,9 @@ service cloud.firestore {
 
       match /devices/{deviceId} {
         allow create, update: if isOwner(uid)
-            && deviceId.size() <= 64
+            // What the app generates: nothing that could be mistaken for a
+            // path or carry text of its own.
+            && deviceId.matches('^[A-Za-z0-9_-]{1,64}$')
             && isValidDevice(request.resource.data);
         allow delete: if isOwner(uid);
       }

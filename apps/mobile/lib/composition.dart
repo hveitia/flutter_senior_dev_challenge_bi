@@ -4,6 +4,7 @@ import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/bootstrap.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:feature_accounts/adapters.dart';
 import 'package:feature_auth/adapters.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:local_auth/local_auth.dart';
@@ -43,5 +44,13 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
       telemetry: telemetry,
     ),
     biometrics: LocalAuthBiometricAuthenticator(LocalAuthentication()),
+    // Firestore keeps its own saved copy on the device, which is the cache
+    // the repository reads from when there is no connection.
+    accountsRepositoryFor: (uid) => DefaultAccountsRepository(
+      source: FirestoreAccountsSource(FirebaseFirestore.instance, uid: uid),
+      syncTimes: SharedPreferencesSyncTimes(preferences, uid: uid),
+      policy: policy,
+      telemetry: telemetry,
+    ),
   );
 }

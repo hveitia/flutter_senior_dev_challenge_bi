@@ -3,6 +3,7 @@ import 'package:app_platform/testing.dart';
 import 'package:banca_digital/app.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:design_system/design_system.dart';
+import 'package:feature_accounts/testing.dart';
 import 'package:feature_auth/feature_auth.dart';
 import 'package:feature_auth/testing.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,7 @@ void main() {
             ..start(),
           authRepository: repository,
           biometrics: biometrics,
+          accountsRepositoryFor: (_) => FakeAccountsRepository(),
         ),
       ),
     );
@@ -143,6 +145,8 @@ void main() {
       await pumpApp(tester);
       await tester.pumpAndSettle();
 
+      await tester.tap(find.text('Perfil'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cerrar sesión'));
       await tester.pumpAndSettle();
 

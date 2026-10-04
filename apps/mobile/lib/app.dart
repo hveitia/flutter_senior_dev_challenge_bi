@@ -38,6 +38,7 @@ class _BancaDigitalAppState extends State<BancaDigitalApp> {
     _router = createAppRouter(
       session: _session,
       productName: BancaDigitalApp.productName,
+      accountsRepositoryFor: dependencies.accountsRepositoryFor,
     );
   }
 

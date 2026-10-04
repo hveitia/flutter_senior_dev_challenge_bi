@@ -14,6 +14,7 @@ dependencies:
   cloud_firestore: ^6.10.0
   connectivity_plus: ^7.3.2
   design_system: ^0.1.0
+  feature_accounts: ^0.1.0
   feature_auth: ^0.1.0
   firebase_auth: ^6.7.0
   firebase_core: ^4.15.0

@@ -25,6 +25,38 @@ export interface PushMessage {
   destination: string;
 }
 
+/** What a notification is about, as the mobile app's inbox draws it. */
+export type NotificationKind = "movement" | "security" | "benefit";
+
+/**
+ * The kind of a notification, from where it leads. The composer has no field
+ * for it, and the destination already says it: money leads to the accounts or
+ * a transfer, security to the profile, and anything else is a benefit.
+ */
+export function kindOf(destination: string): NotificationKind {
+  if (destination === "accounts" || destination === "transfer") return "movement";
+  if (destination === "profile") return "security";
+  return "benefit";
+}
+
+/** One notification as it is written into a customer's inbox. */
+export interface InboxItem {
+  title: string;
+  body: string;
+  kind: NotificationKind;
+  destination: string;
+  createdAt: Date;
+  read: false;
+}
+
+/**
+ * How many inboxes one send to a segment writes: one database batch. A segment
+ * larger than this gets the push on every device but the inbox item on the
+ * first ones only, and the record says so. Production would fan out from a
+ * queue, or have the app read segment-wide items from a shared collection.
+ */
+export const INBOX_FANOUT_LIMIT = 500;
+
 /**
  * Who a stored send was for. A customer is kept by uid, never by address,
  * and with no uid at all when the send could not reach anyone.
@@ -50,6 +82,12 @@ export interface StoredPush {
   dryRun: boolean;
   /** When the retry in progress was claimed; set only while `retrying`. */
   retryClaimedAt?: Date;
+  /** Inboxes the notification was written to; absent when none was tried. */
+  inboxCount?: number;
+  /** The segment had more customers than one send writes inboxes for. */
+  inboxTruncated?: boolean;
+  /** Why writing the inboxes failed, when it did. The push itself went out. */
+  inboxError?: string;
 }
 
 /** Stored and shown when a send to one person could not reach anyone. */
@@ -94,6 +132,15 @@ export interface PushPorts {
     deviceTokens(uid: string): Promise<string[]>;
     /** Marks devices as unregistered. It never deletes them. */
     flagUnregistered(uid: string, tokens: string[], now: Date): Promise<void>;
+    /** Customers of a segment, at most `limit`. */
+    uidsInSegment(segmentId: string, limit: number): Promise<string[]>;
+  };
+  inbox: {
+    /**
+     * Writes the notification, under the same id, into the inbox of each
+     * customer. Writing it again replaces it, so a repeat adds nothing.
+     */
+    deliver(uids: string[], id: string, item: InboxItem): Promise<void>;
   };
   history: {
     add(record: StoredPush): Promise<string>;
@@ -270,6 +317,64 @@ async function reachableUid(ports: PushPorts, email: string): Promise<string | n
   return tokens.length > 0 ? uid : null;
 }
 
+/**
+ * Files a notification that went out into the inbox of everyone it was for,
+ * and notes on the record how many inboxes that was.
+ *
+ * The inbox is what the customer reads in the app; the push only announces
+ * it. So nothing is filed for a dry run or a failed send, where nothing was
+ * announced. Best effort: the push already went out, and an inbox that could
+ * not be written must not turn it into a failed send.
+ */
+async function fileInInboxes(
+  ports: PushPorts,
+  id: string,
+  stored: StoredPush,
+  now: Date,
+): Promise<Pick<StoredPush, "inboxCount" | "inboxTruncated" | "inboxError">> {
+  const wentOut = stored.status === "sent" || stored.status === "partial";
+  if (stored.dryRun || !wentOut) return {};
+
+  let outcome: Pick<StoredPush, "inboxCount" | "inboxTruncated" | "inboxError">;
+  try {
+    const { audience } = stored;
+    const found =
+      audience.kind === "segment"
+        ? await ports.customers.uidsInSegment(
+            audience.segmentId,
+            // One more than is written, to know whether some were left out.
+            INBOX_FANOUT_LIMIT + 1,
+          )
+        : audience.uid
+          ? [audience.uid]
+          : [];
+    const uids = found.slice(0, INBOX_FANOUT_LIMIT);
+    if (uids.length > 0) {
+      await ports.inbox.deliver(uids, id, {
+        title: stored.title,
+        body: stored.body,
+        kind: kindOf(stored.destination),
+        destination: stored.destination,
+        createdAt: now,
+        read: false,
+      });
+    }
+    outcome = {
+      inboxCount: uids.length,
+      ...(found.length > INBOX_FANOUT_LIMIT ? { inboxTruncated: true } : {}),
+    };
+  } catch (error) {
+    outcome = { inboxError: errorCode(error) };
+  }
+
+  try {
+    await ports.history.update(id, outcome);
+  } catch {
+    // The inboxes are written either way; only the note about them is lost.
+  }
+  return outcome;
+}
+
 export function pushRecordOf(id: string, stored: StoredPush): PushRecord {
   return {
     retryable: stored.status === "failed" && isAddressable(stored.audience),
@@ -317,7 +422,9 @@ export async function sendPush(
     sentBy: admin.email,
     dryRun: settings.pushDryRun,
   };
-  return pushRecordOf(await ports.history.add(stored), stored);
+  const id = await ports.history.add(stored);
+  await fileInInboxes(ports, id, stored, now);
+  return pushRecordOf(id, stored);
 }
 
 /**
@@ -349,5 +456,9 @@ export async function retryPush(
     dryRun: settings.pushDryRun,
   };
   await ports.history.update(id, patch);
-  return pushRecordOf(id, { ...stored, ...patch });
+  const retried = { ...stored, ...patch };
+  // A retry that finally goes out is filed like a first send, under the same
+  // id: the inbox gets it once however many attempts it took.
+  await fileInInboxes(ports, id, retried, now);
+  return pushRecordOf(id, retried);
 }

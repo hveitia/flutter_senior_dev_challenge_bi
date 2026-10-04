@@ -5,6 +5,7 @@ import type { Messaging } from "firebase-admin/messaging";
 import type { PushRecord } from "@/lib/push/types";
 import {
   canClaimRetry,
+  kindOf,
   pushRecordOf,
   unregisteredAmong,
   type PushMessage,
@@ -20,6 +21,9 @@ export const DEVICES_SUBCOLLECTION = "devices";
 const TOKEN_FIELD = "token";
 /** Set by the console on a device the messaging service no longer knows. */
 const UNREGISTERED_FIELD = "unregistered";
+/** `users/{uid}/inbox/{id}`: what the mobile app lists as notifications. */
+export const INBOX_SUBCOLLECTION = "inbox";
+const SEGMENT_FIELD = "segment";
 
 const USER_NOT_FOUND = "auth/user-not-found";
 
@@ -28,7 +32,7 @@ function payload(message: PushMessage) {
     notification: { title: message.title, body: message.body },
     // The app resolves this through the same destination allow-list it uses
     // for banners and quick actions.
-    data: { destination: message.destination },
+    data: { destination: message.destination, kind: kindOf(message.destination) },
   };
 }
 
@@ -108,6 +112,28 @@ export function firebasePushPorts(
               unregisteredAt: now,
             });
           }
+        }
+        await batch.commit();
+      },
+      async uidsInSegment(segmentId, limit) {
+        const customers = await db
+          .collection("users")
+          .where(SEGMENT_FIELD, "==", segmentId)
+          .limit(limit)
+          // Only the ids are needed: no profile is read.
+          .select()
+          .get();
+        return customers.docs.map((customer) => customer.id);
+      },
+    },
+    inbox: {
+      async deliver(uids, id, item) {
+        const batch = db.batch();
+        for (const uid of uids) {
+          batch.set(
+            db.collection("users").doc(uid).collection(INBOX_SUBCOLLECTION).doc(id),
+            item,
+          );
         }
         await batch.commit();
       },

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH } from "@/lib/push/types";
 import {
   canClaimRetry,
+  INBOX_FANOUT_LIMIT,
+  kindOf,
   RETRY_CLAIM_TTL_MS,
   retryPush,
   segmentTopic,
@@ -48,6 +50,10 @@ function ports(overrides: Partial<PushPorts> = {}): PushPorts & {
       uidByEmail: vi.fn().mockResolvedValue("uid-customer"),
       deviceTokens: vi.fn().mockResolvedValue(["token-1"]),
       flagUnregistered: vi.fn().mockResolvedValue(undefined),
+      uidsInSegment: vi.fn().mockResolvedValue(["uid-a", "uid-b"]),
+    },
+    inbox: {
+      deliver: vi.fn().mockResolvedValue(undefined),
     },
     history: {
       add: vi.fn(async (record: StoredPush) => {
@@ -553,5 +559,143 @@ describe("canClaimRetry", () => {
 
     expect(canClaimRetry(abandoned, justBefore)).toBe(false);
     expect(canClaimRetry(abandoned, justAfter)).toBe(true);
+  });
+});
+
+describe("kindOf", () => {
+  it("reads the kind of a notification from where it leads", () => {
+    expect(kindOf("accounts")).toBe("movement");
+    expect(kindOf("transfer")).toBe("movement");
+    expect(kindOf("profile")).toBe("security");
+    expect(kindOf("partner:travelInsurance")).toBe("benefit");
+    expect(kindOf("inbox")).toBe("benefit");
+  });
+});
+
+describe("the customer's inbox", () => {
+  const toCustomer = {
+    ...toSegment,
+    audience: { kind: "customer", email: "cliente@example.com" },
+    destination: "inbox",
+  };
+  const live = { pushDryRun: false };
+
+  it("files a send to one customer in that customer's inbox, under the record's id", async () => {
+    const p = ports();
+
+    await sendPush(p, live, admin, now, draftOf(toCustomer), "Un cliente");
+
+    expect(p.inbox.deliver).toHaveBeenCalledExactlyOnceWith(["uid-customer"], "push-1", {
+      title: "Una novedad para ti",
+      body: "Ya puedes transferir entre tus cuentas.",
+      kind: "benefit",
+      destination: "inbox",
+      createdAt: now,
+      read: false,
+    });
+    expect(p.records.get("push-1")).toMatchObject({ inboxCount: 1 });
+  });
+
+  it("files a send to a segment in the inbox of every customer of the segment", async () => {
+    const p = ports();
+
+    await sendPush(p, live, admin, now, draftOf(toSegment), "Familia");
+
+    expect(p.customers.uidsInSegment).toHaveBeenCalledWith(
+      "family",
+      INBOX_FANOUT_LIMIT + 1,
+    );
+    expect(p.inbox.deliver).toHaveBeenCalledExactlyOnceWith(
+      ["uid-a", "uid-b"],
+      "push-1",
+      expect.objectContaining({ kind: "movement", destination: "transfer", read: false }),
+    );
+    expect(p.records.get("push-1")).toMatchObject({ inboxCount: 2 });
+    expect(p.records.get("push-1")).not.toHaveProperty("inboxTruncated");
+  });
+
+  it("writes one batch of inboxes for a larger segment and says some were left out", async () => {
+    const many = Array.from({ length: INBOX_FANOUT_LIMIT + 1 }, (_, i) => `uid-${i}`);
+    const p = ports();
+    vi.mocked(p.customers.uidsInSegment).mockResolvedValue(many);
+
+    await sendPush(p, live, admin, now, draftOf(toSegment), "Familia");
+
+    const uids = vi.mocked(p.inbox.deliver).mock.calls[0]?.[0];
+    expect(uids).toHaveLength(INBOX_FANOUT_LIMIT);
+    expect(p.records.get("push-1")).toMatchObject({
+      inboxCount: INBOX_FANOUT_LIMIT,
+      inboxTruncated: true,
+    });
+  });
+
+  it("files nothing for a dry run, since nothing was announced", async () => {
+    const p = ports();
+
+    await sendPush(p, { pushDryRun: true }, admin, now, draftOf(toSegment), "Familia");
+
+    expect(p.inbox.deliver).not.toHaveBeenCalled();
+    expect(p.customers.uidsInSegment).not.toHaveBeenCalled();
+    expect(p.records.get("push-1")).not.toHaveProperty("inboxCount");
+  });
+
+  it("files nothing for a send that failed", async () => {
+    const p = ports();
+    vi.mocked(p.gateway.sendToTopic).mockRejectedValue({ code: "messaging/internal" });
+
+    await sendPush(p, live, admin, now, draftOf(toSegment), "Familia");
+
+    expect(p.inbox.deliver).not.toHaveBeenCalled();
+  });
+
+  it("files nothing when the address could not be reached", async () => {
+    const p = ports();
+    vi.mocked(p.customers.deviceTokens).mockResolvedValue([]);
+
+    await sendPush(p, live, admin, now, draftOf(toCustomer), "Un cliente");
+
+    expect(p.inbox.deliver).not.toHaveBeenCalled();
+  });
+
+  it("files a send that reached only some of the customer's devices", async () => {
+    const p = ports();
+    vi.mocked(p.customers.deviceTokens).mockResolvedValue(["token-1", "token-2"]);
+    vi.mocked(p.gateway.sendToTokens).mockResolvedValue({
+      delivered: 1,
+      failed: 1,
+      unregistered: [],
+    });
+
+    const record = await sendPush(p, live, admin, now, draftOf(toCustomer), "Un cliente");
+
+    expect(record.status).toBe("partial");
+    expect(p.inbox.deliver).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the send as sent when the inboxes cannot be written, and notes why", async () => {
+    const p = ports();
+    vi.mocked(p.inbox.deliver).mockRejectedValue({ code: "unavailable" });
+
+    const record = await sendPush(p, live, admin, now, draftOf(toSegment), "Familia");
+
+    expect(record.status).toBe("sent");
+    expect(p.records.get("push-1")).toMatchObject({
+      status: "sent",
+      inboxError: "unavailable",
+    });
+  });
+
+  it("files a retry that finally goes out, once, under the same id", async () => {
+    const p = ports();
+    vi.mocked(p.gateway.sendToTopic).mockRejectedValueOnce({ code: "messaging/internal" });
+    await sendPush(p, live, admin, now, draftOf(toSegment), "Familia");
+
+    await retryPush(p, live, "push-1", later);
+
+    expect(p.inbox.deliver).toHaveBeenCalledExactlyOnceWith(
+      ["uid-a", "uid-b"],
+      "push-1",
+      expect.objectContaining({ createdAt: later }),
+    );
   });
 });

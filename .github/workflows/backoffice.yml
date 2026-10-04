@@ -1,0 +1,60 @@
+name: Backoffice
+
+# The console and the contract it validates against. A change to either
+# runs the console's own gate; everything else in the repository does not.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/backoffice/**
+      - contracts/**
+      - packages/design_system/tokens/**
+      - .github/workflows/backoffice.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - apps/backoffice/**
+      - contracts/**
+      - packages/design_system/tokens/**
+      - .github/workflows/backoffice.yml
+
+concurrency:
+  group: backoffice-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, type check, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/backoffice
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/backoffice/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # The build generates the route types the type check reads. It needs no
+      # credentials: nothing touches the project until a request arrives.
+      - name: Build
+        run: npm run build
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test

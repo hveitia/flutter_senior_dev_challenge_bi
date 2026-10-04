@@ -36,6 +36,7 @@ flowchart TB
 | Cuentas o movimientos ya vistos antes | Aviso «Sin conexión. Mostrando datos guardados», los datos y «Actualizado hace N min» | Visto en un teléfono, también tras cerrar y abrir la aplicación en modo avión |
 | Cuentas o movimientos nunca vistos en este dispositivo | Aviso «Sin conexión», el mensaje «No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.» y «Reintentar» | Pruebas automáticas |
 | Sesión ya iniciada, al abrir la aplicación | La sesión se restaura y el cliente entra | Visto en un teléfono |
+| Después de cerrar sesión | No queda nada guardado del cliente: la copia local y las horas de sincronización se borran al terminar la sesión. Iniciar sesión exige conexión | Pruebas automáticas |
 | Formularios de inicio de sesión y registro | Aviso «Sin conexión. Revisa tu red e intenta de nuevo» en el formulario | Visto en un emulador (etapa 4) |
 | Filtrar y buscar movimientos | Funcionan: trabajan sobre lo ya cargado | Pruebas automáticas |
 | Pedir más movimientos | Se muestran los que el dispositivo tenga guardados | Sin verificar |
@@ -81,5 +82,4 @@ Cuentas y movimientos se identifican como servicios distintos (`accounts` y `mov
 - **Micro aplicativos de aliados no disponibles.** Etapa 10.
 - **El contador «Intento 2 de 3» del diseño.** La pantalla indica que está reintentando y, al terminar, cuántos intentos hubo.
 - **Detección de falta de salida real a internet.** El estado de conectividad dice si el dispositivo tiene una interfaz de red activa, no si esa red llega a internet (un portal cautivo, por ejemplo). En ese caso las peticiones agotan su tiempo y se muestran como una falla, no como «sin conexión».
-- **Borrado de los datos guardados al cerrar sesión.** La copia local permanece en el dispositivo.
 - **iOS.** Nada de lo anterior se ha ejecutado en iOS.

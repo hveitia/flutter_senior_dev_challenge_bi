@@ -1,4 +1,5 @@
 import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/saved_customer_data.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:feature_auth/feature_auth.dart';
 
@@ -13,6 +14,7 @@ final class AppDependencies {
     required this.authRepository,
     required this.biometrics,
     required this.accountsRepositoryFor,
+    required this.savedCustomerData,
   });
 
   final Telemetry telemetry;
@@ -26,4 +28,8 @@ final class AppDependencies {
   /// signed-in session: each customer gets a repository of their own, so
   /// nothing read for one can be shown to the next.
   final AccountsRepository Function(String uid) accountsRepositoryFor;
+
+  /// Cleared whenever the session ends, so nothing of a customer stays on
+  /// the device after they sign out.
+  final SavedCustomerData savedCustomerData;
 }

@@ -9,6 +9,8 @@ import 'package:feature_auth/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_saved_customer_data.dart';
+
 void main() {
   const account = AuthAccount(uid: 'uid-1', email: 'valentina@example.com');
   const profile = UserProfile(
@@ -23,6 +25,7 @@ void main() {
 
   late FakeAuthRepository repository;
   late FakeBiometricAuthenticator biometrics;
+  late FakeSavedCustomerData savedData;
 
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -34,6 +37,7 @@ void main() {
           authRepository: repository,
           biometrics: biometrics,
           accountsRepositoryFor: (_) => FakeAccountsRepository(),
+          savedCustomerData: savedData,
         ),
       ),
     );
@@ -42,6 +46,7 @@ void main() {
   setUp(() {
     repository = FakeAuthRepository();
     biometrics = FakeBiometricAuthenticator();
+    savedData = FakeSavedCustomerData();
   });
 
   group('while the session is unknown', () {
@@ -81,6 +86,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Tu banco, sin filas ni sucursales'), findsOneWidget);
+    });
+
+    testWidgets('removes what an earlier use of the app left on the device', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await tester.pumpAndSettle();
+
+      expect(savedData.clears, 1);
     });
 
     testWidgets('reaches the login from the welcome and comes back', (
@@ -139,6 +153,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Hola, Valentina'), findsOneWidget);
+    });
+
+    testWidgets('keeps the saved data of a session that is still open', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await tester.pumpAndSettle();
+
+      expect(savedData.clears, 0);
     });
 
     testWidgets('returns to the welcome after signing out', (tester) async {

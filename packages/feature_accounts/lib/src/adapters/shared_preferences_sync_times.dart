@@ -16,6 +16,17 @@ final class SharedPreferencesSyncTimes implements SyncTimes {
   /// The preference that holds the time of [dataSet] for the customer.
   static String keyFor(String uid, String dataSet) => '$_prefix.$uid.$dataSet';
 
+  /// Removes the times of every customer. The times are keyed by customer,
+  /// so leaving them behind would keep a trace of who used the device.
+  static Future<void> clearAll(SharedPreferences preferences) async {
+    final keys = preferences.getKeys().where(
+      (key) => key.startsWith('$_prefix.'),
+    );
+    for (final key in keys.toList()) {
+      await preferences.remove(key);
+    }
+  }
+
   @override
   DateTime? lastSync(String dataSet) {
     return switch (_preferences.get(keyFor(uid, dataSet))) {

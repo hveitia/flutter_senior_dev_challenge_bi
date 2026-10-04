@@ -10,6 +10,8 @@ import 'package:feature_auth/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_saved_customer_data.dart';
+
 void main() {
   const profile = UserProfile(
     uid: 'uid-1',
@@ -33,6 +35,8 @@ void main() {
   late FakeAuthRepository auth;
   late FakeAccountsRepository accounts;
   late List<String> customersAskedFor;
+  late FakeSavedCustomerData savedData;
+  late InMemoryTelemetry telemetry;
 
   Future<void> pumpSignedIn(WidgetTester tester) async {
     auth.restored = const ActiveSession(profile, unlockRequired: false);
@@ -60,7 +64,7 @@ void main() {
     await tester.pumpWidget(
       BancaDigitalApp(
         dependencies: AppDependencies(
-          telemetry: InMemoryTelemetry(),
+          telemetry: telemetry,
           connectivity: ConnectivityCubit(monitor: FakeConnectivityMonitor())
             ..start(),
           authRepository: auth,
@@ -69,6 +73,7 @@ void main() {
             customersAskedFor.add(uid);
             return accounts;
           },
+          savedCustomerData: savedData,
         ),
       ),
     );
@@ -88,6 +93,8 @@ void main() {
     auth = FakeAuthRepository();
     accounts = FakeAccountsRepository();
     customersAskedFor = [];
+    savedData = FakeSavedCustomerData();
+    telemetry = InMemoryTelemetry();
   });
 
   testWidgets('a signed-in customer lands on Inicio with the four sections', (
@@ -184,5 +191,56 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(accounts.accounts.hasListener, isFalse);
+  });
+
+  group('once signed out', () {
+    Future<void> signOut(WidgetTester tester) async {
+      await tester.tap(destination('Perfil'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cerrar sesión'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('removes what the device saved, after the listeners on it '
+        'are gone', (tester) async {
+      await pumpSignedIn(tester);
+      final followingAtClear = <bool>[];
+      savedData.onClear = () =>
+          followingAtClear.add(accounts.accounts.hasListener);
+
+      await signOut(tester);
+
+      expect(savedData.clears, 1);
+      expect(followingAtClear, [false]);
+    });
+
+    testWidgets('leaves the customer signed out even when the saved data '
+        'cannot be removed, and reports it', (tester) async {
+      await pumpSignedIn(tester);
+      savedData.failsWith = StateError('uid-1 database busy');
+
+      await signOut(tester);
+
+      expect(find.text('Tu banco, sin filas ni sucursales'), findsOneWidget);
+      final report = telemetry.errors.single;
+      expect(report.error, isA<RedactedError>());
+      expect(report.error.toString(), isNot(contains('uid-1')));
+    });
+
+    testWidgets('the same customer can sign in again and sees their '
+        'accounts', (tester) async {
+      await pumpSignedIn(tester);
+      await signOut(tester);
+
+      auth.announce(const ActiveSession(profile, unlockRequired: false));
+      await tester.pumpAndSettle();
+      await tester.tap(destination('Cuentas'));
+      await tester.pumpAndSettle();
+
+      expect(customersAskedFor, ['uid-1', 'uid-1']);
+      expect(accounts.accountRefreshes, 2);
+      expect(find.byType(AccountCard), findsOneWidget);
+      expect(savedData.clears, 1);
+    });
   });
 }

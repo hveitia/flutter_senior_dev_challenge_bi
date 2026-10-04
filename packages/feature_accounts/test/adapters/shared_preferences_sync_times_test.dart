@@ -38,6 +38,21 @@ void main() {
     );
   });
 
+  test('forgets every customer and data set when cleared, and nothing else '
+      'the device stores', () async {
+    final stored = await preferences({'unlock.u1': true});
+    await SharedPreferencesSyncTimes(stored, uid: 'u1').record('accounts', at);
+    await SharedPreferencesSyncTimes(
+      stored,
+      uid: 'u1',
+    ).record('movements_savings', at);
+    await SharedPreferencesSyncTimes(stored, uid: 'u2').record('accounts', at);
+
+    await SharedPreferencesSyncTimes.clearAll(stored);
+
+    expect(stored.getKeys(), {'unlock.u1'});
+  });
+
   test('treats a value it cannot read as unknown', () async {
     final stored = await preferences({
       SharedPreferencesSyncTimes.keyFor('u1', 'accounts'): 'yesterday',

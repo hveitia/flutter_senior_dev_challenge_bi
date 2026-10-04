@@ -110,7 +110,8 @@ Sin conexión no se añade el aviso de «no pudimos actualizar»: el aviso gener
 
 - **Se gana:** datos disponibles sin conexión sin escribir una caché; saldos que se actualizan solos cuando el servidor los cambia; el cliente siempre sabe si ve datos confirmados o guardados; la falla de los movimientos no oculta el saldo; ningún reintento puede mover dinero porque el paquete solo lee.
 - **Se paga:**
-  - **La caché es la del SDK.** No se controla su tamaño ni su caducidad más allá de lo que Firestore permite, y sus datos quedan en el dispositivo. Al cerrar sesión no se borran.
+  - **La caché es la del SDK.** No se controla su tamaño ni su caducidad más allá de lo que Firestore permite. Mientras la sesión está abierta, sus datos están en el dispositivo sin más cifrado que el del sistema.
+  - **Cerrar sesión borra la copia local, y con ella el uso sin conexión.** Al terminar la sesión se cierran las escuchas del cliente, se detiene Firestore, se borra su copia y se eliminan las horas de sincronización. Un cliente que vuelve a entrar sin conexión no ve nada hasta sincronizar. Lo mismo se ejecuta al abrir la aplicación sin sesión, por si un uso anterior se cerró antes de terminar la limpieza. Si un paso falla se informa a telemetría y los demás se ejecutan igual. Lo único que queda es la preferencia de desbloqueo biométrico, un valor de sí o no asociado a un identificador opaco.
   - **El filtro y la búsqueda solo ven lo cargado.** Buscar un movimiento antiguo exige pedir más páginas primero. Filtrar en el servidor requeriría un índice por combinación de filtros.
   - **Ampliar el límite vuelve a leer la página anterior.** Con cursores se leería menos.
   - **«Ver más» puede aparecer de más.** Si la cuenta tiene exactamente un número de movimientos múltiplo de la página, el botón se muestra una vez sin que haya nada más.
@@ -125,4 +126,4 @@ Sin conexión no se añade el aviso de «no pudimos actualizar»: el aviso gener
 - **Restringe:** los nombres de los campos son un contrato con quien escriba los datos (la herramienta de carga hoy, la API de servidor después). Cambiarlos exige cambiar ambos lados.
 - **Costo de revertir:** medio. El resto de la aplicación depende de `AccountsRepository`, no de Firestore; sustituir la fuente por una API propia significa escribir otro adaptador y decidir qué hace de caché.
 
-Convendría revisar la decisión si el historial crece hasta hacer lento el límite creciente, si se necesita buscar en todo el historial, o si un requisito regulatorio obliga a borrar los datos guardados al cerrar sesión.
+Convendría revisar la decisión si el historial crece hasta hacer lento el límite creciente, si se necesita buscar en todo el historial, o si un requisito regulatorio obliga a cifrar la copia local con una clave propia mientras la sesión está abierta.

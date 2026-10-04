@@ -2,6 +2,7 @@ import 'package:app_platform/adapters.dart';
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/bootstrap.dart';
+import 'package:banca_digital/saved_customer_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:feature_accounts/adapters.dart';
@@ -52,5 +53,27 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
       policy: policy,
       telemetry: telemetry,
     ),
+    savedCustomerData: StepwiseSavedCustomerData(
+      telemetry: telemetry,
+      steps: [
+        (name: _databaseStep, run: _clearDatabase),
+        (
+          name: _syncTimesStep,
+          run: () => SharedPreferencesSyncTimes.clearAll(preferences),
+        ),
+      ],
+    ),
   );
+}
+
+const String _databaseStep = 'database';
+const String _syncTimesStep = 'sync_times';
+
+/// Removes Firestore's saved copy from the device. The database refuses to
+/// delete it while it is running, so it is shut down first; the next read
+/// starts it again by itself.
+Future<void> _clearDatabase() async {
+  final firestore = FirebaseFirestore.instance;
+  await firestore.terminate();
+  await firestore.clearPersistence();
 }

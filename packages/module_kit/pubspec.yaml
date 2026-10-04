@@ -1,0 +1,25 @@
+name: module_kit
+description: >-
+  The contract between the domain packages and the home of Banca Digital:
+  module registry, destinations and the widgets every section shares.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+resolution: workspace
+
+dependencies:
+  app_platform: ^0.1.0
+  design_system: ^0.1.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

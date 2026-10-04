@@ -42,10 +42,28 @@ export interface PublishRequest {
 export type PublishResult =
   | { ok: true; version: number; publishedAt: string }
   | { ok: false; kind: "invalid"; issues: ConfigIssue[] }
+  | { ok: false; kind: "too-large"; limitBytes: number }
   | { ok: false; kind: "faults-not-allowed" }
   | { ok: false; kind: "conflict"; storedVersion: number | null };
 
 const FIRST_VERSION = 1;
+
+/**
+ * Largest draft accepted, as serialized JSON. A quarter of what a Firestore
+ * document can hold, and far above a real configuration (the contract's
+ * example is about 5 KB). Every phone downloads this document on each change.
+ */
+export const MAX_DRAFT_BYTES = 256 * 1024;
+
+/** Serialized size in bytes, or null when the value cannot be serialized. */
+function serializedBytes(value: unknown): number | null {
+  try {
+    const json = JSON.stringify(value);
+    return json === undefined ? null : new TextEncoder().encode(json).length;
+  } catch {
+    return null;
+  }
+}
 
 function hasFaults(config: HomeConfig): boolean {
   const faults = resilienceOf(config);
@@ -68,6 +86,20 @@ export async function publishConfig(
   now: Date,
   request: PublishRequest,
 ): Promise<PublishResult> {
+  // Measured before anything walks the document: validation cost grows with
+  // its size, and an oversized one is refused whatever it contains.
+  const bytes = serializedBytes(request.draft);
+  if (bytes === null) {
+    return {
+      ok: false,
+      kind: "invalid",
+      issues: [{ path: "", message: "cannot be serialized" }],
+    };
+  }
+  if (bytes > MAX_DRAFT_BYTES) {
+    return { ok: false, kind: "too-large", limitBytes: MAX_DRAFT_BYTES };
+  }
+
   const validation = validateHomeConfig(request.draft);
   if (!validation.ok) {
     return { ok: false, kind: "invalid", issues: validation.issues };

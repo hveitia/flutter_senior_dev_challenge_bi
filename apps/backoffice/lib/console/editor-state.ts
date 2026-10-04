@@ -13,6 +13,7 @@ export type PublishFailure =
   | { kind: "unavailable" }
   | { kind: "unauthorized" }
   | { kind: "invalid" }
+  | { kind: "too-large" }
   | { kind: "faults-not-allowed" }
   | { kind: "conflict"; storedVersion: number | null };
 

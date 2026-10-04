@@ -3,6 +3,7 @@ import { setModuleVisible, setResilience } from "@/lib/config/editing";
 import type { HomeConfig } from "@/lib/config/types";
 import { exampleConfig } from "@/test/support/fixtures";
 import {
+  MAX_DRAFT_BYTES,
   publishConfig,
   type AuditEntry,
   type ConfigStore,
@@ -179,6 +180,35 @@ describe("publishConfig", () => {
 
     const result = await publishConfig(store, demo, admin, now, {
       draft: "not a document",
+      baseVersion: 14,
+    });
+
+    expect(result).toMatchObject({ ok: false, kind: "invalid" });
+  });
+
+  it("refuses a draft larger than the size limit before looking inside it", async () => {
+    const store = new MemoryStore(published(14));
+    const draft = published(14);
+    draft.segments.starting!.modules[0]!.props = {
+      padding: "x".repeat(MAX_DRAFT_BYTES),
+    };
+
+    const result = await publishConfig(store, demo, admin, now, {
+      draft,
+      baseVersion: 14,
+    });
+
+    expect(result).toEqual({ ok: false, kind: "too-large", limitBytes: MAX_DRAFT_BYTES });
+    expect(live(store)?.configVersion).toBe(14);
+  });
+
+  it("refuses a draft that cannot be serialized", async () => {
+    const store = new MemoryStore(published(14));
+    const loop: Record<string, unknown> = {};
+    loop.self = loop;
+
+    const result = await publishConfig(store, demo, admin, now, {
+      draft: loop,
       baseVersion: 14,
     });
 

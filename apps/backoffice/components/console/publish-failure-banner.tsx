@@ -31,6 +31,12 @@ function noticeFor(failure: PublishFailure): Notice {
         message: "Este entorno no permite publicar fallos simulados.",
         action: null,
       };
+    case "too-large":
+      return {
+        message:
+          "La configuración supera el tamaño máximo y no se publicó. Acorta los textos editados.",
+        action: null,
+      };
     case "invalid":
       return {
         message: "La configuración no cumple el contrato y no se publicó. Revisa los campos editados.",

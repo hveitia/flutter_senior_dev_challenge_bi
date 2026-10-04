@@ -36,6 +36,8 @@ void main() {
       expect(TypedAmount.cents('1.5'), 150);
       expect(TypedAmount.cents('1.50'), 150);
       expect(TypedAmount.cents('1.05'), 105);
+      expect(TypedAmount.cents('10.5'), 1050);
+      expect(TypedAmount.cents('00.7'), 70);
       expect(TypedAmount.cents('0.01'), 1);
       expect(TypedAmount.cents('.5'), 50);
       expect(TypedAmount.cents('5000.00'), 500000);

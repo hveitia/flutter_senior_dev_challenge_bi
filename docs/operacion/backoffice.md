@@ -2,7 +2,7 @@
 
 La consola vive en `apps/backoffice`. Es una aplicación Next.js con su propio `package.json`; no forma parte del workspace de Dart. Las decisiones están en [ADR 0014](../adr/0014-consola-de-experiencia.md) y [ADR 0015](../adr/0015-acceso-de-administradores.md).
 
-**Estado:** se ejecuta en local contra el proyecto real. No está desplegada; la sección de despliegue describe cómo se haría y no se ha ejecutado.
+**Estado:** desplegada en Firebase App Hosting, en <https://backoffice--flutter-challenge-bi.us-east4.hosted.app>. También se ejecuta en local, contra los emuladores o contra el proyecto real. La sección de despliegue dice qué se comprobó en el servidor publicado y qué no.
 
 ## Requisitos
 
@@ -129,27 +129,36 @@ Para enviar a un cliente, la consola lee sus dispositivos de `users/{uid}/device
 
 **Pendiente en la etapa de notificaciones.** La aplicación móvil todavía no escribe esos documentos ni se suscribe a esos temas. Para que pueda registrar su dispositivo hará falta una regla de Firestore que permita a cada cliente escribir en su propio `users/{uid}/devices`; hoy las reglas niegan toda escritura en subcolecciones. Esa regla pertenece a esa etapa y no se ha añadido aquí.
 
-## Despliegue en Firebase App Hosting (preparado, no realizado)
+## Despliegue en Firebase App Hosting
 
-**A la fecha de este documento no se ha desplegado.** El proyecto no tiene activado el plan de pago por uso, que App Hosting exige. Lo que sigue es el procedimiento preparado; los pasos marcados con (navegador) necesitan a la persona propietaria del proyecto.
+**Desplegado.** El servidor está publicado en <https://backoffice--flutter-challenge-bi.us-east4.hosted.app>, región `us-east4`, y se vuelve a desplegar con cada push a `main`. Los pasos marcados con (navegador) necesitaron a la persona propietaria del proyecto.
 
 Se eligió App Hosting porque el servidor corre con la identidad de servicio del propio proyecto: no hay clave de cuenta de servicio ([ADR 0015](../adr/0015-acceso-de-administradores.md)). Un solo servidor atiende la consola, la API de clientes y las páginas de los aliados.
 
-### Qué está comprobado y qué no
+### Qué mostró el primer despliegue
 
-Comprobado en un contenedor Linux (`node:24`), sobre una copia limpia del repositorio y sin credenciales de Google:
+La compilación de la plataforma falló dos veces antes de salir, y las dos causas se corrigieron en el repositorio:
 
-- `npm ci` y `next build` desde `apps/backoffice`, también con salida autónoma (`standalone`), que es la que pide un adaptador de alojamiento.
-- El contrato y los tokens de diseño se incorporan al compilar: el servidor en ejecución no lee ningún archivo de fuera de su carpeta.
-- Con solo las variables de la tabla de abajo, el servidor arranca y responde: `/api/health` 200, `/login` 200, `/` redirige al inicio de sesión, una página de aliado 200 con su política de referencia, y la API de clientes 401 sin token.
-- Con una variable de emulador y la marca de la plataforma, la configuración se declara inválida (`/api/health` 503).
+- **El primer intento, lanzado por el asistente de creación, falló porque los secretos aún no existían.** Se crearon y se repitió.
+- **El adaptador de la plataforma envuelve `next.config.ts` durante la compilación**, y la comprobación de tipos fallaba en una prueba que importaba ese archivo. Las reglas de cabeceras pasaron a `lib/http/response-headers.ts`, y una prueba impide que algo vuelva a importar el archivo de configuración.
+- **El adaptador espera el servidor autónomo en la raíz de la salida.** Con el contrato y los tokens importados desde fuera de la carpeta, el framework anidaba la salida y el adaptador no la encontraba. Ahora se copian a `shared/` antes de cada compilación, prueba y análisis (`scripts/sync-shared.mjs`); la fuente sigue siendo única, en la raíz del repositorio, y una prueba compara las copias byte a byte.
 
-Solo la plataforma real puede comprobar:
+Los dos últimos fallos se reprodujeron en local con el propio adaptador (`@apphosting/adapter-nextjs`) antes de volver a desplegar. La comprobación anterior, en un contenedor con `next build`, no los había mostrado porque no usaba el adaptador.
 
-- que la compilación de App Hosting, con `apps/backoffice` como directorio raíz, tiene acceso al resto del repositorio (importa `contracts/` y `packages/design_system/tokens/`);
-- que las credenciales por defecto de la plataforma bastan para Firestore, autenticación y mensajería, y con qué permisos;
-- que el proxy de la plataforma envía el host público en `x-forwarded-host`, del que depende la comprobación de origen de las rutas que cambian estado;
-- el enlace de los secretos y de las variables de compilación.
+### Qué está comprobado en el servidor publicado
+
+- `/api/health` responde 200 con la configuración válida; `/` redirige a `/login`; `/login` se sirve con las cabeceras de seguridad; una página de aliado responde 200 con su política de contenido y `no-referrer`.
+- Sin token, la API de clientes responde 401. Con el token de un cliente de prueba: el alta de cuentas responde sin crear nada, y una transferencia de un dólar, su repetición y su reverso dejan los saldos como estaban. El aviso de cada transferencia llegó a la bandeja del cliente.
+- **Identidad de la plataforma.** Sin conceder ningún permiso adicional, verifica tokens con comprobación de revocación y lee y escribe en Firestore. Sus funciones son las que App Hosting asigna por defecto (`firebase.sdkAdminServiceAgent` y `firebaseapphosting.computeRunner`, entre otras), que incluyen crear sesiones, actualizar usuarios y enviar mensajes.
+- **Comprobación de origen detrás del proxy.** Una petición del propio origen a una ruta que cambia estado pasa la comprobación (responde 401 por falta de sesión) y una de otro origen se rechaza (403).
+- **Inicio de sesión desde el navegador.** Con una cuenta que no es de administrador, el formulario inicia sesión en Firebase desde el dominio publicado y la ruta de sesión la rechaza con el mensaje uniforme. No hizo falta añadir el dominio a los dominios autorizados de Authentication.
+- **Aplicación.** Una compilación de publicación apuntando al servidor publicado, instalada en un teléfono: inicio de sesión, inicio con sus módulos, una transferencia y su reverso, y la mini aplicación del seguro de viaje cargada desde el origen publicado.
+
+Sin comprobar:
+
+- **El inicio de sesión de un administrador en el servidor publicado**, y con él la creación de la cookie de sesión, la publicación de configuración y el cierre de sesión con revocación. Solo puede hacerlo quien tiene la cuenta.
+- **El envío de una notificación real desde el servidor publicado.** Ningún dispositivo estaba registrado durante la comprobación.
+- El laboratorio de resiliencia publicado desde la consola desplegada.
 
 ### Variables y secretos
 
@@ -171,6 +180,8 @@ Cupo: `maxInstances: 2`, sin instancias mínimas. Una demostración no necesita 
 
 ### Pasos, en orden
 
+Así se hizo, y así se repetiría en otro proyecto:
+
 1. **(navegador)** Activar el plan Blaze en el proyecto y crear una alerta de presupuesto: <https://console.firebase.google.com/project/flutter-challenge-bi/usage/details>.
 2. Obtener los identificadores de la aplicación web, que ya existe en el proyecto:
 
@@ -178,20 +189,20 @@ Cupo: `maxInstances: 2`, sin instancias mínimas. Una demostración no necesita 
    firebase apps:sdkconfig WEB --project flutter-challenge-bi
    ```
 
-3. **(navegador)** Crear el servidor. El asistente pide conectar el repositorio de GitHub e instalar la aplicación de Firebase en él, y elegir la rama (`main`):
+3. **(navegador)** Crear el servidor. El asistente pide conectar el repositorio de GitHub e instalar la aplicación de Firebase en él, y elegir la rama (`main`) y la región:
 
    ```bash
    firebase apphosting:backends:create --project flutter-challenge-bi \
-     --backend backoffice --root-dir apps/backoffice --primary-region us-east4
+     --backend backoffice --root-dir apps/backoffice
    ```
 
-   La región es una propuesta; el asistente lista las disponibles.
-4. Crear los tres secretos. Cada orden pide el valor sin dejarlo en el historial del terminal:
+   El asistente lanza un primer despliegue, que falla mientras no existan los secretos.
+4. Crear los tres secretos, cada uno desde un archivo temporal fuera del repositorio que se borra después, y dar acceso al servidor:
 
    ```bash
-   firebase apphosting:secrets:set backoffice-web-api-key --project flutter-challenge-bi
-   firebase apphosting:secrets:set backoffice-web-app-id --project flutter-challenge-bi
-   firebase apphosting:secrets:set backoffice-admin-emails --project flutter-challenge-bi
+   firebase apphosting:secrets:set backoffice-web-api-key --data-file <archivo> --force --project flutter-challenge-bi
+   firebase apphosting:secrets:set backoffice-web-app-id --data-file <archivo> --force --project flutter-challenge-bi
+   firebase apphosting:secrets:set backoffice-admin-emails --data-file <archivo> --force --project flutter-challenge-bi
    firebase apphosting:secrets:grantaccess \
      backoffice-web-api-key,backoffice-web-app-id,backoffice-admin-emails \
      --backend backoffice --project flutter-challenge-bi
@@ -200,12 +211,18 @@ Cupo: `maxInstances: 2`, sin instancias mínimas. Una demostración no necesita 
 5. Desplegar. Cada push a `main` despliega; a mano:
 
    ```bash
-   firebase apphosting:rollouts:create backoffice --git-branch main --project flutter-challenge-bi
+   firebase apphosting:rollouts:create backoffice --git-branch main --force --project flutter-challenge-bi
    ```
 
-6. Comprobar `https://<servidor>.hosted.app/api/health` (200 y `"configuration":"valid"`), que `/` redirige a `/login` y que `POST /api/transfers` sin token responde 401.
-7. **(navegador)** Si el inicio de sesión de la consola lo exige, añadir el dominio `*.hosted.app` del servidor a los dominios autorizados de Authentication.
-8. Crear la cuenta del revisor (siguiente apartado), iniciar sesión, publicar un cambio y verlo llegar a la aplicación.
+6. Comprobar `/api/health` (200 y `"configuration":"valid"`), que `/` redirige a `/login` y que `POST /api/transfers` sin token responde 401.
+7. Crear la cuenta de administrador (siguiente apartado), iniciar sesión, publicar un cambio y verlo llegar a la aplicación.
+
+Para reproducir la compilación de la plataforma antes de desplegar:
+
+```bash
+cd apps/backoffice
+npx -y -p @apphosting/adapter-nextjs apphosting-adapter-nextjs-build
+```
 
 ### Cuenta de administrador para un revisor
 
@@ -222,7 +239,9 @@ curl -s -X POST \
 unset PASSWORD
 ```
 
-Después se añade la dirección al secreto `backoffice-admin-emails` y se crea un despliegue nuevo para que el servidor lo lea. Las credenciales se entregan al revisor por un canal privado; nunca van en el repositorio. Esta orden no se ha ejecutado contra el proyecto real.
+Después se añade la dirección al secreto `backoffice-admin-emails` (una versión nueva del secreto con todas las direcciones, separadas por comas) y se crea un despliegue nuevo para que el servidor lo lea. Las credenciales se entregan al revisor por un canal privado; nunca van en el repositorio.
+
+La cuenta de la persona propietaria se creó de otra forma, para que nadie más conozca su contraseña: con una contraseña aleatoria que no se guardó y, a continuación, un correo de restablecimiento con el que ella fija la suya.
 
 ### Aplicación para el revisor
 
@@ -231,8 +250,8 @@ La aplicación debe compilarse apuntando al servidor publicado. Una compilación
 ```bash
 cd apps/mobile
 flutter build apk --release \
-  --dart-define=API_BASE_URL=https://<servidor>.hosted.app/ \
-  --dart-define=PARTNER_BASE_URL=https://<servidor>.hosted.app \
+  --dart-define=API_BASE_URL=https://backoffice--flutter-challenge-bi.us-east4.hosted.app/ \
+  --dart-define=PARTNER_BASE_URL=https://backoffice--flutter-challenge-bi.us-east4.hosted.app \
   --dart-define=ALLOW_FAULT_INJECTION=true
 ```
 

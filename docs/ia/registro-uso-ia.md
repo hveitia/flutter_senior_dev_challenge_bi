@@ -208,6 +208,7 @@ El autor dirige y decide; la IA propone y ejecuta. Toda decisión de arquitectur
   - **Pruebas.** Se vio fallar primero la prueba del aviso descartado y las del servidor (cuatro). Las pruebas del modo de emuladores de la aplicación, las del borrado con señal y las del almacén de perfil se escribieron junto con el código y pasaron a la primera: fijan el comportamiento, no demostraron un defecto.
   - **Documentación.** Al contrastar el diagrama de dependencias con los `pubspec.yaml` faltaban dos flechas de la aplicación y una frase daba por terminada una etapa anterior; se corrigieron. La tabla de requisitos distingue lo visto en un dispositivo de lo cubierto solo por pruebas.
   - Sin verificar: la aplicación en un dispositivo contra el modo local, en particular que Firestore vuelva a apuntar al emulador tras cerrar sesión; la publicación desde la consola local más allá de cargarla con sesión; y todo lo que ya figuraba sin verificar en las etapas anteriores.
+  - **Despliegue.** El servidor se desplegó después en Firebase App Hosting. La compilación de la plataforma falló por dos cosas que la comprobación previa en contenedor no había mostrado (una prueba que importaba el archivo de configuración y la salida anidada por importar fuera de la carpeta); se reprodujeron en local con el adaptador de la plataforma y se corrigieron. El detalle está en `docs/operacion/backoffice.md`.
 
 ## Impacto por etapa
 

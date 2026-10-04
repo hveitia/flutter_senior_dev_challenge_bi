@@ -1,6 +1,6 @@
 # Estrategia de despliegue y operación
 
-Este documento describe cómo se desplegaría y operaría el sistema. **Nada de lo que sigue se ha ejecutado**: la aplicación no está publicada en ninguna tienda y el servidor no está desplegado. Lo que sí existe hoy es la integración continua, las reglas de Firestore desplegadas en el proyecto de demostración y un modo local reproducible (`tool/local-stack.sh`). La última sección lista lo que falta para producción.
+Este documento describe cómo se despliega y se operaría el sistema. **El servidor está desplegado como demostración** en Firebase App Hosting (<https://backoffice--flutter-challenge-bi.us-east4.hosted.app>); lo comprobado en él está en [backoffice.md](backoffice.md#despliegue-en-firebase-app-hosting). **La aplicación no está publicada en ninguna tienda**, y el resto de lo que sigue (canalización de publicación, entornos de producción, guías de incidentes) es estrategia que no se ha ejecutado. Además existen hoy la integración continua, las reglas de Firestore desplegadas en el proyecto de demostración y un modo local reproducible (`tool/local-stack.sh`). La última sección lista lo que falta para producción.
 
 ## Piezas que se despliegan
 
@@ -44,7 +44,7 @@ flowchart LR
 | Entorno | Firebase | Servidor | Aplicación | Fallos simulados | Notificaciones |
 | --- | --- | --- | --- | --- | --- |
 | Local | Emuladores de Auth y Firestore | `next dev` en el puerto 3210 | Depuración o perfil con `USE_FIREBASE_EMULATORS=true` | Permitidos | Solo validadas, sin salir de la máquina |
-| Demostración | Proyecto `flutter-challenge-bi` | Local hoy; preparado para Firebase App Hosting con `BACKOFFICE_ENVIRONMENT=demo` | Perfil con `ALLOW_FAULT_INJECTION=true` | Permitidos | Reales solo con `PUSH_DELIVERY=live` |
+| Demostración | Proyecto `flutter-challenge-bi` | Firebase App Hosting, con `BACKOFFICE_ENVIRONMENT=demo`; también en local | Perfil con `ALLOW_FAULT_INJECTION=true` | Permitidos | Reales solo con `PUSH_DELIVERY=live` |
 | Producción (no existe) | Proyecto propio | Despliegue sin `BACKOFFICE_ENVIRONMENT=demo` | Publicación, sin las opciones de desarrollo | La aplicación los ignora y el servidor rechaza publicarlos | Reales |
 
 Las diferencias entre entornos están en configuración, no en ramas. Tres candados lo sostienen en el código:
@@ -89,7 +89,7 @@ La configuración publicada es la primera palanca de reversión: apagar una func
 
 ## Servidor Next.js
 
-- **Alojamiento.** Firebase App Hosting, que ejecuta Next.js sobre Cloud Run dentro del mismo proyecto de Firebase. Se eligió frente a Vercel por las credenciales: el servidor corre con la identidad de servicio del propio proyecto y no existe ninguna clave de cuenta de servicio que crear, guardar o rotar. El costo es que exige el plan de pago por uso (Blaze). La configuración está en `apps/backoffice/apphosting.yaml`; **el despliegue está preparado y no se ha ejecutado**. Los pasos, en [backoffice.md](backoffice.md#despliegue-en-firebase-app-hosting-preparado-no-realizado).
+- **Alojamiento.** Firebase App Hosting, que ejecuta Next.js sobre Cloud Run dentro del mismo proyecto de Firebase. Se eligió frente a Vercel por las credenciales: el servidor corre con la identidad de servicio del propio proyecto y no existe ninguna clave de cuenta de servicio que crear, guardar o rotar. El costo es que exige el plan de pago por uso (Blaze). La configuración está en `apps/backoffice/apphosting.yaml`; **está desplegado** en `us-east4`, y cada push a `main` lo vuelve a desplegar. Los pasos, lo que falló en el primer despliegue y lo comprobado, en [backoffice.md](backoffice.md#despliegue-en-firebase-app-hosting).
 - **Credenciales.** Las credenciales por defecto de la plataforma. `FIREBASE_SERVICE_ACCOUNT` sigue existiendo para un proveedor sin identidad propia, y entonces solo en su almacén de secretos; nunca en un archivo del repositorio ni en un `.env` compartido.
 - **Comprobación de salud.** `GET /api/health` responde sin sesión con la versión y si la configuración es válida, sin revelar ningún valor: 200 o 503.
 - **Variables.** `FIREBASE_PROJECT_ID`, `ADMIN_EMAILS`, `PUSH_DELIVERY`, `BACKOFFICE_ENVIRONMENT` y las `NEXT_PUBLIC_FIREBASE_*` de la consola. El servidor comprueba el proyecto al arrancar y falla si no es el esperado.

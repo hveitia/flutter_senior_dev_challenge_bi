@@ -28,7 +28,7 @@ Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se 
 | Código fuente con historial de desarrollo | Este repositorio; historial lineal en `main` | Cumplido |
 | README con instrucciones para configurar, ejecutar, probar y colaborar | [README.md](../README.md) | Cumplido. El modo local con emuladores permite ejecutar todo sin acceso al proyecto de Firebase |
 | Documentación de arquitectura y decisiones técnicas | [adr/](adr/) (19 decisiones con los cinco campos pedidos), [arquitectura/](arquitectura/) | Cumplido |
-| Documentación de estrategia de despliegue y operación | [operacion/despliegue.md](operacion/despliegue.md) y el resto de [operacion/](operacion/) | Cumplido como estrategia. No hay nada desplegado ni publicado en tiendas |
+| Documentación de estrategia de despliegue y operación | [operacion/despliegue.md](operacion/despliegue.md) y el resto de [operacion/](operacion/) | Cumplido. El servidor (consola, API de clientes y páginas de aliados) está desplegado como demostración en Firebase App Hosting; la aplicación no está publicada en ninguna tienda y el resto es estrategia |
 | Demostración funcional | [demo/guion.md](demo/guion.md); modo local o dispositivo | Cumplido. La aplicación no está en una tienda: se instala desde el código |
 | Diagramas de componentes, flujos y dependencias | [arquitectura/componentes.md](arquitectura/componentes.md), [arquitectura/flujos.md](arquitectura/flujos.md), [arquitectura/publicar-configuracion.md](arquitectura/publicar-configuracion.md) | Cumplido |
 | Supuestos, riesgos técnicos y estrategia de escalamiento | Este documento | Cumplido |

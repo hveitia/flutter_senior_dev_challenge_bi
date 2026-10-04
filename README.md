@@ -59,7 +59,7 @@ Diagramas: [componentes y dependencias](docs/arquitectura/componentes.md), [fluj
 | Documentación del uso de IA | Cumplido | |
 | Trunk Based Development | Cumplido | |
 
-La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). Nada está desplegado ni publicado en tiendas, e iOS no se compiló.
+La tabla completa, con dónde está cada cosa y cómo se comprobó, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md). El servidor está desplegado como demostración (ver [Demostración publicada](#demostración-publicada)); la aplicación no está publicada en ninguna tienda, e iOS no se compiló.
 
 ## Requisitos
 
@@ -128,6 +128,26 @@ Qué significa cada opción de compilación:
 **Qué se comprobó de este modo y qué no.** Partiendo de un directorio de usuario vacío (sin gcloud, sin sesión de Firebase y sin credenciales por defecto) se comprobó: emuladores y servidor en marcha, la carga de datos dos veces seguidas, inicio de sesión en el emulador de Auth, una transferencia, su repetición y un sobregiro por la API, el aviso de la transferencia en la bandeja, la sesión de la consola y la consola cargada, un envío de notificación validado y las páginas de los aliados; y `flutter build apk --debug` con las opciones. **No se ejecutó la aplicación en un dispositivo en este modo**: en un teléfono solo se probó contra el proyecto real. En particular, queda sin ver que Firestore vuelva a apuntar al emulador después de cerrar sesión, y publicar desde la consola local se comprobó solo hasta cargarla con sesión.
 
 Diferencias con el proyecto real: las notificaciones no salen del equipo (quedan «Validado») y el servidor corre en modo de desarrollo.
+
+## Demostración publicada
+
+El servidor (consola de experiencia, API de clientes y páginas de los aliados) está desplegado en Firebase App Hosting:
+
+<https://backoffice--flutter-challenge-bi.us-east4.hosted.app>
+
+- La consola pide una cuenta de administrador, que se entrega por privado. Sin ella, la dirección muestra el inicio de sesión; `/api/health` responde sin sesión.
+- Para usar la aplicación contra ese servidor no hace falta levantar nada. Se compila apuntando a él:
+
+  ```bash
+  cd apps/mobile
+  flutter build apk --release \
+    --dart-define=API_BASE_URL=https://backoffice--flutter-challenge-bi.us-east4.hosted.app/ \
+    --dart-define=PARTNER_BASE_URL=https://backoffice--flutter-challenge-bi.us-east4.hosted.app \
+    --dart-define=ALLOW_FAULT_INJECTION=true
+  ```
+
+  Cualquiera puede registrarse en la aplicación: el alta crea dos cuentas con un depósito de demostración, sin valor real. Lo que se publique en la consola llega a la aplicación sin reinstalarla.
+- Qué se comprobó en el servidor publicado y qué no: [docs/operacion/backoffice.md](docs/operacion/backoffice.md#despliegue-en-firebase-app-hosting).
 
 ## Ejecutar contra el proyecto real
 
@@ -266,14 +286,14 @@ tool/                     setup.sh, verify.sh y local-stack.sh.
 ## Límites conocidos
 
 - **iOS** no se compiló ni se probó.
-- **Nada está desplegado**: el servidor corre en local y la aplicación se instala desde el código. Falta la firma de publicación.
+- **El servidor está desplegado solo como demostración** y la aplicación no está en ninguna tienda: se instala desde el código o desde un APK firmado con la clave de depuración de la plantilla. Falta la firma de publicación.
 - **El registro es abierto** y cada cliente nuevo recibe un depósito de demostración. Faltan verificación de correo, App Check y límites de frecuencia.
 - **Los aliados son simulados** y comparten servidor con la consola.
 - **Sin verificar en un dispositivo:** desbloqueo biométrico, texto oculto en la pantalla de bloqueo, sesión revocada, borrado de lo que guarda la vista web y el modo local completo.
 - **La llegada de la telemetría a la consola de Firebase no se comprobó** y no hay alertas configuradas.
 - **Sin tema oscuro ni traducciones.**
 
-La lista razonada, con supuestos, riesgos y la estrategia de escalamiento, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md); lo que falta para producción, en [docs/operacion/despliegue.md](docs/operacion/despliegue.md). El servidor está preparado para Firebase App Hosting y aún no se ha desplegado: los pasos están en [docs/operacion/backoffice.md](docs/operacion/backoffice.md#despliegue-en-firebase-app-hosting-preparado-no-realizado).
+La lista razonada, con supuestos, riesgos y la estrategia de escalamiento, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md); lo que falta para producción, en [docs/operacion/despliegue.md](docs/operacion/despliegue.md). El despliegue del servidor en Firebase App Hosting, con lo que se comprobó en él y lo que no, está en [docs/operacion/backoffice.md](docs/operacion/backoffice.md#despliegue-en-firebase-app-hosting).
 
 ## Documentación
 

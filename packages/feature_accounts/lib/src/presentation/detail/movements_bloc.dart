@@ -189,15 +189,17 @@ final class MovementsBloc extends Bloc<MovementsEvent, MovementsState> {
     emit(_with(movements: movements));
   }
 
-  Future<void> _onMoreRequested(
+  void _onMoreRequested(
     MovementsMoreRequested event,
     Emitter<MovementsState> emit,
-  ) async {
+  ) {
     if (!state.hasMore || state.isLoadingMore) return;
 
     final limit = state.limit + pageSize;
     emit(_with(limit: limit, isLoadingMore: true));
-    await _subscription?.cancel();
+    // The listener of the shorter page is dropped without waiting for it:
+    // whatever it still delivers is ignored by its page size.
+    unawaited(_subscription?.cancel());
     _listen(limit);
   }
 

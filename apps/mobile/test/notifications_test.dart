@@ -149,6 +149,25 @@ void main() {
 
       expectAccountsOpened();
     });
+
+    testWidgets('behind a lock is dropped when that session ends, so it '
+        'does not open for whoever signs in next', (tester) async {
+      auth.restored = const ActiveSession(profile, unlockRequired: true);
+      biometrics.passes = false;
+      await tester.pumpWidget(BancaDigitalApp(dependencies: app.dependencies));
+      await tester.pumpAndSettle();
+      app.messaging.openedMessages.add(payment);
+      await tester.pumpAndSettle();
+
+      // The locked session ends without ever being opened.
+      auth.announce(const SignedOutSession());
+      await tester.pumpAndSettle();
+
+      auth.announce(const ActiveSession(profile, unlockRequired: false));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Hola, Valentina'), findsOneWidget);
+    });
   });
 
   testWidgets('the invitation does not appear over the lock', (tester) async {

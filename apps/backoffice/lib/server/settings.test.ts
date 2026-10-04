@@ -125,4 +125,27 @@ describe("readServerSettings", () => {
 
     expect(read).not.toThrow();
   });
+
+  it("does not use the emulators unless the environment points at them", () => {
+    expect(readServerSettings(valid).usesEmulators).toBe(false);
+  });
+
+  it.each(["FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST"])(
+    "knows it runs against a local stack when %s is set",
+    (variable) => {
+      const settings = readServerSettings({ ...valid, [variable]: "localhost:9099" });
+
+      expect(settings.usesEmulators).toBe(true);
+    },
+  );
+
+  it("never delivers a notification from a local stack, whatever delivery says", () => {
+    const settings = readServerSettings({
+      ...valid,
+      FIRESTORE_EMULATOR_HOST: "localhost:8080",
+      PUSH_DELIVERY: "live",
+    });
+
+    expect(settings.pushDryRun).toBe(true);
+  });
 });

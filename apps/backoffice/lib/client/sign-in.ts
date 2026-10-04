@@ -1,5 +1,6 @@
 import { getApps, initializeApp } from "firebase/app";
 import {
+  connectAuthEmulator,
   getAuth,
   inMemoryPersistence,
   setPersistence,
@@ -15,6 +16,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+const authEmulatorUrl = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL;
+
 /**
  * Signs in with the identity provider and returns the short-lived token the
  * server exchanges for its session cookie. The browser keeps nothing: the
@@ -25,8 +28,14 @@ export async function signInForIdToken(
   email: string,
   password: string,
 ): Promise<string> {
-  const app = getApps()[0] ?? initializeApp(firebaseConfig);
+  const existing = getApps()[0];
+  const app = existing ?? initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  // A local stack signs in against the Auth emulator. The address is only
+  // set when the console is started for one (docs/operacion/backoffice.md).
+  if (!existing && authEmulatorUrl) {
+    connectAuthEmulator(auth, authEmulatorUrl, { disableWarnings: true });
+  }
   await setPersistence(auth, inMemoryPersistence);
   const credential = await signInWithEmailAndPassword(auth, email, password);
   const idToken = await credential.user.getIdToken();

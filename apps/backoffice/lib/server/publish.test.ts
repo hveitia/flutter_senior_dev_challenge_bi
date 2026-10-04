@@ -19,6 +19,7 @@ const demo: ServerSettings = {
   isDemo: true,
   pushDryRun: false,
   serviceAccount: null,
+  usesEmulators: false,
 };
 const production: ServerSettings = { ...demo, isDemo: false };
 

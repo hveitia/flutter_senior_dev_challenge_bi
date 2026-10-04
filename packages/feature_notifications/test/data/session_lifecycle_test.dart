@@ -121,6 +121,16 @@ void main() {
       expect(opened.take(), isNull);
     });
 
+    test('a dropped notification is never handed over', () async {
+      final opened = OpenedNotifications(messaging)..start();
+      messaging.openedMessages.add(payment);
+      await pumpEventQueue();
+
+      opened.drop();
+
+      expect(opened.take(), isNull);
+    });
+
     test('keeps the notification that started the app', () async {
       messaging.initial = notice;
 

@@ -19,6 +19,7 @@ const settings: ServerSettings = {
   isDemo: true,
   pushDryRun: false,
   serviceAccount: null,
+  usesEmulators: false,
 };
 
 function token(overrides: Partial<DecodedToken> = {}): DecodedToken {

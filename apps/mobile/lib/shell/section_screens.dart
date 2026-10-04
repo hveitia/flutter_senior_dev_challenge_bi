@@ -196,19 +196,29 @@ class ProfileScreen extends StatelessWidget {
 ///
 /// A customer who asked to leave must leave: a clean-up that fails, even
 /// before it returns a future, cannot keep the session open.
+///
+/// The clean-up is waited for at most [timeout]: one that never completes
+/// cannot keep the session open either. What it left undone is picked up
+/// when the session ends, which cleans the device again.
 @visibleForTesting
 Future<void> closeSessionAfter(
   Future<void> Function() cleanUp,
-  void Function() closeSession,
-) async {
+  void Function() closeSession, {
+  Duration timeout = signOutCleanUpTimeout,
+}) async {
   try {
-    await cleanUp();
+    await Future.sync(cleanUp).timeout(timeout);
   } on Object {
     // Whoever cleans up reports its own failures; here only the order
     // matters.
   }
   closeSession();
 }
+
+/// How long closing a session waits for the device clean-up that precedes
+/// it. Longer than the registrar's own bound, so in practice it only cuts
+/// short a clean-up that hangs.
+const Duration signOutCleanUpTimeout = Duration(seconds: 8);
 
 /// A row of the profile that opens another screen.
 class _ProfileLink extends StatelessWidget {

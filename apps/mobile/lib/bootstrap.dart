@@ -18,6 +18,27 @@ abstract final class BuildFlags {
   /// never used as it is: `apiBaseUrlFor` decides what this build may use.
   static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
+  /// Whether this build talks to the Firebase emulators of a local stack
+  /// instead of the project (`--dart-define=USE_FIREBASE_EMULATORS=true`).
+  /// Never used as it is: `firebaseEmulatorsFor` decides, and refuses a
+  /// release build.
+  static const bool useFirebaseEmulators = bool.fromEnvironment(
+    'USE_FIREBASE_EMULATORS',
+  );
+
+  /// Where the emulators listen, as the device sees the developer's
+  /// machine. Empty values take the defaults: `localhost` (a phone or an
+  /// Android emulator through `adb reverse`) and the standard ports.
+  static const String firebaseEmulatorHost = String.fromEnvironment(
+    'FIREBASE_EMULATOR_HOST',
+  );
+  static const String authEmulatorPort = String.fromEnvironment(
+    'FIREBASE_AUTH_EMULATOR_PORT',
+  );
+  static const String firestoreEmulatorPort = String.fromEnvironment(
+    'FIRESTORE_EMULATOR_PORT',
+  );
+
   /// How this app was built.
   static const BuildMode mode = kReleaseMode
       ? BuildMode.release

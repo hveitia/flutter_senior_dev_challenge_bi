@@ -1,4 +1,5 @@
 import 'package:app_platform/app_platform.dart';
+import 'package:banca_digital/firebase_emulators.dart';
 import 'package:banca_digital/notifications_wiring.dart';
 import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
@@ -11,13 +12,21 @@ import 'package:module_kit/module_kit.dart';
 /// Which build of the app this is, as the store names it.
 @immutable
 final class AppInfo {
-  const AppInfo({required this.version, required this.build});
+  const AppInfo({
+    required this.version,
+    required this.build,
+    this.environment = AppEnvironment.project,
+  });
 
   /// `1.0.0`.
   final String version;
 
   /// The build number within the version: `12`.
   final String build;
+
+  /// Where this build keeps its data: the Firebase project, or the
+  /// emulators of a local stack.
+  final AppEnvironment environment;
 }
 
 /// Everything the widget tree needs from outside it.

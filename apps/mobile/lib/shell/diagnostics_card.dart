@@ -1,5 +1,6 @@
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
+import 'package:banca_digital/firebase_emulators.dart';
 import 'package:design_system/design_system.dart';
 import 'package:feature_accounts/feature_accounts.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +55,16 @@ abstract final class DiagnosticsStrings {
 
   /// `1.0.0 (12)`.
   static String app(AppInfo info) => '${info.version} (${info.build})';
+
+  static const String environment = 'Entorno';
+
+  /// Where the data of this build lives, so nobody mistakes a local stack
+  /// for the project, or the other way round.
+  static String environmentName(AppEnvironment environment) =>
+      switch (environment) {
+        AppEnvironment.project => 'Proyecto de Firebase',
+        AppEnvironment.localEmulators => 'Emuladores locales',
+      };
 }
 
 /// The state of the app as support would ask for it: connection, how fresh
@@ -111,6 +122,10 @@ class DiagnosticsCard extends StatelessWidget {
             DetailRow(
               label: DiagnosticsStrings.appVersion,
               value: DiagnosticsStrings.app(appInfo),
+            ),
+            DetailRow(
+              label: DiagnosticsStrings.environment,
+              value: DiagnosticsStrings.environmentName(appInfo.environment),
             ),
           ],
         ),

@@ -61,3 +61,6 @@ Thumbs.db
 
 # FVM
 .fvm/
+
+# Logs and process ids of tool/local-stack.sh
+.local-stack/

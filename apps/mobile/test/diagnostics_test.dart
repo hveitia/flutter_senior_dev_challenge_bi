@@ -1,5 +1,6 @@
 import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/app_dependencies.dart';
+import 'package:banca_digital/firebase_emulators.dart';
 import 'package:banca_digital/shell/diagnostics_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,6 +68,24 @@ void main() {
     expect(
       DiagnosticsStrings.app(const AppInfo(version: '1.0.0', build: '12')),
       '1.0.0 (12)',
+    );
+  });
+
+  test('the environment says where the data of this build lives', () {
+    expect(
+      DiagnosticsStrings.environmentName(AppEnvironment.project),
+      'Proyecto de Firebase',
+    );
+    expect(
+      DiagnosticsStrings.environmentName(AppEnvironment.localEmulators),
+      'Emuladores locales',
+    );
+  });
+
+  test('a build is taken to use the project unless told otherwise', () {
+    expect(
+      const AppInfo(version: '1.0.0', build: '12').environment,
+      AppEnvironment.project,
     );
   });
 }

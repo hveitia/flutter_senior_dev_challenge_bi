@@ -52,6 +52,10 @@ final class OpenedNotifications {
     return message;
   }
 
+  /// Forgets the waiting notification. Called when a session ends: what one
+  /// customer tapped must not open for whoever signs in next.
+  void drop() => _pending = null;
+
   Future<void> dispose() async {
     await _subscription?.cancel();
     await _arrivals.close();

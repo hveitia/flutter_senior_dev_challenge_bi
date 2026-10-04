@@ -3,6 +3,8 @@ import 'package:app_platform/app_platform.dart';
 import 'package:banca_digital/api_base_url.dart';
 import 'package:banca_digital/app_dependencies.dart';
 import 'package:banca_digital/bootstrap.dart';
+import 'package:banca_digital/clean_first_profile_store.dart';
+import 'package:banca_digital/firebase_emulators.dart';
 import 'package:banca_digital/notifications_composition.dart';
 import 'package:banca_digital/published_faults.dart';
 import 'package:banca_digital/saved_customer_data.dart';
@@ -25,7 +27,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Builds the app's dependencies on Firebase and the device plugins.
 ///
 /// This is the only place that knows the concrete implementations.
-Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
+///
+/// [emulators] is where the Firebase emulators of a local stack listen, or
+/// null for a build that uses the Firebase project.
+Future<AppDependencies> composeDependencies(
+  Telemetry telemetry, {
+  FirebaseEmulators? emulators,
+}) async {
   // Decided before anything else, so a build that would send the session
   // token unencrypted, or to nowhere, stops here instead of at the first
   // transfer.
@@ -66,12 +74,41 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
   // between calls.
   final apiClient = http.Client();
 
+  final savedCustomerData = StepwiseSavedCustomerData(
+    telemetry: telemetry,
+    pending: SharedPreferencesPendingWipe(preferences),
+    steps: [
+      (
+        name: _databaseStep,
+        run: clearDatabaseStep(
+          terminate: () => FirebaseFirestore.instance.terminate(),
+          clearPersistence: () => FirebaseFirestore.instance.clearPersistence(),
+          // A database started again knows nothing of the local stack it
+          // was pointed at.
+          afterCleared: () => useFirestoreEmulator(emulators),
+        ),
+      ),
+      (
+        name: _syncTimesStep,
+        run: (_) => SharedPreferencesSyncTimes.clearAll(preferences),
+      ),
+      // What a partner's pages kept in the web view: the next customer
+      // on this device must not find it.
+      (name: miniAppDataStep, run: (_) => miniAppData.clear()),
+    ],
+  );
+
   return AppDependencies(
     telemetry: telemetry,
     connectivity: connectivity,
     authRepository: DefaultAuthRepository(
       gateway: FirebaseAuthGateway(FirebaseAuth.instance),
-      profiles: FirestoreProfileStore(FirebaseFirestore.instance),
+      // The profile is the first thing a session reads: a removal of saved
+      // data that did not finish is finished before it.
+      profiles: CleanFirstProfileStore(
+        FirestoreProfileStore(FirebaseFirestore.instance),
+        savedCustomerData,
+      ),
       unlockPreferences: SharedPreferencesUnlockPreferences(preferences),
       policy: policy,
       telemetry: telemetry,
@@ -112,7 +149,11 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
     ),
     publishedFaults: publishedFaults,
     homeModules: composeHomeModules(),
-    appInfo: AppInfo(version: package.version, build: package.buildNumber),
+    appInfo: AppInfo(
+      version: package.version,
+      build: package.buildNumber,
+      environment: appEnvironmentFor(emulators),
+    ),
     notifications: composeNotifications(
       preferences: preferences,
       policy: policy,
@@ -123,19 +164,30 @@ Future<AppDependencies> composeDependencies(Telemetry telemetry) async {
       telemetry: telemetry,
       data: miniAppData,
     ),
-    savedCustomerData: StepwiseSavedCustomerData(
-      telemetry: telemetry,
-      steps: [
-        (name: _databaseStep, run: _clearDatabase),
-        (
-          name: _syncTimesStep,
-          run: () => SharedPreferencesSyncTimes.clearAll(preferences),
-        ),
-        // What a partner's pages kept in the web view: the next customer
-        // on this device must not find it.
-        (name: miniAppDataStep, run: miniAppData.clear),
-      ],
-    ),
+    savedCustomerData: savedCustomerData,
+  );
+}
+
+/// Points Auth and Firestore at the emulators of a local stack. Does
+/// nothing for a build that uses the Firebase project.
+///
+/// Called once Firebase is initialized and before anything reads from it.
+Future<void> useFirebaseEmulators(FirebaseEmulators? emulators) async {
+  if (emulators == null) return;
+  await FirebaseAuth.instance.useAuthEmulator(
+    emulators.host,
+    emulators.authPort,
+  );
+  useFirestoreEmulator(emulators);
+}
+
+/// The Firestore half of [useFirebaseEmulators], which has to be repeated
+/// whenever the database is started again.
+void useFirestoreEmulator(FirebaseEmulators? emulators) {
+  if (emulators == null) return;
+  FirebaseFirestore.instance.useFirestoreEmulator(
+    emulators.host,
+    emulators.firestorePort,
   );
 }
 
@@ -155,12 +207,3 @@ HomeModuleRegistry composeHomeModules() {
 
 const String _databaseStep = 'database';
 const String _syncTimesStep = 'sync_times';
-
-/// Removes Firestore's saved copy from the device. The database refuses to
-/// delete it while it is running, so it is shut down first; the next read
-/// starts it again by itself.
-Future<void> _clearDatabase() async {
-  final firestore = FirebaseFirestore.instance;
-  await firestore.terminate();
-  await firestore.clearPersistence();
-}

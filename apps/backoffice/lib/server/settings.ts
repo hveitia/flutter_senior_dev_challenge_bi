@@ -27,6 +27,12 @@ export interface ServerSettings {
   pushDryRun: boolean;
   /** Parsed service account, or null to use the default credentials. */
   serviceAccount: Record<string, unknown> | null;
+  /**
+   * The environment points the admin SDK at local emulators: a local stack
+   * that needs no credentials and never reaches the messaging service.
+   * Never true in production, where those variables stop the server.
+   */
+  usesEmulators: boolean;
 }
 
 type Environment = Record<string, string | undefined>;
@@ -92,13 +98,16 @@ function refuseEmulatorsInProduction(env: Environment): void {
 
 export function readServerSettings(env: Environment): ServerSettings {
   refuseEmulatorsInProduction(env);
+  const usesEmulators = EMULATOR_VARIABLES.some((variable) => Boolean(env[variable]));
   return {
     projectId: readProjectId(env),
     adminEmails: readAdminEmails(env),
     isDemo: env.BACKOFFICE_ENVIRONMENT === DEMO_ENVIRONMENT,
     // Delivering to real phones is opt-in: a deployment that forgot the
     // setting, or mistyped it, validates its sends and delivers nothing.
-    pushDryRun: env.PUSH_DELIVERY !== LIVE_DELIVERY,
+    // A local stack has nobody to deliver to, whatever the setting says.
+    pushDryRun: usesEmulators || env.PUSH_DELIVERY !== LIVE_DELIVERY,
     serviceAccount: readServiceAccount(env),
+    usesEmulators,
   };
 }

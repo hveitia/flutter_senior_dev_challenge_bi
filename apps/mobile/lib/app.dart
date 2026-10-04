@@ -28,6 +28,10 @@ class _BancaDigitalAppState extends State<BancaDigitalApp> {
   late final StreamSubscription<SessionState> _sessionSubscription;
   late final GoRouter _router;
 
+  /// Whether a customer's session, open or locked, came before the current
+  /// state.
+  bool _hadSession = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,8 +56,18 @@ class _BancaDigitalAppState extends State<BancaDigitalApp> {
   /// The same goes for notifications: whatever path closed the session, the
   /// device stops following the customer's topic and deletes its address.
   void _onSessionChanged(SessionState state) {
-    if (state is! SessionSignedOut) return;
-    unawaited(widget.dependencies.notifications.registrations.sessionEnded());
+    if (state is SessionStarting) return;
+    if (state is! SessionSignedOut) {
+      _hadSession = true;
+      return;
+    }
+    final notifications = widget.dependencies.notifications;
+    // A notification tapped during the session that just ended must not
+    // open for whoever signs in next. One tapped with nobody signed in is
+    // kept: it waits for a customer.
+    if (_hadSession) notifications.opened.drop();
+    _hadSession = false;
+    unawaited(notifications.registrations.sessionEnded());
     unawaited(_removeSavedCustomerData());
   }
 

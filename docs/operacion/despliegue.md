@@ -44,14 +44,14 @@ flowchart LR
 | Entorno | Firebase | Servidor | Aplicación | Fallos simulados | Notificaciones |
 | --- | --- | --- | --- | --- | --- |
 | Local | Emuladores de Auth y Firestore | `next dev` en el puerto 3210 | Depuración o perfil con `USE_FIREBASE_EMULATORS=true` | Permitidos | Solo validadas, sin salir de la máquina |
-| Demostración | Proyecto `flutter-challenge-bi` | Local hoy; desplegable con `BACKOFFICE_ENVIRONMENT=demo` | Perfil con `ALLOW_FAULT_INJECTION=true` | Permitidos | Reales solo con `PUSH_DELIVERY=live` |
+| Demostración | Proyecto `flutter-challenge-bi` | Local hoy; preparado para Firebase App Hosting con `BACKOFFICE_ENVIRONMENT=demo` | Perfil con `ALLOW_FAULT_INJECTION=true` | Permitidos | Reales solo con `PUSH_DELIVERY=live` |
 | Producción (no existe) | Proyecto propio | Despliegue sin `BACKOFFICE_ENVIRONMENT=demo` | Publicación, sin las opciones de desarrollo | La aplicación los ignora y el servidor rechaza publicarlos | Reales |
 
 Las diferencias entre entornos están en configuración, no en ramas. Tres candados lo sostienen en el código:
 
 - Una compilación de publicación se niega a arrancar con los emuladores, sin una dirección `https` para la API o con un origen `http` para los aliados (`apps/mobile/lib/firebase_emulators.dart`, `api_base_url.dart`, `packages/feature_services`).
 - La inyección de fallos solo actúa si la compilación la permite ([ADR 0009](../adr/0009-politica-de-resiliencia.md)).
-- El servidor no arranca en producción con variables de emulador, y entrega notificaciones solo con `PUSH_DELIVERY=live` ([ADR 0015](../adr/0015-acceso-de-administradores.md), [ADR 0014](../adr/0014-consola-de-experiencia.md)).
+- El servidor no arranca con variables de emulador en un despliegue, y reconoce un despliegue de dos formas para que ninguna falle sola: `NODE_ENV=production` o la marca que pone la propia plataforma de alojamiento (`K_SERVICE` en Cloud Run y Firebase App Hosting, `VERCEL` en Vercel). Entrega notificaciones solo con `PUSH_DELIVERY=live` ([ADR 0015](../adr/0015-acceso-de-administradores.md), [ADR 0014](../adr/0014-consola-de-experiencia.md)).
 
 ## Aplicación móvil: de `main` a la tienda
 
@@ -89,8 +89,9 @@ La configuración publicada es la primera palanca de reversión: apagar una func
 
 ## Servidor Next.js
 
-- **Alojamiento.** Cualquier plataforma que ejecute Next.js con el entorno de Node (las rutas usan `firebase-admin`, que no funciona en entornos de borde). No se eligió proveedor.
-- **Credenciales.** Preferible la identidad de la propia carga de trabajo del proveedor de nube; si no, `FIREBASE_SERVICE_ACCOUNT` en su almacén de secretos. Nunca en un archivo del repositorio ni en un `.env` compartido.
+- **Alojamiento.** Firebase App Hosting, que ejecuta Next.js sobre Cloud Run dentro del mismo proyecto de Firebase. Se eligió frente a Vercel por las credenciales: el servidor corre con la identidad de servicio del propio proyecto y no existe ninguna clave de cuenta de servicio que crear, guardar o rotar. El costo es que exige el plan de pago por uso (Blaze). La configuración está en `apps/backoffice/apphosting.yaml`; **el despliegue está preparado y no se ha ejecutado**. Los pasos, en [backoffice.md](backoffice.md#despliegue-en-firebase-app-hosting-preparado-no-realizado).
+- **Credenciales.** Las credenciales por defecto de la plataforma. `FIREBASE_SERVICE_ACCOUNT` sigue existiendo para un proveedor sin identidad propia, y entonces solo en su almacén de secretos; nunca en un archivo del repositorio ni en un `.env` compartido.
+- **Comprobación de salud.** `GET /api/health` responde sin sesión con la versión y si la configuración es válida, sin revelar ningún valor: 200 o 503.
 - **Variables.** `FIREBASE_PROJECT_ID`, `ADMIN_EMAILS`, `PUSH_DELIVERY`, `BACKOFFICE_ENVIRONMENT` y las `NEXT_PUBLIC_FIREBASE_*` de la consola. El servidor comprueba el proyecto al arrancar y falla si no es el esperado.
 - **Una sola aplicación hoy, tres mañana.** La consola, la API de clientes y las páginas de aliados comparten despliegue porque así cabían en el alcance del reto. Deberían separarse:
   - la **API de clientes** recibe tráfico de todos los teléfonos y mueve dinero: escala y se limita por separado, detrás de App Check y de límites de frecuencia;

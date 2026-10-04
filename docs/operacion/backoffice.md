@@ -21,7 +21,7 @@ Las variables se leen del entorno. En desarrollo van en un archivo `apps/backoff
 | `ADMIN_EMAILS` | Servidor | Direcciones admitidas, separadas por comas. Obligatoria |
 | `BACKOFFICE_ENVIRONMENT` | Servidor | `demo` muestra el laboratorio de resiliencia y permite publicarlo. Con cualquier otro valor se oculta y el servidor rechaza añadir o agravar fallos simulados; quitarlos sigue permitido |
 | `PUSH_DELIVERY` | Servidor | `live` entrega las notificaciones a los teléfonos. Sin la variable, o con cualquier otro valor, cada envío solo se valida y no se entrega |
-| `FIREBASE_SERVICE_ACCOUNT` | Servidor | Cuenta de servicio en una línea de JSON. Vacía en desarrollo. Solo debe existir en el almacén de secretos del proveedor de despliegue |
+| `FIREBASE_SERVICE_ACCOUNT` | Servidor | Cuenta de servicio en una línea de JSON. Vacía en desarrollo y en Firebase App Hosting, donde se usan las credenciales de la plataforma. Solo para un proveedor sin identidad propia, y entonces solo en su almacén de secretos |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Navegador | Identificador público de la aplicación web de Firebase |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Navegador | Ídem |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Navegador | Ídem |
@@ -129,7 +129,132 @@ Para enviar a un cliente, la consola lee sus dispositivos de `users/{uid}/device
 
 **Pendiente en la etapa de notificaciones.** La aplicación móvil todavía no escribe esos documentos ni se suscribe a esos temas. Para que pueda registrar su dispositivo hará falta una regla de Firestore que permita a cada cliente escribir en su propio `users/{uid}/devices`; hoy las reglas niegan toda escritura en subcolecciones. Esa regla pertenece a esa etapa y no se ha añadido aquí.
 
-## Despliegue (descrito, no realizado)
+## Despliegue en Firebase App Hosting (preparado, no realizado)
+
+**A la fecha de este documento no se ha desplegado.** El proyecto no tiene activado el plan de pago por uso, que App Hosting exige. Lo que sigue es el procedimiento preparado; los pasos marcados con (navegador) necesitan a la persona propietaria del proyecto.
+
+Se eligió App Hosting porque el servidor corre con la identidad de servicio del propio proyecto: no hay clave de cuenta de servicio ([ADR 0015](../adr/0015-acceso-de-administradores.md)). Un solo servidor atiende la consola, la API de clientes y las páginas de los aliados.
+
+### Qué está comprobado y qué no
+
+Comprobado en un contenedor Linux (`node:24`), sobre una copia limpia del repositorio y sin credenciales de Google:
+
+- `npm ci` y `next build` desde `apps/backoffice`, también con salida autónoma (`standalone`), que es la que pide un adaptador de alojamiento.
+- El contrato y los tokens de diseño se incorporan al compilar: el servidor en ejecución no lee ningún archivo de fuera de su carpeta.
+- Con solo las variables de la tabla de abajo, el servidor arranca y responde: `/api/health` 200, `/login` 200, `/` redirige al inicio de sesión, una página de aliado 200 con su política de referencia, y la API de clientes 401 sin token.
+- Con una variable de emulador y la marca de la plataforma, la configuración se declara inválida (`/api/health` 503).
+
+Solo la plataforma real puede comprobar:
+
+- que la compilación de App Hosting, con `apps/backoffice` como directorio raíz, tiene acceso al resto del repositorio (importa `contracts/` y `packages/design_system/tokens/`);
+- que las credenciales por defecto de la plataforma bastan para Firestore, autenticación y mensajería, y con qué permisos;
+- que el proxy de la plataforma envía el host público en `x-forwarded-host`, del que depende la comprobación de origen de las rutas que cambian estado;
+- el enlace de los secretos y de las variables de compilación.
+
+### Variables y secretos
+
+Definidos en `apps/backoffice/apphosting.yaml`. Ningún valor sensible está en el repositorio.
+
+| Variable | Tipo | Disponible en | Valor |
+|---|---|---|---|
+| `FIREBASE_PROJECT_ID` | Valor | Ejecución | `flutter-challenge-bi` |
+| `BACKOFFICE_ENVIRONMENT` | Valor | Ejecución | `demo`: muestra el laboratorio de resiliencia |
+| `PUSH_DELIVERY` | Valor | Ejecución | `live`: entrega real de notificaciones |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Valor | Compilación y ejecución | `flutter-challenge-bi` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Valor | Compilación y ejecución | `flutter-challenge-bi.firebaseapp.com` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Secreto `backoffice-web-api-key` | Compilación y ejecución | Identificador público de la aplicación web. No es confidencial; va como secreto para que el análisis de secretos del repositorio no lo marque |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Secreto `backoffice-web-app-id` | Compilación y ejecución | Ídem |
+| `ADMIN_EMAILS` | Secreto `backoffice-admin-emails` | Ejecución | Direcciones admitidas en la consola. Dato personal |
+| `FIREBASE_SERVICE_ACCOUNT` | No se define | | En App Hosting no existe: se usan las credenciales de la plataforma |
+
+Cupo: `maxInstances: 2`, sin instancias mínimas. Una demostración no necesita escalar, y el tope acota lo que puede costar un pico de tráfico.
+
+### Pasos, en orden
+
+1. **(navegador)** Activar el plan Blaze en el proyecto y crear una alerta de presupuesto: <https://console.firebase.google.com/project/flutter-challenge-bi/usage/details>.
+2. Obtener los identificadores de la aplicación web, que ya existe en el proyecto:
+
+   ```bash
+   firebase apps:sdkconfig WEB --project flutter-challenge-bi
+   ```
+
+3. **(navegador)** Crear el servidor. El asistente pide conectar el repositorio de GitHub e instalar la aplicación de Firebase en él, y elegir la rama (`main`):
+
+   ```bash
+   firebase apphosting:backends:create --project flutter-challenge-bi \
+     --backend backoffice --root-dir apps/backoffice --primary-region us-east4
+   ```
+
+   La región es una propuesta; el asistente lista las disponibles.
+4. Crear los tres secretos. Cada orden pide el valor sin dejarlo en el historial del terminal:
+
+   ```bash
+   firebase apphosting:secrets:set backoffice-web-api-key --project flutter-challenge-bi
+   firebase apphosting:secrets:set backoffice-web-app-id --project flutter-challenge-bi
+   firebase apphosting:secrets:set backoffice-admin-emails --project flutter-challenge-bi
+   firebase apphosting:secrets:grantaccess \
+     backoffice-web-api-key,backoffice-web-app-id,backoffice-admin-emails \
+     --backend backoffice --project flutter-challenge-bi
+   ```
+
+5. Desplegar. Cada push a `main` despliega; a mano:
+
+   ```bash
+   firebase apphosting:rollouts:create backoffice --git-branch main --project flutter-challenge-bi
+   ```
+
+6. Comprobar `https://<servidor>.hosted.app/api/health` (200 y `"configuration":"valid"`), que `/` redirige a `/login` y que `POST /api/transfers` sin token responde 401.
+7. **(navegador)** Si el inicio de sesión de la consola lo exige, añadir el dominio `*.hosted.app` del servidor a los dominios autorizados de Authentication.
+8. Crear la cuenta del revisor (siguiente apartado), iniciar sesión, publicar un cambio y verlo llegar a la aplicación.
+
+### Cuenta de administrador para un revisor
+
+La cuenta debe estar en `ADMIN_EMAILS` y tener el correo verificado. Se crea con credenciales de la persona propietaria, sin escribir la contraseña en ningún archivo ni en el historial:
+
+```bash
+read -r -s -p "Contraseña del revisor: " PASSWORD; echo
+curl -s -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: flutter-challenge-bi" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"<correo del revisor>\",\"password\":\"$PASSWORD\",\"emailVerified\":true}" \
+  "https://identitytoolkit.googleapis.com/v1/projects/flutter-challenge-bi/accounts"
+unset PASSWORD
+```
+
+Después se añade la dirección al secreto `backoffice-admin-emails` y se crea un despliegue nuevo para que el servidor lo lea. Las credenciales se entregan al revisor por un canal privado; nunca van en el repositorio. Esta orden no se ha ejecutado contra el proyecto real.
+
+### Aplicación para el revisor
+
+La aplicación debe compilarse apuntando al servidor publicado. Una compilación de publicación se niega a arrancar sin una dirección `https` para la API, y solo acepta un origen `https` para los aliados; las dos reglas tienen pruebas (`apps/mobile/test/api_base_url_test.dart`, `packages/feature_services/test/domain/partner_origin_test.dart`).
+
+```bash
+cd apps/mobile
+flutter build apk --release \
+  --dart-define=API_BASE_URL=https://<servidor>.hosted.app/ \
+  --dart-define=PARTNER_BASE_URL=https://<servidor>.hosted.app \
+  --dart-define=ALLOW_FAULT_INJECTION=true
+```
+
+`ALLOW_FAULT_INJECTION` solo tiene sentido en la demostración: permite que el laboratorio de resiliencia de la consola actúe sobre esta compilación. Firma: hoy la compilación de publicación usa la clave de depuración de la plantilla de Flutter, suficiente para instalar el APK a mano pero no para una tienda. Una firma propia necesita un almacén de claves fuera del repositorio y un `key.properties` ignorado por git; no está configurada.
+
+### Reversión
+
+- **Servidor:** en la consola de Firebase, App Hosting, elegir un despliegue anterior; o `firebase apphosting:rollouts:create backoffice --git-commit <commit>`.
+- **Configuración publicada:** volver a publicar desde la consola de experiencia; cada publicación queda en la auditoría.
+- **Retirar el servidor:** `firebase apphosting:backends:delete backoffice`. La aplicación del revisor deja de poder transferir y de abrir mini aplicaciones; las lecturas de Firestore siguen funcionando.
+
+### Límites de costo y de abuso de una demostración pública
+
+El registro de clientes es abierto y cada alta recibe dinero de demostración. Lo que cubre la configuración es el tope de instancias. El resto son ajustes de la consola de Firebase y de Google Cloud que debe aplicar la persona propietaria:
+
+- [ ] Alerta de presupuesto en la cuenta de facturación.
+- [ ] Cuota de altas por dirección IP en Authentication.
+- [ ] Restricción de las claves de API de Android e iOS por aplicación, cuando ya no haga falta compilar desde el código con otra firma.
+- [ ] App Check: trabajo futuro; hoy nada impide llamar a la API fuera de la aplicación con un token válido.
+- [ ] Retirar el servidor al terminar la evaluación.
+
+### En otro proveedor
 
 La consola necesita un entorno Node con las variables de la tabla. En cualquier proveedor:
 

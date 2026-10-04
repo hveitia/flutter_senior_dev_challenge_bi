@@ -273,7 +273,7 @@ tool/                     setup.sh, verify.sh y local-stack.sh.
 - **La llegada de la telemetría a la consola de Firebase no se comprobó** y no hay alertas configuradas.
 - **Sin tema oscuro ni traducciones.**
 
-La lista razonada, con supuestos, riesgos y la estrategia de escalamiento, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md); lo que falta para producción, en [docs/operacion/despliegue.md](docs/operacion/despliegue.md).
+La lista razonada, con supuestos, riesgos y la estrategia de escalamiento, está en [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md); lo que falta para producción, en [docs/operacion/despliegue.md](docs/operacion/despliegue.md). El servidor está preparado para Firebase App Hosting y aún no se ha desplegado: los pasos están en [docs/operacion/backoffice.md](docs/operacion/backoffice.md#despliegue-en-firebase-app-hosting-preparado-no-realizado).
 
 ## Documentación
 

@@ -13,6 +13,22 @@ abstract final class ConfigDefaults {
   static const Duration maxInjectedLatency = Duration(seconds: 10);
 }
 
+/// How much of a published document the reader keeps. The numbers are the
+/// bounds of `contracts/home-config.schema.json`: a publisher is refused past
+/// them, and a reader that still receives more keeps the first entries and
+/// ignores the rest, so the cost of reading a document is bounded.
+abstract final class ConfigLimits {
+  static const int destinations = 32;
+  static const int segments = 12;
+  static const int modulesPerSegment = 24;
+
+  /// Longest module id or module type; a module past it is skipped.
+  static const int identifierLength = 48;
+
+  /// Longest segment id; a segment past it is skipped.
+  static const int segmentIdLength = 32;
+}
+
 /// Names of the backend services that the resilience block can take down.
 abstract final class ServiceIds {
   static const String movements = 'movements';

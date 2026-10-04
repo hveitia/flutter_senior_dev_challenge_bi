@@ -137,6 +137,51 @@ void main() {
         module: {'props': 'none'},
       ),
       'with visibility sent as text': _published(module: {'visible': 'yes'}),
+      // Past the bounds the reader keeps what fits and ignores the rest.
+      'with more destinations than the bound': _published(
+        root: {
+          'destinations': [
+            for (var i = 0; i <= ConfigLimits.destinations; i++) 'd$i',
+          ],
+        },
+      ),
+      'with more modules than the bound': _published(
+        segment: {
+          'modules': [
+            for (var i = 0; i <= ConfigLimits.modulesPerSegment; i++)
+              {'id': 'm$i', 'type': 'totalBalance'},
+          ],
+        },
+      ),
+      'with more segments than the bound': {
+        ..._published(),
+        'segments': {
+          for (var i = 0; i <= ConfigLimits.segments; i++)
+            's$i': {
+              'label': 'Segmento',
+              'modules': <Object?>[],
+              'features': {'transfers': true, 'partnerServices': false},
+            },
+        },
+      },
+      'with a segment id that is not an identifier': {
+        ..._published(),
+        'segments': {
+          'Mi segmento': {
+            'label': 'Mi segmento',
+            'modules': <Object?>[],
+            'features': {'transfers': true, 'partnerServices': false},
+          },
+        },
+      },
+      'with a label longer than the bound': _published(
+        segment: {'label': 'x' * 41},
+      ),
+      'with more props than the bound': _published(
+        module: {
+          'props': {for (var i = 0; i <= 24; i++) 'p$i': i},
+        },
+      ),
     };
 
     for (final MapEntry(key: description, value: document) in cases.entries) {

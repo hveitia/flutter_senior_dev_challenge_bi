@@ -15,11 +15,13 @@
     "schemaVersion": {
       "type": "integer",
       "minimum": 1,
+      "maximum": 2147483647,
       "description": "Version of this contract. A reader that supports a lower version keeps its last valid configuration."
     },
     "configVersion": {
       "type": "integer",
       "minimum": 0,
+      "maximum": 2147483647,
       "description": "Counter increased on every publish. Informative: the reader applies the last document it receives, whatever its number."
     },
     "locale": {
@@ -34,10 +36,12 @@
     },
     "destinations": {
       "type": "array",
-      "description": "Allow-list of navigation destinations. An action pointing anywhere else is dropped by the reader.",
+      "description": "Allow-list of navigation destinations. An action pointing anywhere else is dropped by the reader, which keeps at most the first 32.",
+      "maxItems": 32,
       "items": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "maxLength": 64
       },
       "uniqueItems": true
     },
@@ -47,6 +51,12 @@
     "segments": {
       "type": "object",
       "minProperties": 1,
+      "maxProperties": 12,
+      "description": "Keyed by segment id. The reader keeps at most the first 12 and skips an id longer than 32 characters.",
+      "propertyNames": {
+        "maxLength": 32,
+        "pattern": "^[a-z][a-zA-Z0-9]*$"
+      },
       "additionalProperties": {
         "$ref": "#/$defs/segment"
       }
@@ -87,10 +97,13 @@
         "label": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 40,
           "description": "Name shown to people. The reader falls back to the segment id when it is missing."
         },
         "modules": {
           "type": "array",
+          "maxItems": 24,
+          "description": "In the order they are drawn. The reader keeps at most the first 24.",
           "items": {
             "$ref": "#/$defs/module"
           }
@@ -111,12 +124,14 @@
         "id": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 48,
           "description": "Unique within its segment. JSON Schema cannot express that, so the publisher must check it; the reader keeps the first module with a given id."
         },
         "type": {
           "type": "string",
           "minLength": 1,
-          "description": "Key of the widget registered by a domain package. Unknown types are skipped by the reader."
+          "maxLength": 48,
+          "description": "Key of the widget registered by a domain package. Unknown types are skipped by the reader, and so is a module whose id or type is longer than 48 characters."
         },
         "visible": {
           "type": "boolean",
@@ -125,7 +140,8 @@
         "props": {
           "type": "object",
           "default": {},
-          "description": "Settings interpreted by the module itself, nested at most 32 levels. Any object carrying a destination must use a value from the allow-list; the reader drops the ones that do not."
+          "maxProperties": 24,
+          "description": "Settings interpreted by the module itself, nested at most 32 levels. The schema cannot bound what is nested inside without typing every module, so the publisher also limits the size of the whole document. Any object carrying a destination must use a value from the allow-list; the reader drops the ones that do not."
         }
       }
     },

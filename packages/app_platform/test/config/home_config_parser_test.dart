@@ -596,6 +596,100 @@ void main() {
     });
   });
 
+  // The schema bounds what may be published; the reader applies the same
+  // numbers as a ceiling on what it keeps, so an oversized document costs a
+  // bounded amount of work and memory.
+  group('reading limits', () {
+    test('keeps the first destinations up to the limit', () {
+      final config = _accepted(
+        _document(
+          root: {
+            'destinations': [
+              for (var i = 0; i < ConfigLimits.destinations + 5; i++) 'd$i',
+            ],
+          },
+        ),
+      );
+
+      expect(config.destinations, hasLength(ConfigLimits.destinations));
+      expect(config.destinations, contains('d0'));
+      expect(
+        config.destinations,
+        isNot(contains('d${ConfigLimits.destinations}')),
+      );
+    });
+
+    test('keeps the first modules of a segment up to the limit', () {
+      final config = _accepted(
+        _document(
+          modules: [
+            for (var i = 0; i < ConfigLimits.modulesPerSegment + 3; i++)
+              _module(id: 'm$i'),
+          ],
+        ),
+      );
+
+      final modules = config.segments['starting']!.modules;
+      expect(modules, hasLength(ConfigLimits.modulesPerSegment));
+      expect(modules.first.id, 'm0');
+      expect(modules.last.id, 'm${ConfigLimits.modulesPerSegment - 1}');
+    });
+
+    test('keeps the first segments up to the limit', () {
+      final config = _accepted({
+        'schemaVersion': 1,
+        'segments': {
+          for (var i = 0; i < ConfigLimits.segments + 2; i++)
+            's$i': {
+              'modules': [_module()],
+            },
+        },
+      });
+
+      expect(config.segments, hasLength(ConfigLimits.segments));
+      expect(config.segments.keys.first, 's0');
+      expect(
+        config.segments.keys,
+        isNot(contains('s${ConfigLimits.segments}')),
+      );
+    });
+
+    test('skips a module whose id or type is longer than the limit', () {
+      final tooLong = 'x' * (ConfigLimits.identifierLength + 1);
+      final atLimit = 'y' * ConfigLimits.identifierLength;
+
+      final config = _accepted(
+        _document(
+          modules: [
+            _module(id: tooLong),
+            _module(id: 'typed', type: tooLong),
+            _module(id: atLimit),
+          ],
+        ),
+      );
+
+      expect(config.segments['starting']!.modules.map((m) => m.id), [atLimit]);
+    });
+
+    test('skips a segment whose id is longer than the limit', () {
+      final tooLong = 's' * (ConfigLimits.segmentIdLength + 1);
+
+      final config = _accepted({
+        'schemaVersion': 1,
+        'segments': {
+          tooLong: {
+            'modules': [_module()],
+          },
+          'starting': {
+            'modules': [_module()],
+          },
+        },
+      });
+
+      expect(config.segments.keys, ['starting']);
+    });
+  });
+
   group('an error nobody anticipated', () {
     test('rejects the document instead of escaping the parser', () {
       expect(

@@ -114,7 +114,10 @@ final class HomeConfigParser {
   Set<String> _destinations(Object? raw) {
     if (raw is! List) return const {};
     return Set.unmodifiable(
-      raw.whereType<String>().where((destination) => destination.isNotEmpty),
+      raw
+          .whereType<String>()
+          .where((destination) => destination.isNotEmpty)
+          .take(ConfigLimits.destinations),
     );
   }
 
@@ -145,9 +148,12 @@ final class HomeConfigParser {
 
     final segments = <String, SegmentConfig>{};
     for (final entry in raw.entries) {
+      if (segments.length == ConfigLimits.segments) break;
+
       final id = entry.key;
       final body = entry.value;
       if (id is! String || id.isEmpty || body is! Map) continue;
+      if (id.length > ConfigLimits.segmentIdLength) continue;
 
       segments[id] = SegmentConfig(
         id: id,
@@ -165,12 +171,13 @@ final class HomeConfigParser {
     final modules = <ModuleConfig>[];
     final seenIds = <String>{};
     for (final item in raw) {
+      if (modules.length == ConfigLimits.modulesPerSegment) break;
       if (item is! Map) continue;
 
       final id = item['id'];
       final type = item['type'];
-      if (id is! String || id.isEmpty) continue;
-      if (type is! String || type.isEmpty) continue;
+      if (id is! String || !_isIdentifier(id)) continue;
+      if (type is! String || !_isIdentifier(type)) continue;
       if (!seenIds.add(id)) continue;
 
       modules.add(
@@ -187,6 +194,9 @@ final class HomeConfigParser {
     }
     return List.unmodifiable(modules);
   }
+
+  bool _isIdentifier(String value) =>
+      value.isNotEmpty && value.length <= ConfigLimits.identifierLength;
 
   FeatureFlags _features(Object? raw) {
     if (raw is! Map) return FeatureFlags.allOff;

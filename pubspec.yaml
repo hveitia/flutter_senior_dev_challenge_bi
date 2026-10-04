@@ -13,6 +13,7 @@ workspace:
   - packages/feature_accounts
   - packages/module_kit
   - packages/feature_home
+  - packages/feature_notifications
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

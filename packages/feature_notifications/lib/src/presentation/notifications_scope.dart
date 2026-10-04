@@ -1,0 +1,215 @@
+import 'dart:async';
+
+import 'package:app_platform/app_platform.dart';
+import 'package:feature_notifications/src/data/device_registrar.dart';
+import 'package:feature_notifications/src/data/ports.dart';
+import 'package:feature_notifications/src/domain/notifications_repository.dart';
+import 'package:feature_notifications/src/domain/push_message.dart';
+import 'package:feature_notifications/src/notifications_telemetry.dart';
+import 'package:feature_notifications/src/presentation/inbox_cubit.dart';
+import 'package:feature_notifications/src/presentation/notifications_strings.dart';
+import 'package:feature_notifications/src/presentation/permission_cubit.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:module_kit/module_kit.dart';
+
+/// Everything about notifications that lives as long as the customer is
+/// signed in: their inbox, what the system allows, this device's
+/// registration and what happens when a push arrives or is tapped.
+///
+/// The app mounts it inside the signed-in part of the tree, once per
+/// customer, and gives it that customer's repository and registrar.
+class NotificationsScope extends StatelessWidget {
+  const NotificationsScope({
+    required this.repository,
+    required this.registrar,
+    required this.messaging,
+    required this.memory,
+    required this.settings,
+    required this.segmentId,
+    required this.destinations,
+    required this.onOpenInbox,
+    required this.onInvite,
+    required this.child,
+    super.key,
+  });
+
+  final NotificationsRepository repository;
+  final DeviceRegistrar registrar;
+  final PushMessaging messaging;
+  final PrimerMemory memory;
+  final SystemSettings settings;
+
+  /// The customer's segment, whose topic this device follows.
+  final String segmentId;
+
+  /// Where a tapped notification leads in this build.
+  final DestinationResolver destinations;
+
+  /// Opens the inbox.
+  final void Function(BuildContext context) onOpenInbox;
+
+  /// Opens the invitation to turn notifications on.
+  final void Function(BuildContext context) onInvite;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepositoryProvider<DeviceRegistrar>.value(
+      value: registrar,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<InboxCubit>(
+            // Followed from sign-in, so the bell knows what is unread
+            // before the inbox is opened.
+            create: (context) => InboxCubit(repository)..start(),
+            lazy: false,
+          ),
+          BlocProvider<PermissionCubit>(
+            create: (context) => PermissionCubit(
+              messaging: messaging,
+              memory: memory,
+              settings: settings,
+              telemetry: context.read<Telemetry>(),
+            ),
+            lazy: false,
+          ),
+        ],
+        child: _Follower(
+          registrar: registrar,
+          messaging: messaging,
+          segmentId: segmentId,
+          destinations: destinations,
+          onOpenInbox: onOpenInbox,
+          onInvite: onInvite,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _Follower extends StatefulWidget {
+  const _Follower({
+    required this.registrar,
+    required this.messaging,
+    required this.segmentId,
+    required this.destinations,
+    required this.onOpenInbox,
+    required this.onInvite,
+    required this.child,
+  });
+
+  final DeviceRegistrar registrar;
+  final PushMessaging messaging;
+  final String segmentId;
+  final DestinationResolver destinations;
+  final void Function(BuildContext context) onOpenInbox;
+  final void Function(BuildContext context) onInvite;
+  final Widget child;
+
+  @override
+  State<_Follower> createState() => _FollowerState();
+}
+
+class _FollowerState extends State<_Follower> with WidgetsBindingObserver {
+  StreamSubscription<PushMessage>? _opened;
+  StreamSubscription<PushMessage>? _foreground;
+  bool _invited = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(context.read<PermissionCubit>().check());
+
+    _opened = widget.messaging.opened.listen(_open);
+    _foreground = widget.messaging.foreground.listen(_notice);
+    unawaited(_openInitialMessage());
+  }
+
+  /// The notification that started the app, if one did.
+  Future<void> _openInitialMessage() async {
+    final message = await widget.messaging.initialMessage();
+    if (message != null && mounted) _open(message);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back from the system settings, perhaps with a different answer.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(context.read<PermissionCubit>().check());
+    }
+  }
+
+  @override
+  void didUpdateWidget(_Follower oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.segmentId != oldWidget.segmentId) {
+      unawaited(widget.registrar.register(widget.segmentId));
+    }
+  }
+
+  void _onPermission(BuildContext context, PermissionState state) {
+    if (state.isGranted) {
+      unawaited(widget.registrar.register(widget.segmentId));
+    }
+    if (state.isPrimerDue && !_invited) {
+      _invited = true;
+      // After the frame: the screens under this scope are still being
+      // built when the first answer arrives.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onInvite(this.context);
+      });
+    }
+  }
+
+  /// The customer tapped a system notification. It leads where the sender
+  /// said, through the app's one resolver; a destination this build cannot
+  /// open leads to the inbox, where the notification itself is.
+  void _open(PushMessage message) {
+    if (!mounted) return;
+    context.read<Telemetry>().event(
+      NotificationsTelemetry.opened,
+      parameters: {
+        NotificationsTelemetry.kindKey: message.kind.name,
+        NotificationsTelemetry.sourceKey: NotificationsTelemetry.fromSystem,
+      },
+    );
+    final open = widget.destinations.resolve(message.destination);
+    (open ?? widget.onOpenInbox)(context);
+  }
+
+  /// A push arrived with the app open. The system shows nothing in that
+  /// case, so the app says it, and the inbox updates through its listener.
+  void _notice(PushMessage message) {
+    if (!mounted || message.title.isEmpty) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(message.title),
+        action: SnackBarAction(
+          label: NotificationsStrings.view,
+          onPressed: () {
+            if (mounted) widget.onOpenInbox(context);
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_opened?.cancel());
+    unawaited(_foreground?.cancel());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<PermissionCubit, PermissionState>(
+      listener: _onPermission,
+      child: widget.child,
+    );
+  }
+}

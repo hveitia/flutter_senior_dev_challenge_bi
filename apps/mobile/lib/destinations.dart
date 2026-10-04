@@ -32,10 +32,10 @@ final class AppDestinationResolver implements DestinationResolver {
   }) : _features = features,
        _routes = routes;
 
-  /// The destinations with a screen today. The partners' mini apps join
-  /// this table when their stage is built, behind their feature flag.
+  /// The destinations the app itself has a screen for. The partners' mini
+  /// apps are added by the services wiring, behind their feature flag and
+  /// only when the build names a partner origin.
   static const Map<String, AppDestination> builtRoutes = {
-    // --- transfers (stage 8) ---
     Destinations.transfer: AppDestination(
       open: _openTransfer,
       isEnabled: _transfersOn,
@@ -56,7 +56,6 @@ final class AppDestinationResolver implements DestinationResolver {
     return route.open;
   }
 
-  // --- transfers (stage 8) ---
   static bool _transfersOn(FeatureFlags features) => features.transfers;
 
   static void _openTransfer(BuildContext context) =>

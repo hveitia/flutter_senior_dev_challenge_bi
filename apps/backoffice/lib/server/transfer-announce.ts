@@ -21,18 +21,24 @@ export function announceSettled(
 ): void {
   if (!shouldNotify(result)) return;
 
-  after(() =>
-    notifyTransferCompleted(
-      firebasePushPorts(adminDb(), adminAuth(), adminMessaging()),
-      serverSettings(),
-      uid,
-      transferId,
-      now,
-      reportFailedStep,
-    ),
-  );
+  // The money has moved and the answer is ready: failing to schedule the
+  // notice must not turn that answer into an error.
+  try {
+    after(() =>
+      notifyTransferCompleted(
+        firebasePushPorts(adminDb(), adminAuth(), adminMessaging()),
+        serverSettings(),
+        uid,
+        transferId,
+        now,
+        reportFailedStep,
+      ),
+    );
+  } catch {
+    reportFailedStep("schedule");
+  }
 }
 
-function reportFailedStep(step: NoticeStep): void {
+function reportFailedStep(step: NoticeStep | "schedule"): void {
   console.error(JSON.stringify({ event: "transfer_notice_failed", step }));
 }

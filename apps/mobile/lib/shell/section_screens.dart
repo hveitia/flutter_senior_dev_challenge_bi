@@ -184,11 +184,30 @@ class ProfileScreen extends StatelessWidget {
     unawaited(context.read<RemoteConfigCubit>().stop());
     final session = context.read<SessionBloc>();
     unawaited(
-      forgetDevice(
-        context,
-      ).whenComplete(() => session.add(const SessionSignOutRequested())),
+      closeSessionAfter(
+        () => forgetDevice(context),
+        () => session.add(const SessionSignOutRequested()),
+      ),
     );
   }
+}
+
+/// Runs [cleanUp] and then [closeSession], whatever became of the clean-up.
+///
+/// A customer who asked to leave must leave: a clean-up that fails, even
+/// before it returns a future, cannot keep the session open.
+@visibleForTesting
+Future<void> closeSessionAfter(
+  Future<void> Function() cleanUp,
+  void Function() closeSession,
+) async {
+  try {
+    await cleanUp();
+  } on Object {
+    // Whoever cleans up reports its own failures; here only the order
+    // matters.
+  }
+  closeSession();
 }
 
 /// A row of the profile that opens another screen.

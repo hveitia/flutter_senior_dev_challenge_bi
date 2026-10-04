@@ -22,8 +22,14 @@ final class StepwiseSavedCustomerData implements SavedCustomerData {
   StepwiseSavedCustomerData({
     required List<ClearStep> steps,
     required Telemetry telemetry,
+    Duration stepTimeout = defaultStepTimeout,
   }) : _steps = steps,
-       _telemetry = telemetry;
+       _telemetry = telemetry,
+       _stepTimeout = stepTimeout;
+
+  /// How long one kind of saved data may take to be removed before the
+  /// clearing moves on without it.
+  static const Duration defaultStepTimeout = Duration(seconds: 10);
 
   /// Event and error reason: a kind of saved data could not be removed.
   static const String clearFailed = 'saved_customer_data_clear_failed';
@@ -31,6 +37,7 @@ final class StepwiseSavedCustomerData implements SavedCustomerData {
 
   final List<ClearStep> _steps;
   final Telemetry _telemetry;
+  final Duration _stepTimeout;
 
   /// The clearing in progress, if any. Two at once would close the database
   /// while the other one is removing its files.
@@ -44,7 +51,10 @@ final class StepwiseSavedCustomerData implements SavedCustomerData {
   Future<void> _runSteps() async {
     for (final step in _steps) {
       try {
-        await step.run();
+        // A step that never ends would hold back the ones after it and
+        // every later clearing: it is given up on and reported like a
+        // failure.
+        await step.run().timeout(_stepTimeout);
       } on Object catch (error, stackTrace) {
         _telemetry
           ..event(clearFailed, parameters: {stepKey: step.name})

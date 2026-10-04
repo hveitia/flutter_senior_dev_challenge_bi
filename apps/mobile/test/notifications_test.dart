@@ -290,4 +290,27 @@ void main() {
 
     expect(find.text('Aún no tienes notificaciones'), findsOneWidget);
   });
+
+  for (final destination in ['transfer', 'partner:travelInsurance']) {
+    testWidgets('a tapped notification for "$destination" opens the inbox '
+        'when that feature is switched off', (tester) async {
+      await pumpSignedIn(tester);
+      final document = homeDocument(modules: const [], configVersion: 99);
+      final segments = document['segments']! as Map<String, Object?>;
+      (segments['starting']! as Map<String, Object?>)['features'] = {
+        'transfers': false,
+        'partnerServices': false,
+      };
+      app.config.publish(document);
+      await tester.pumpAndSettle();
+
+      app.messaging.openedMessages.add(
+        PushMessage(title: 'Aviso', destination: destination),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aún no tienes notificaciones'), findsOneWidget);
+      expect(find.text('Servicio de Aliado Seguros'), findsNothing);
+    });
+  }
 }

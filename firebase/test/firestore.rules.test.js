@@ -15,10 +15,14 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 const OWNER = 'uid-owner';
@@ -289,41 +293,105 @@ describe('users/{uid}/…: anything under the customer', () => {
   });
 });
 
-describe('users/{uid}/accounts: money data', () => {
-  const account = `users/${OWNER}/accounts/savings`;
-  const movement = `${account}/movements/m-1`;
+describe('users/{uid}/accounts and movements: money data', () => {
+  const accounts = `users/${OWNER}/accounts`;
+  const movements = `users/${OWNER}/movements`;
+  const account = `${accounts}/savings`;
+  const movement = `${movements}/m-1`;
+
+  /** The page of movements the app follows for one account. */
+  function movementsOf(firestore, owner) {
+    return query(
+      collection(firestore, `users/${owner}/movements`),
+      where('accountId', '==', 'savings'),
+      orderBy('postedAt', 'desc'),
+      limit(20),
+    );
+  }
 
   beforeEach(async () => {
-    await seed(account, { name: 'Cuenta de ahorros', balanceCents: 357035 });
-    await seed(movement, { amountCents: -6480 });
+    await seed(account, {
+      name: 'Cuenta de ahorros',
+      kind: 'savings',
+      number: '22004821',
+      availableCents: 357035,
+      ledgerCents: 357035,
+      currency: 'USD',
+      updatedAt: Timestamp.now(),
+    });
+    await seed(movement, {
+      accountId: 'savings',
+      description: 'Supermercado',
+      category: 'groceries',
+      amountCents: -6480,
+      postedAt: Timestamp.now(),
+      reference: 'MOV-202610-0002',
+      channel: 'debit_card',
+      status: 'completed',
+    });
   });
 
-  test('a customer reads their own account and its movements', async () => {
+  test('a customer reads their own account and movement', async () => {
     await assertSucceeds(getDoc(doc(asOwner(), account)));
     await assertSucceeds(getDoc(doc(asOwner(), movement)));
   });
 
-  test('a customer cannot read another customer\'s account', async () => {
-    await assertFails(getDoc(doc(asOtherCustomer(), account)));
-    await assertFails(getDoc(doc(asOtherCustomer(), movement)));
+  test('a customer lists their accounts, as the accounts screen does',
+    async () => {
+      await assertSucceeds(getDocs(collection(asOwner(), accounts)));
+    });
+
+  test('a customer queries the movements of one account, newest first, as '
+    + 'the account screen does', async () => {
+    await assertSucceeds(getDocs(movementsOf(asOwner(), OWNER)));
+  });
+
+  test('a customer cannot read another customer\'s account or movement',
+    async () => {
+      await assertFails(getDoc(doc(asOtherCustomer(), account)));
+      await assertFails(getDoc(doc(asOtherCustomer(), movement)));
+    });
+
+  test('a customer cannot list or query another customer\'s money data',
+    async () => {
+      await assertFails(getDocs(collection(asOtherCustomer(), accounts)));
+      await assertFails(getDocs(movementsOf(asOtherCustomer(), OWNER)));
+    });
+
+  test('a visitor reads no money data', async () => {
+    await assertFails(getDoc(doc(asVisitor(), account)));
+    await assertFails(getDocs(movementsOf(asVisitor(), OWNER)));
   });
 
   test('a customer cannot change their own balance', async () => {
-    await assertFails(updateDoc(doc(asOwner(), account), { balanceCents: 1 }));
+    await assertFails(
+      updateDoc(doc(asOwner(), account), { availableCents: 99999999 }),
+    );
   });
 
-  test('a customer cannot create an account or a movement', async () => {
+  test('a customer cannot create an account', async () => {
     await assertFails(
-      setDoc(doc(asOwner(), `users/${OWNER}/accounts/extra`), {
-        balanceCents: 99999999,
+      setDoc(doc(asOwner(), `${accounts}/extra`), {
+        availableCents: 99999999,
+      }),
+    );
+  });
+
+  test('a customer cannot create or change a movement', async () => {
+    await assertFails(
+      setDoc(doc(asOwner(), `${movements}/m-2`), {
+        accountId: 'savings',
+        amountCents: 500000,
+        postedAt: Timestamp.now(),
       }),
     );
     await assertFails(
-      setDoc(doc(asOwner(), `${account}/movements/m-2`), { amountCents: 500 }),
+      updateDoc(doc(asOwner(), movement), { amountCents: 6480 }),
     );
   });
 
-  test('a customer cannot delete a movement', async () => {
+  test('a customer cannot delete an account or a movement', async () => {
+    await assertFails(deleteDoc(doc(asOwner(), account)));
     await assertFails(deleteDoc(doc(asOwner(), movement)));
   });
 });

@@ -167,12 +167,12 @@ Los dos últimos fallos se reprodujeron en local con el propio adaptador (`@apph
 - **Inicio de sesión desde el navegador.** Con una cuenta que no es de administrador, el formulario inicia sesión en Firebase desde el dominio publicado y la ruta de sesión la rechaza con el mensaje uniforme. No hizo falta añadir el dominio a los dominios autorizados de Authentication.
 - **Aplicación.** Una compilación de publicación apuntando al servidor publicado, instalada en un teléfono: inicio de sesión, inicio con sus módulos, una transferencia y su reverso, y la mini aplicación del seguro de viaje cargada desde el origen publicado.
 
+- **Notificación real.** Un envío al segmento «Estoy empezando» desde la consola desplegada quedó en el historial como enviado y guardado en la bandeja de un cliente, y el teléfono con ese cliente registrado recibió la notificación del sistema.
 - **Administrador.** El autor inició sesión con su cuenta de administrador en el servidor publicado, recorrió las secciones de la consola y publicó un cambio que se reflejó en la aplicación en un teléfono. Eso comprueba la cookie de sesión y la publicación de configuración en el servidor desplegado.
 
 Sin comprobar:
 
 - **El cierre de sesión con revocación en el servidor publicado.** El cierre responde bien; no se comprobó después que la sesión anterior quedara rechazada, como sí se hizo en local.
-- **El envío de una notificación real desde el servidor publicado.** Ningún dispositivo estaba registrado durante la comprobación.
 - El laboratorio de resiliencia publicado desde la consola desplegada.
 
 ### Variables y secretos

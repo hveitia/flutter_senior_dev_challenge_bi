@@ -69,6 +69,14 @@ body {
   font-family: var(--body);
   font-size: 1.0625rem;
   line-height: 1.6;
+  /* The footer stays at the bottom of the window on a short page. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1 0 auto;
 }
 
 img {
@@ -593,6 +601,35 @@ td {
 
 th {
   font-weight: 600;
+}
+
+/* On a narrow screen three columns do not fit: each row becomes a block,
+   so nothing is cut off and nothing scrolls sideways. The header row is
+   kept for screen readers only. */
+@media (max-width: 47.99rem) {
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  tbody tr {
+    display: block;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  tbody td {
+    display: block;
+    padding: 0.15rem 0;
+    border-bottom: 0;
+  }
+
+  tbody td:first-child {
+    font-weight: 600;
+  }
 }
 
 .state {

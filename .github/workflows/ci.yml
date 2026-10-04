@@ -60,3 +60,6 @@ jobs:
 
       - name: Test the rules against the emulator
         run: npm test
+
+      - name: Test the data of the seed tool
+        run: npm run test:seed

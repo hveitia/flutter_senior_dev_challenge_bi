@@ -169,11 +169,11 @@ Los dos últimos fallos se reprodujeron en local con el propio adaptador (`@apph
 
 - **Notificación real.** Un envío al segmento «Estoy empezando» desde la consola desplegada quedó en el historial como enviado y guardado en la bandeja de un cliente, y el teléfono con ese cliente registrado recibió la notificación del sistema.
 - **Administrador.** El autor inició sesión con su cuenta de administrador en el servidor publicado, recorrió las secciones de la consola y publicó un cambio que se reflejó en la aplicación en un teléfono. Eso comprueba la cookie de sesión y la publicación de configuración en el servidor desplegado.
+- **Laboratorio de resiliencia.** El 4 de octubre de 2026 el autor publicó fallos desde la sección «Resiliencia» de la consola desplegada y vio responder a la aplicación (versión 0.1.1) en un teléfono Android.
 
 Sin comprobar:
 
 - **El cierre de sesión con revocación en el servidor publicado.** El cierre responde bien; no se comprobó después que la sesión anterior quedara rechazada, como sí se hizo en local.
-- El laboratorio de resiliencia publicado desde la consola desplegada.
 
 ### Variables y secretos
 

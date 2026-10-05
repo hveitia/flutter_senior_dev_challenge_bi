@@ -160,10 +160,11 @@ Verificado tras dividir la consola en secciones, en un navegador contra el modo 
 
 La compilación de producción no puede comprobarse contra los emuladores: el servidor los rechaza en producción a propósito ([ADR 0015](0015-acceso-de-administradores.md)).
 
+En el servidor desplegado se comprobaron además, en un teléfono, un envío real de notificación a un segmento, que llegó, y el laboratorio de resiliencia: el 4 de octubre de 2026 el autor publicó fallos desde esa sección y vio responder a la aplicación.
+
 Sin verificar:
 
 - Las secciones con un lector de pantalla real; los nombres accesibles, el punto de salto al contenido y los anuncios están cubiertos por pruebas. En el servidor desplegado el autor inició sesión como administrador, recorrió las secciones y publicó un cambio que se reflejó en el teléfono.
-- El laboratorio de resiliencia publicado desde la consola desplegada. Un envío real de notificación a un segmento desde el servidor desplegado sí se comprobó: llegó al teléfono.
 - La entrega parcial y el marcado de dispositivos dados de baja, que solo están cubiertos por pruebas. La entrega real a un cliente y a un segmento sí se vio después en un teléfono ([ADR 0018](0018-notificaciones-y-bandeja.md)), igual que el reflejo de una publicación en el inicio ([ADR 0013](0013-registro-de-modulos-y-motor-del-inicio.md)).
 - El reintento de un envío fallido contra el servicio real, incluida la reclamación en transacción, y el rechazo de fallos simulados fuera de demostración; están cubiertos solo por pruebas.
 - El arrastre con el puntero; en la verificación se usaron los botones.

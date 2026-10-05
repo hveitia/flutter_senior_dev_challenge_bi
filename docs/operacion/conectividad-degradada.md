@@ -139,6 +139,8 @@ sequenceDiagram
 | Los mismos fallos, en una compilación sin la opción | Ninguno. Los movimientos se mostraron y la actualización respondió sin demora | Visto en un teléfono |
 | Al cerrar sesión | Los fallos se retiran: fuera de una sesión no se lee la configuración. La aplicación deja de leer la configuración antes de cerrar la sesión, para que el permiso denegado que sigue no se informe como una falla | Pruebas automáticas |
 
+Las comprobaciones de la tabla se hicieron publicando los fallos con la herramienta de desarrollo `firebase/seed/publish-config.mjs`. Después, el 4 de octubre de 2026, el autor publicó fallos desde la sección «Resiliencia» de la consola desplegada y vio responder a la aplicación en un teléfono Android con la versión 0.1.1; esa ruta no repitió una por una las comprobaciones de la tabla.
+
 Quien sigue la configuración avisa a la política cuando los fallos publicados cambian, y la política lo pasa a las escuchas en curso. Las consultas puntuales no necesitan aviso: leen los fallos en cada intento.
 
 Una observación sin explicar: en el primer arranque tras instalar la compilación de demostración, con un fallo de movimientos publicado mientras la aplicación estaba cerrada, el inicio mostró los movimientos sin el aviso durante al menos 14 segundos. No se reprodujo en dos intentos posteriores con los mismos pasos, en los que el aviso apareció en menos de 5 segundos.
@@ -169,7 +171,6 @@ En un teléfono se vio que un aviso tocado con la aplicación cerrada abre su de
 
 ## Qué no está hecho
 
-- **Publicar los fallos desde la consola, visto en un dispositivo.** La consola tiene el laboratorio de resiliencia y sus pruebas, pero en el teléfono los fallos se publicaron con la herramienta de desarrollo `firebase/seed/publish-config.mjs`. Desde la consola se comprobó en el teléfono un cambio de orden de módulos.
 - **El aviso de conexión como aviso flotante.** El diseño muestra «Conexión restablecida» como un aviso flotante; la aplicación lo muestra como un aviso bajo el encabezado.
 - **La prueba de extremo a extremo de ida y vuelta, ejecutada en un teléfono físico.** Pasó dos veces seguidas en un emulador de Android contra el modo local; en un teléfono se intentó una vez, con el teléfono bloqueado, y no hay un resultado válido allí.
 - **El servidor del aliado detenido, visto en un dispositivo.** Se comprobó la falta de conexión, no el servidor caído con conexión.

@@ -67,7 +67,7 @@ flowchart LR
   gradual --> prod[Producción]
 ```
 
-1. **Versión.** `version` de `apps/mobile/pubspec.yaml` (hoy `0.1.0+1`). El número de compilación lo pone la canalización; la etiqueta `vX.Y.Z` marca el commit publicado.
+1. **Versión.** `version` de `apps/mobile/pubspec.yaml` (hoy `0.1.1+2`). El número de compilación lo pone la canalización; la etiqueta `vX.Y.Z` marca el commit publicado.
 2. **Compilación.** `flutter build appbundle --release --dart-define=API_BASE_URL=https://… --dart-define=PARTNER_BASE_URL=https://…`. Sin `ALLOW_FAULT_INJECTION`, `USE_FIREBASE_EMULATORS` ni `PARTNER_DEV_ORIGIN`.
 3. **Firma.** Con una clave que vive en el almacén de secretos de la canalización, nunca en el repositorio (`key.properties`, `*.jks` y `*.keystore` están en `.gitignore`). `apps/mobile/android/app/build.gradle.kts` firma la compilación de publicación con esa clave cuando existe `apps/mobile/android/key.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`); sin ese archivo usa la clave de depuración, de modo que un clon nuevo y la integración continua siguen compilando. El APK de la publicación `v0.1.0` se firmó así, con una clave RSA de 4096 bits guardada en el equipo del autor. Para una tienda, la clave pasaría al almacén de secretos de la canalización y Play App Signing custodiaría la clave de la aplicación.
 4. **Despliegue gradual.** Pista interna, después porcentajes crecientes. El criterio para avanzar es el porcentaje de usuarios sin fallos y la tasa de `transfer_stopped` y `config_rejected` frente a la versión anterior ([monitoreo.md](monitoreo.md)).

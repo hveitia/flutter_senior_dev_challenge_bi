@@ -5,7 +5,7 @@ Plataforma financiera digital sin atención física. Una aplicación móvil en F
 Este repositorio es la solución a la prueba técnica de Front-End Senior. Los datos son de demostración: no se ejecutan operaciones bancarias reales y los saldos de apertura no tienen valor.
 
 - **Sitio de entrega:** el punto de entrada para quien evalúa, con los pasos para probar la demostración, capturas, flujos y la guía de la consola. Su código está en `apps/showroom/`. Está publicado en <https://flutter-challenge-bi.web.app>.
-- **Instalador de Android (v0.1.0):** el APK de demostración, firmado, está en la [publicación `v0.1.0`](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.0). Se entra con las credenciales de demostración que el autor envía por correo.
+- **Instalador de Android (v0.1.1):** el APK de demostración, firmado, está en la [publicación `v0.1.1`](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.1). Se entra con las credenciales de demostración que el autor envía por correo.
 - **Video de demostración:** un recorrido narrado de la aplicación y la consola, en <https://youtu.be/ZUzv-hzOfw4>.
 - **Qué se pidió y qué hay, requisito por requisito:** [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md)
 - **Decisiones de arquitectura (19):** [docs/adr/](docs/adr/)
@@ -298,7 +298,7 @@ tool/                     setup.sh, verify.sh y local-stack.sh.
 ## Límites conocidos
 
 - **iOS:** la aplicación compila con `flutter build ios`, se instala y funciona en un iPhone físico; el autor la recorrió allí sin encontrar fallos. Las notificaciones push no están configuradas en iOS (requieren una clave APNs) y «Activar en Ajustes» no abre los ajustes del sistema. Las comprobaciones detalladas de [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md) se hicieron en Android y no se repitieron una por una en iOS.
-- **El servidor está desplegado solo como demostración** y la aplicación no está en ninguna tienda: se instala desde el código o desde el APK de la [publicación `v0.1.0`](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.0), firmado con una clave de subida propia que vive fuera del repositorio. No hay distribución por Play Store ni firma de distribución para iOS.
+- **El servidor está desplegado solo como demostración** y la aplicación no está en ninguna tienda: se instala desde el código o desde el APK de la [publicación `v0.1.1`](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.1), firmado con una clave de subida propia que vive fuera del repositorio. No hay distribución por Play Store ni firma de distribución para iOS.
 - **El registro es abierto** y cada cliente nuevo recibe un depósito de demostración. Faltan verificación de correo, App Check y límites de frecuencia.
 - **Los aliados son simulados** y comparten servidor con la consola.
 - **Sin verificar en un dispositivo:** desbloqueo biométrico, texto oculto en la pantalla de bloqueo, sesión revocada, borrado de lo que guarda la vista web y, en modo local, todo lo que no recorre la prueba de extremo a extremo.

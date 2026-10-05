@@ -31,7 +31,7 @@ Reglas de trabajo:
 - La prueba se escribe antes que el código que verifica. La regla no se cumplió siempre: en la primera versión de varias etapas las pruebas se escribieron junto con el código, y se cumplió de forma estricta en las correcciones, donde cada defecto se reprodujo con una prueba que fallaba antes de arreglarlo ([alcance y riesgos](../alcance-y-riesgos.md)).
 - El trabajo incompleto se integra desactivado mediante la configuración remota ([ADR 0005](0005-home-dirigido-por-configuracion.md)), no en una rama.
 - Si `main` se rompe, repararlo o revertir es lo primero.
-- La versión entregada se marca con una etiqueta sobre `main`: `v0.1.0`, de la que sale la publicación con el instalador de Android. Durante el desarrollo no se creó ninguna otra.
+- Cada versión entregada se marca con una etiqueta sobre `main`, de la que sale la publicación con el instalador de Android: `v0.1.0` fue la primera y `v0.1.1` es la vigente. Durante el desarrollo no se creó ninguna otra.
 
 **Cómo se ve el historial y por qué.** Son más de 300 commits en dos días, de un solo autor y sin commits de fusión.
 

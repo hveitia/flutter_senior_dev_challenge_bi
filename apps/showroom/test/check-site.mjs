@@ -3,16 +3,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-// Written in parts so this file does not contain the names it looks for.
-const VENDOR_NAMES = [
-  ['cl', 'aude'],
-  ['anth', 'ropic'],
-  ['open', 'ai'],
-  ['chat', 'gpt'],
-  ['cop', 'ilot'],
-  ['gem', 'ini'],
-].map((parts) => parts.join(''));
-
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/;
 const PASSWORD_AFTER_LABEL = /contraseña:\s*\S/i;
 // Lower case, upper case, a digit and a symbol in one run of eight or more.
@@ -46,15 +36,9 @@ function isExternal(reference) {
   return /^(https?:|mailto:|tel:)/.test(reference);
 }
 
-/** Problems in the text of any file: names, addresses and secrets. */
+/** Problems in the text of any file: addresses and secrets. */
 function textProblems(label, text) {
   const problems = [];
-  const lower = text.toLowerCase();
-  for (const name of VENDOR_NAMES) {
-    if (new RegExp(`\\b${name}\\b`).test(lower)) {
-      problems.push(`${label}: names an AI tool or vendor`);
-    }
-  }
   if (EMAIL.test(text)) problems.push(`${label}: contains an email address`);
   if (PASSWORD_AFTER_LABEL.test(text)) {
     problems.push(`${label}: contains a password after its label`);

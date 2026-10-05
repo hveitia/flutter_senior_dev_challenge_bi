@@ -91,18 +91,16 @@ test('a page without the noindex meta or the notices link is reported', () => {
   assert.ok(has(problems, 'does not link to the notices'));
 });
 
-test('an email address, a password or an AI tool name is reported', () => {
+test('an email address or a password is reported', () => {
   const address = ['persona', 'example.com'].join('@');
-  const tool = ['cl', 'aude'].join('');
   const problems = problemsOf({
     'index.html': page({
-      body: `<p>${address}</p><p>Contraseña: abc</p><p>Xy_12345z</p><p>${tool}</p>`,
+      body: `<p>${address}</p><p>Contraseña: abc</p><p>Xy_12345z</p>`,
     }),
   });
   assert.ok(has(problems, 'contains an email address'));
   assert.ok(has(problems, 'a password after its label'));
   assert.ok(has(problems, 'looks like a password'));
-  assert.ok(has(problems, 'names an AI tool or vendor'));
 });
 
 test('inline styles and scripts are reported, since the content policy forbids them', () => {

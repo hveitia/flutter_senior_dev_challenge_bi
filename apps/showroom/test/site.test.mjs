@@ -137,6 +137,25 @@ test('the recorded demo is a plain link on the home page and in the steps, never
   }
 });
 
+test('the documentation names the onboarding and shows its three steps', () => {
+  const html = readFileSync(path.join(site, 'documentacion.html'), 'utf8');
+  assert.ok(
+    /<h3>Onboarding y autenticación<\/h3>/.test(html),
+    'the captures must have a section named after the requirement',
+  );
+  for (const step of ['datos', 'intereses', 'acceso']) {
+    assert.ok(
+      html.includes(`assets/img/app-onboarding-${step}.webp`),
+      `the onboarding step "${step}" must have its capture`,
+    );
+  }
+  const scope = html.slice(html.indexOf('id="alcance"'));
+  assert.ok(
+    /<td>Onboarding y autenticación/.test(scope),
+    'the scope table must have a row for the onboarding',
+  );
+});
+
 test('the installer address is empty or a secure address, and lives in one file', () => {
   const config = readFileSync(
     path.join(site, 'assets', 'js', 'config.js'),

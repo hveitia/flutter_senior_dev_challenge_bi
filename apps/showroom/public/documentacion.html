@@ -61,9 +61,10 @@
                 <li><div><strong>Mira el teléfono</strong><span>El inicio se reordena en unos segundos, sin cerrar ni actualizar la aplicación. En Perfil, la tarjeta de diagnóstico muestra el mismo número de versión que la consola, que sube en uno con cada publicación.</span></div></li>
               </ol>
 
-              <h3>Dos cosas más que vale la pena probar</h3>
+              <h3>Otras cosas que vale la pena probar</h3>
               <div class="prose measure">
                 <ul>
+                  <li><strong>El onboarding.</strong> Cierra la sesión en Perfil, toca «Abrir mi cuenta» y completa los tres pasos con datos inventados: lo que escribas se guarda en una base de datos de demostración, así que no uses datos personales reales (lee los <a href="avisos.html">avisos</a>). Al terminar verás aparecer la cuenta de ahorros y la corriente que abre el servidor, y el inicio del segmento que elegiste en el segundo paso.</li>
                   <li><strong>Apagar «Transferencias».</strong> En «Funcionalidades», apaga el interruptor y publica. El botón «Transferir» desaparece del inicio, del detalle de cuenta y de Servicios; al encenderlo y publicar, vuelve.</li>
                   <li><strong>El laboratorio de resiliencia.</strong> La sección «Resiliencia» publica fallos simulados que la aplicación de la demostración aplica. Con «Servicio de movimientos no disponible», los movimientos muestran su propio aviso con «Reintentar» mientras el saldo y las cuentas siguen visibles; con la latencia simulada aparece el aviso de conexión lenta. Estos efectos se comprobaron en un teléfono publicando los fallos con la herramienta de desarrollo; publicarlos desde esta sección de la consola desplegada no se comprobó en un teléfono. Deja todo apagado al terminar.</li>
                 </ul>
@@ -73,11 +74,16 @@
 
             <section class="section" id="capturas" aria-labelledby="capturas-t">
               <h2 id="capturas-t">La aplicación en capturas</h2>
-              <p class="measure">Todas son del mismo cliente de demostración, tomadas en un teléfono Android contra el servidor desplegado. Cada imagen se abre a tamaño completo.</p>
+              <p class="measure">Todas están tomadas en un teléfono Android contra el servidor desplegado y son del mismo cliente de demostración, salvo las del alta, que muestran el formulario con datos inventados y sin enviar. Cada imagen se abre a tamaño completo.</p>
 
-              <h3>Acceso</h3>
+              <h3>Onboarding y autenticación</h3>
+              <p class="measure">El onboarding es un alta en tres pasos, sin atención física: datos personales, con validación del número de cédula; intereses y segmento, que deciden el primer inicio; y acceso, con una contraseña que cumple cuatro reglas. Al terminar, el servidor abre una cuenta de ahorros y una corriente. La autenticación es con correo y contraseña, con recuperación de contraseña por correo y desbloqueo opcional con huella o rostro; el alta y el ingreso se vieron en un teléfono, y el correo de recuperación y el desbloqueo biométrico solo están cubiertos por pruebas.</p>
               <ul class="shots">
-                <li><figure class="shot"><a href="assets/img/app-bienvenida.webp"><img src="assets/img/app-bienvenida.webp" width="720" height="1510" loading="lazy" alt="Pantalla de bienvenida con las acciones Abrir mi cuenta y Ya soy cliente."></a><figcaption>Bienvenida.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-bienvenida.webp"><img src="assets/img/app-bienvenida.webp" width="720" height="1510" loading="lazy" alt="Pantalla de bienvenida con las acciones Abrir mi cuenta y Ya soy cliente."></a><figcaption>Bienvenida: abrir una cuenta o entrar.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-onboarding-datos.webp"><img src="assets/img/app-onboarding-datos.webp" width="720" height="1510" loading="lazy" alt="Paso 1 de 3 del alta, Tus datos, con cédula, nombres y apellidos, correo electrónico y celular rellenados con datos inventados."></a><figcaption>Onboarding, paso 1: datos personales.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-onboarding-cedula.webp"><img src="assets/img/app-onboarding-cedula.webp" width="720" height="1510" loading="lazy" alt="Paso 1 del alta con el campo de cédula marcado en rojo y el mensaje Ingresa una cédula válida de 10 dígitos."></a><figcaption>La cédula se valida con su dígito verificador antes de continuar.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-onboarding-intereses.webp"><img src="assets/img/app-onboarding-intereses.webp" width="720" height="1510" loading="lazy" alt="Paso 2 de 3 del alta, Cuéntanos qué te interesa, con dos intereses marcados y el segmento Estoy empezando elegido entre tres."></a><figcaption>Onboarding, paso 2: intereses y segmento, que personalizan el inicio.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-onboarding-acceso.webp"><img src="assets/img/app-onboarding-acceso.webp" width="720" height="1510" loading="lazy" alt="Paso 3 de 3 del alta, Protege tu acceso, con la contraseña oculta, sus cuatro reglas cumplidas, el interruptor de huella o rostro y la aceptación de términos sin marcar."></a><figcaption>Onboarding, paso 3: contraseña, huella o rostro y términos.</figcaption></figure></li>
                 <li><figure class="shot"><a href="assets/img/app-ingreso.webp"><img src="assets/img/app-ingreso.webp" width="720" height="1510" loading="lazy" alt="Formulario de ingreso con correo, contraseña y enlace para recuperarla."></a><figcaption>Ingreso con correo y contraseña.</figcaption></figure></li>
                 <li><figure class="shot"><a href="assets/img/app-personalizacion.webp"><img src="assets/img/app-personalizacion.webp" width="720" height="1510" loading="lazy" alt="Pantalla de personalización con los intereses y los tres segmentos."></a><figcaption>Intereses y segmento, que el cliente puede cambiar.</figcaption></figure></li>
               </ul>
@@ -125,7 +131,7 @@
 
               <div class="flows">
                 <div>
-                  <h3>Alta con apertura de cuentas</h3>
+                  <h3>Onboarding: alta con apertura de cuentas</h3>
                   <ol class="flow">
                     <li><b>Cliente</b>Completa tres pasos: datos, intereses y acceso.</li>
                     <li><b>Aplicación</b>Crea el usuario y su perfil.</li>
@@ -269,12 +275,16 @@
                     <tr><th scope="col">Qué</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>Registro, ingreso, cuentas, movimientos y transferencias</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Contra el servidor desplegado: ingreso, inicio, una transferencia y su reverso. El resto, con el servidor en local y el proyecto real de Firebase.</td></tr>
-                    <tr><td>Inicio según la configuración y el segmento</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Incluido el cambio publicado desde la consola desplegada.</td></tr>
-                    <tr><td>Sin conexión, conexión lenta y caída parcial</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Datos guardados, cola de transferencias y recuperación.</td></tr>
-                    <tr><td>Notificaciones y bandeja</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Un envío a un segmento desde la consola desplegada llegó al teléfono.</td></tr>
-                    <tr><td>Servicios de aliados</td><td><span class="state state--part">Simulado</span></td><td>Los dos aliados son de demostración y comparten servidor con la consola.</td></tr>
-                    <tr><td>Prueba de extremo a extremo</td><td><span class="state state--yes">Hecho</span></td><td>Pasó dos veces seguidas en un emulador de Android contra los servicios locales. No corre en la integración continua, y su versión actual no se ejecutó en un teléfono físico.</td></tr>
+                    <tr><td>Onboarding y autenticación de clientes; gestión de cuentas, saldos y movimientos; transferencias</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Contra el servidor desplegado: ingreso, inicio, una transferencia y su reverso. El resto, con el servidor en local y el proyecto real de Firebase.</td></tr>
+                    <tr><td>Personalización dinámica: inicio según la configuración y el segmento</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Incluido el cambio publicado desde la consola desplegada.</td></tr>
+                    <tr><td>Conectividad limitada, alta latencia e indisponibilidad parcial</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Estados de carga, reintento del módulo que falla, datos guardados como caché, cola de transferencias y recuperación. Descrito en <a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/operacion/conectividad-degradada.md">conectividad degradada</a>.</td></tr>
+                    <tr><td>Notificaciones push y bandeja</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Un envío a un segmento desde la consola desplegada llegó al teléfono.</td></tr>
+                    <tr><td>Integración con un servicio externo: mini aplicaciones de aliados</td><td><span class="state state--part">Simulado</span></td><td>Los dos aliados son de demostración y comparten servidor con la consola.</td></tr>
+                    <tr><td>Pruebas unitarias, de widgets y un flujo E2E</td><td><span class="state state--yes">Hecho</span></td><td>1922 pruebas de Dart, unitarias y de widgets, en la integración continua. El flujo E2E de la transferencia pasó dos veces seguidas en un emulador de Android contra los servicios locales. El E2E no corre en la integración continua, y su versión actual no se ejecutó en un teléfono físico.</td></tr>
+                    <tr><td>Monitoreo en producción y detección de problemas</td><td><span class="state state--part">Explicado</span></td><td>La aplicación emite eventos, trazas y errores sin datos personales, y <a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/operacion/monitoreo.md">monitoreo</a> explica qué se vigilaría y con qué alertas. No se comprobó la llegada de los datos al panel ni hay alertas configuradas.</td></tr>
+                    <tr><td>Uso de herramientas de IA</td><td><span class="state state--yes">Documentado</span></td><td>Método de trabajo, decisiones del autor e impacto en productividad, calidad, documentación y pruebas, en el <a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/ia/registro-uso-ia.md">registro de uso de IA</a>.</td></tr>
+                    <tr><td>Decisiones de arquitectura, despliegue y operación</td><td><span class="state state--yes">Documentado</span></td><td>Cada decisión con su problema, alternativas, opción elegida, costos e impacto a largo plazo; diagramas de componentes y flujos; y la estrategia de <a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/operacion/despliegue.md">despliegue y operación</a>.</td></tr>
+                    <tr><td>Trunk Based Development</td><td><span class="state state--yes">Hecho</span></td><td>Una sola rama, commits pequeños sin fusiones, verificación automática antes de cada commit y en la integración continua, y una etiqueta por versión entregada (<a href="https://github.com/hveitia/flutter_senior_dev_challenge_bi/blob/main/docs/adr/0006-trunk-based-development.md">decisión 0006</a>).</td></tr>
                     <tr><td>iOS</td><td><span class="state state--part">Parcial</span></td><td>La aplicación compila, se instala y funciona en un iPhone físico; la recorrí allí sin encontrar fallos. Las notificaciones push no están configuradas en iOS y las comprobaciones detalladas se hicieron en Android.</td></tr>
                     <tr><td>Asistente o recomendaciones por comportamiento</td><td><span class="state state--no">No construido</span></td><td>La personalización es por segmento, intereses y configuración.</td></tr>
                     <tr><td>Controles de producción</td><td><span class="state state--no">No construido</span></td><td>Sin verificación de correo, límites de frecuencia ni comprobación de la aplicación. El registro es abierto y crea dinero de demostración.</td></tr>

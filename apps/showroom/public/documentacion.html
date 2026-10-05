@@ -65,7 +65,7 @@
               <div class="prose measure">
                 <ul>
                   <li><strong>Apagar «Transferencias».</strong> En «Funcionalidades», apaga el interruptor y publica. El botón «Transferir» desaparece del inicio, del detalle de cuenta y de Servicios; al encenderlo y publicar, vuelve.</li>
-                  <li><strong>El laboratorio de resiliencia.</strong> En «Resiliencia», marca «Servicio de movimientos no disponible» y publica: los movimientos muestran su propio aviso con «Reintentar» mientras el saldo y las cuentas siguen visibles. Sube la latencia simulada y aparece el aviso de conexión lenta. Deja todo apagado al terminar.</li>
+                  <li><strong>El laboratorio de resiliencia.</strong> La sección «Resiliencia» publica fallos simulados que la aplicación de la demostración aplica. Con «Servicio de movimientos no disponible», los movimientos muestran su propio aviso con «Reintentar» mientras el saldo y las cuentas siguen visibles; con la latencia simulada aparece el aviso de conexión lenta. Estos efectos se comprobaron en un teléfono publicando los fallos con la herramienta de desarrollo; publicarlos desde esta sección de la consola desplegada no se comprobó en un teléfono. Deja todo apagado al terminar.</li>
                 </ul>
               </div>
               <p class="callout measure"><strong>Sin conexión.</strong> Pon el teléfono en modo avión: el inicio muestra los datos guardados con su antigüedad, y una transferencia queda «En cola» hasta que vuelva la red.</p>
@@ -115,7 +115,7 @@
                 <li><figure class="shot"><a href="assets/img/app-servicios.webp"><img src="assets/img/app-servicios.webp" width="720" height="1510" loading="lazy" alt="Pestaña Servicios con Transferencias del banco y dos servicios de aliados."></a><figcaption>Servicios del banco y de aliados.</figcaption></figure></li>
                 <li><figure class="shot"><a href="assets/img/app-mini-app-3.webp"><img src="assets/img/app-mini-app-3.webp" width="720" height="1510" loading="lazy" alt="Mini aplicación de seguro de viaje de un aliado dentro del contenedor de la aplicación, con destino, fechas y número de personas ya elegidos."></a><figcaption>Mini aplicación de un aliado, con el formulario completado. La página sigue al desplazarse.</figcaption></figure></li>
                 <li><figure class="shot"><a href="assets/img/app-notificaciones-2.webp"><img src="assets/img/app-notificaciones-2.webp" width="720" height="1510" loading="lazy" alt="Bandeja de notificaciones con avisos de transferencia realizada y el aviso Novedades en Banca Digital enviado desde la consola, marcados como nuevos."></a><figcaption>Bandeja de notificaciones: avisos de transferencia y «Novedades en Banca Digital», enviado desde la consola.</figcaption></figure></li>
-                <li><figure class="shot"><a href="assets/img/app-diagnostico.webp"><img src="assets/img/app-diagnostico.webp" width="720" height="1147" loading="lazy" alt="Tarjeta de diagnóstico en Perfil: conexión, última sincronización, versión de configuración, versión de la app y entorno."></a><figcaption>Diagnóstico en Perfil: la versión 51, la misma que muestra la consola antes de publicar.</figcaption></figure></li>
+                <li><figure class="shot"><a href="assets/img/app-diagnostico-2.webp"><img src="assets/img/app-diagnostico-2.webp" width="720" height="1147" loading="lazy" alt="Tarjeta de diagnóstico en Perfil: conexión, última sincronización, versión de configuración, versión de la app y entorno."></a><figcaption>Diagnóstico en Perfil: la versión de la configuración publicada, que coincide con la de la consola, y la versión de la aplicación.</figcaption></figure></li>
               </ul>
             </section>
 
@@ -270,7 +270,7 @@
                     <tr><th scope="col">Qué</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>Registro, ingreso, cuentas, movimientos y transferencias</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android, contra el servidor desplegado.</td></tr>
+                    <tr><td>Registro, ingreso, cuentas, movimientos y transferencias</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Contra el servidor desplegado: ingreso, inicio, una transferencia y su reverso. El resto, con el servidor en local y el proyecto real de Firebase.</td></tr>
                     <tr><td>Inicio según la configuración y el segmento</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Incluido el cambio publicado desde la consola desplegada.</td></tr>
                     <tr><td>Sin conexión, conexión lenta y caída parcial</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Datos guardados, cola de transferencias y recuperación.</td></tr>
                     <tr><td>Notificaciones y bandeja</td><td><span class="state state--yes">Visto en un teléfono</span></td><td>Android. Un envío a un segmento desde la consola desplegada llegó al teléfono.</td></tr>

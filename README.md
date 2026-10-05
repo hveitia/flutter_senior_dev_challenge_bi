@@ -9,7 +9,6 @@ Este repositorio es la solución a la prueba técnica de Front-End Senior. Los d
 - **Video de demostración:** un recorrido narrado de la aplicación y la consola, en <https://youtu.be/ZUzv-hzOfw4>.
 - **Qué se pidió y qué hay, requisito por requisito:** [docs/alcance-y-riesgos.md](docs/alcance-y-riesgos.md)
 - **Decisiones de arquitectura (19):** [docs/adr/](docs/adr/)
-- **Guion de la demostración:** [docs/demo/guion.md](docs/demo/guion.md)
 - **Uso de IA durante el desarrollo:** [docs/ia/registro-uso-ia.md](docs/ia/registro-uso-ia.md)
 
 ## Arquitectura en una pantalla
@@ -280,7 +279,7 @@ packages/
 contracts/                Esquema y ejemplo de la configuración. Fuente única para aplicación y consola.
 firebase/                 Reglas e índices de Firestore con sus pruebas.
   seed/                   Herramientas de carga: modo local (local.mjs) y proyecto real.
-docs/                     Alcance y riesgos, decisiones, diagramas, operación, guion y registro de IA.
+docs/                     Alcance y riesgos, decisiones, diagramas, operación y registro de IA.
 tool/                     setup.sh, verify.sh y local-stack.sh.
 .githooks/                Hooks de Git versionados.
 .github/workflows/        Integración continua (workspace y consola).
@@ -313,5 +312,4 @@ La lista razonada, con supuestos, riesgos y la estrategia de escalamiento, está
 - [Alcance, supuestos, riesgos y escalamiento](docs/alcance-y-riesgos.md)
 - [Decisiones de arquitectura](docs/adr/) · [Diagramas](docs/arquitectura/)
 - [Despliegue y operación](docs/operacion/despliegue.md) · [Monitoreo](docs/operacion/monitoreo.md) · [Conectividad degradada](docs/operacion/conectividad-degradada.md)
-- [Guion de la demostración](docs/demo/guion.md)
 - [Registro de uso de IA](docs/ia/registro-uso-ia.md)

@@ -6,7 +6,6 @@
 
 - [Alcance, supuestos, riesgos y escalamiento](alcance-y-riesgos.md): cada requisito del reto con dónde está, cómo se comprobó y su estado; decisiones conscientes de alcance; supuestos; riesgos técnicos y estrategia de escalamiento.
 - [Video de demostración](https://youtu.be/ZUzv-hzOfw4): recorrido narrado de la aplicación y la consola.
-- [Guion de la demostración](demo/guion.md): recorrido con tiempos, comandos y alternativas si algo falla, y los ejercicios probables en vivo con el archivo y la prueba que toca cada uno.
 
 ## Decisiones de arquitectura
 

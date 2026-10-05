@@ -33,7 +33,7 @@ Reglas de trabajo:
 - Si `main` se rompe, repararlo o revertir es lo primero.
 - La versión entregada se marca con una etiqueta sobre `main`: `v0.1.0`, de la que sale la publicación con el instalador de Android. Durante el desarrollo no se creó ninguna otra.
 
-**Cómo se ve el historial y por qué.** Son más de 280 commits en dos días, de un solo autor y sin commits de fusión.
+**Cómo se ve el historial y por qué.** Son más de 300 commits en dos días, de un solo autor y sin commits de fusión.
 
 - **Cadencia.** Cada commit se verificó en local con el hook. Los commits se subieron por lotes, uno por etapa o por corrección, después de una revisión independiente; la integración continua corrió en cada subida, no en cada commit.
 - **Ejecuciones canceladas.** Cuando una subida llegó mientras la anterior seguía en verificación, la integración continua canceló la anterior. Esas ejecuciones aparecen como canceladas, no como fallidas, y la siguiente incluye sus commits.

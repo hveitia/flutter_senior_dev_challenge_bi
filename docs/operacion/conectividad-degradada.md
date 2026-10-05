@@ -171,7 +171,7 @@ En un teléfono se vio que un aviso tocado con la aplicación cerrada abre su de
 
 - **Publicar los fallos desde la consola, visto en un dispositivo.** La consola tiene el laboratorio de resiliencia y sus pruebas, pero en el teléfono los fallos se publicaron con la herramienta de desarrollo `firebase/seed/publish-config.mjs`. Desde la consola se comprobó en el teléfono un cambio de orden de módulos.
 - **El aviso de conexión como aviso flotante.** El diseño muestra «Conexión restablecida» como un aviso flotante; la aplicación lo muestra como un aviso bajo el encabezado.
-- **La prueba de extremo a extremo de ida y vuelta, ejecutada en un dispositivo.** Se intentó una vez y el teléfono se bloqueó durante la ejecución; sigue sin un resultado válido.
+- **La prueba de extremo a extremo de ida y vuelta, ejecutada en un teléfono físico.** Pasó dos veces seguidas en un emulador de Android contra el modo local; en un teléfono se intentó una vez, con el teléfono bloqueado, y no hay un resultado válido allí.
 - **El servidor del aliado detenido, visto en un dispositivo.** Se comprobó la falta de conexión, no el servidor caído con conexión.
 - **El contador «Intento 2 de 3» del diseño.** La pantalla indica que está reintentando y, al terminar, cuántos intentos hubo.
 - **Detección de falta de salida real a internet.** El estado de conectividad dice si el dispositivo tiene una interfaz de red activa, no si esa red llega a internet (un portal cautivo, por ejemplo). En ese caso las peticiones agotan su tiempo y se muestran como una falla, no como «sin conexión».

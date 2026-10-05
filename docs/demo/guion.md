@@ -6,7 +6,7 @@ Hay además un [video de demostración](https://youtu.be/ZUzv-hzOfw4) grabado: u
 
 ## Preparación (antes de la sesión)
 
-Hay dos formas de prepararla. La primera es la que se comprobó de punta a punta en un teléfono.
+Hay dos formas de prepararla. La primera es la que se comprobó de punta a punta en un teléfono. Quien evalúa parte del [sitio de entrega](https://flutter-challenge-bi.web.app), que reúne el video, la consola desplegada y el instalador de Android de la [versión v0.1.0](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.0).
 
 ### Con la demostración desplegada
 

@@ -58,7 +58,7 @@ Diagramas: [componentes y dependencias](docs/arquitectura/componentes.md), [fluj
 | Notificaciones push | Cumplido en Android | En iOS no están configuradas: falta la clave APNs |
 | Monitoreo en producción | Explicado | Eventos y trazas emitidos; su llegada a la consola de Firebase no se comprobó |
 | Conectividad degradada, descrita y demostrada | Cumplido | Vista en un teléfono, con lo no visto señalado |
-| Pruebas unitarias, de widgets y E2E | Cumplido, E2E parcial | La versión repetible del E2E no tiene una ejecución válida |
+| Pruebas unitarias, de widgets y E2E | Cumplido | El E2E pasó dos veces seguidas en un emulador de Android contra el modo local; no corre en la CI |
 | Documentación del uso de IA | Cumplido | |
 | Trunk Based Development | Cumplido | |
 
@@ -85,7 +85,7 @@ tool/setup.sh
 
 ## Ejecutar todo en local
 
-Es la forma recomendada de evaluar el proyecto: no necesita acceso al proyecto de Firebase ni credenciales de ningún tipo. Todo corre en tu equipo, sobre los emuladores de Auth y Firestore.
+Es la forma recomendada de evaluar el proyecto desde el código: no necesita acceso al proyecto de Firebase ni credenciales de ningún tipo. Todo corre en tu equipo, sobre los emuladores de Auth y Firestore. La aplicación se comprobó en este modo en un emulador de Android con la prueba de extremo a extremo (inicio de sesión, transferencias y movimientos); el resto de las pantallas no se recorrió a mano en modo local.
 
 ```bash
 tool/local-stack.sh up      # emuladores y servidor (consola, API y aliados) en el puerto 3210
@@ -197,7 +197,7 @@ flutter run -t lib/main_gallery.dart    # el sistema de diseño completo, sin ni
 
 Para instalar una compilación de demostración sin depender del modo de depuración: `flutter build apk --profile` con las mismas opciones y `adb install -r build/app/outputs/flutter-apk/app-profile.apk`.
 
-En iOS hace falta macOS con Xcode y CocoaPods, un iPhone con iOS 15 o superior y un equipo de desarrollo de Apple elegido en Xcode (`apps/mobile/ios/Runner.xcworkspace`, pestaña *Signing & Capabilities*); el identificador del equipo es de cada persona y no está versionado. Con el iPhone conectado, `flutter run` con las mismas opciones, o `flutter build ios --release` y `xcrun devicectl device install app --device <id> build/ios/iphoneos/Runner.app`.
+En iOS hace falta macOS con Xcode y CocoaPods, un iPhone con iOS 15 o superior y un equipo de desarrollo de Apple elegido en Xcode (`apps/mobile/ios/Runner.xcworkspace`, pestaña *Signing & Capabilities*); el repositorio no lleva ningún equipo de firma, así que quien compile para un dispositivo elige el suyo en Xcode y no debe incluir ese cambio en un commit. Con el iPhone conectado, `flutter run` con las mismas opciones, o `flutter build ios --release` y `xcrun devicectl device install app --device <id> build/ios/iphoneos/Runner.app`.
 
 ## Pruebas
 
@@ -212,7 +212,7 @@ Comprueba el formato, el análisis estático, que no quede ninguna prueba enfoca
 | `packages/design_system` | 412 | Tokens contra `tokens.json`, contraste WCAG de cada combinación permitida, formato e ingreso de importes, estados y semántica de cada componente, texto al 130 % | `flutter test` en la carpeta |
 | `packages/app_platform` | 208 | Lectura tolerante de la configuración, esquema, orígenes de respaldo, política de resiliencia con reloj simulado, conectividad, telemetría sin datos del cliente | ídem |
 | `packages/feature_auth` | 286 | Cédula y demás validadores, sesión y sus carreras, registro, inicio de sesión, cuenta a medio crear, pantallas | ídem |
-| `packages/feature_accounts` | 446 | Cuentas y movimientos (origen, antigüedad, paginación), tendencia del saldo, transferencias (idempotencia, cola, resultados), pantallas en cada estado | ídem |
+| `packages/feature_accounts` | 447 | Cuentas y movimientos (origen, antigüedad, paginación), tendencia del saldo, transferencias (idempotencia, cola, resultados), pantallas en cada estado | ídem |
 | `packages/module_kit` | 19 | Registro de módulos, lectura de propiedades, aviso de estado, frontera del contrato | ídem |
 | `packages/feature_home` | 63 | Composición por segmento, tipos desconocidos, falla parcial frente a falla total, actualización | ídem |
 | `packages/feature_notifications` | 129 | Invitación al permiso, registro y olvido del dispositivo, teléfono compartido, bandeja, aviso tocado sin sesión | ídem |
@@ -223,7 +223,7 @@ Comprueba el formato, el análisis estático, que no quede ninguna prueba enfoca
 | Reglas de Firestore | 110 | Qué puede leer y escribir cada quien, caso permitido y casos denegados, contra el emulador | `npm ci` y `npm test` en `firebase` (Node, y Java 21 o superior el primero del `PATH`) |
 | Herramientas de carga | 31 | Saldos que cuadran con sus movimientos, documento publicado, identidades locales | `npm run test:seed` en `firebase` |
 
-En total, 1921 pruebas de Dart. No hay pruebas de imagen: las fuentes se dibujan distinto en macOS y en el Linux de la CI ([ADR 0007](docs/adr/0007-sistema-de-diseno.md)).
+En total, 1922 pruebas de Dart. No hay pruebas de imagen: las fuentes se dibujan distinto en macOS y en el Linux de la CI ([ADR 0007](docs/adr/0007-sistema-de-diseno.md)).
 
 ### Prueba de extremo a extremo
 
@@ -242,7 +242,9 @@ flutter test integration_test/transfer_flow_test.dart -d <dispositivo> \
   --dart-define=E2E_EMAIL=<correo> --dart-define=E2E_PASSWORD=<contraseña>
 ```
 
-Estado, sin adornos: la primera versión, de un solo sentido, pasó en un teléfono contra el proyecto real. La versión actual de ida y vuelta **no tiene todavía una ejecución válida** (el único intento coincidió con el teléfono bloqueado), y no se ha ejecutado contra el modo local.
+Estado, sin adornos: la versión actual, de ida y vuelta, pasó el 4 de octubre de 2026 dos veces seguidas, sin reiniciar los datos entre una y otra, en un emulador de Android 15 contra el modo local (emuladores de Auth y Firestore y el servidor en el equipo); cada ejecución tarda unos 35 segundos. No se ha ejecutado en un teléfono físico ni contra el servidor desplegado: la primera versión, de un solo sentido, sí pasó en un teléfono contra el proyecto real. No corre en la CI porque necesita un dispositivo o emulador y los servicios locales en marcha.
+
+La primera ejecución válida encontró un defecto real, ya corregido y con su prueba de widgets: tras «Ver movimiento», el gesto de retroceso de Android cerraba la aplicación en lugar de volver a la lista de cuentas.
 
 ## Cómo colaborar
 
@@ -299,7 +301,7 @@ tool/                     setup.sh, verify.sh y local-stack.sh.
 - **El servidor está desplegado solo como demostración** y la aplicación no está en ninguna tienda: se instala desde el código o desde el APK de la [publicación `v0.1.0`](https://github.com/hveitia/flutter_senior_dev_challenge_bi/releases/tag/v0.1.0), firmado con una clave de subida propia que vive fuera del repositorio. No hay distribución por Play Store ni firma de distribución para iOS.
 - **El registro es abierto** y cada cliente nuevo recibe un depósito de demostración. Faltan verificación de correo, App Check y límites de frecuencia.
 - **Los aliados son simulados** y comparten servidor con la consola.
-- **Sin verificar en un dispositivo:** desbloqueo biométrico, texto oculto en la pantalla de bloqueo, sesión revocada, borrado de lo que guarda la vista web y el modo local completo.
+- **Sin verificar en un dispositivo:** desbloqueo biométrico, texto oculto en la pantalla de bloqueo, sesión revocada, borrado de lo que guarda la vista web y, en modo local, todo lo que no recorre la prueba de extremo a extremo.
 - **La llegada de la telemetría a la consola de Firebase no se comprobó** y no hay alertas configuradas.
 - **Sin tema oscuro ni traducciones.**
 

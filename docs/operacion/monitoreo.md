@@ -12,7 +12,7 @@ Cada apartado separa lo **implementado** de lo **planificado**. La aplicación y
 
 - **Errores del framework**, enviados a Crashlytics como graves.
 - **Errores asíncronos no capturados**, como no graves salvo memoria agotada o desbordamiento de pila.
-- **Errores de los Blocs**, con el tipo del Bloc, el tipo del error y la traza de la pila, sin su mensaje. Cubre los Blocs del acceso: sesión, inicio de sesión y registro.
+- **Errores de los Blocs**, con el tipo del Bloc, el tipo del error y la traza de la pila, sin su mensaje. El observador se registra una vez al arrancar y es global: recibe el error de cualquier Bloc o Cubit de la aplicación que lo notifique, no solo de los del acceso.
 - **Rastro previo a un fallo:** los registros desde el nivel `info`.
 - La recogida de fallos solo está activa en compilaciones de publicación.
 - **Eventos del acceso** ([ADR 0011](../adr/0011-autenticacion-y-perfil.md)), sin ningún dato personal:

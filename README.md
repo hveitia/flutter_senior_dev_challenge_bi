@@ -81,11 +81,11 @@ tool/setup.sh
 (cd apps/backoffice && npm ci)   # dependencias del servidor; las necesita tool/verify.sh
 ```
 
-`tool/setup.sh` activa los hooks de Git de `.githooks/` y resuelve las dependencias del workspace de Dart. Las del servidor se instalan aparte, con `npm ci`.
+`tool/setup.sh` activa los hooks de Git de `.githooks/` y resuelve las dependencias del workspace de Dart. Las del servidor se instalan aparte, con `npm ci`. Ese comando avisa de vulnerabilidades en `apps/backoffice` y en `firebase`: todas están en dependencias de desarrollo, y `npm audit --omit=dev` no encuentra ninguna en los dos directorios.
 
 ## Ejecutar todo en local
 
-Es la forma recomendada de evaluar el proyecto desde el código: no necesita acceso al proyecto de Firebase ni credenciales de ningún tipo. Todo corre en tu equipo, sobre los emuladores de Auth y Firestore. La aplicación se comprobó en este modo en un emulador de Android con la prueba de extremo a extremo (inicio de sesión, transferencias y movimientos); el resto de las pantallas no se recorrió a mano en modo local.
+Es la forma recomendada de evaluar el proyecto desde el código: no necesita acceso al proyecto de Firebase ni credenciales de ningún tipo. Todo corre en tu equipo, sobre los emuladores de Auth y Firestore. La aplicación se comprobó en este modo en un emulador de Android con la prueba de extremo a extremo (inicio de sesión, transferencias y movimientos); el resto de las pantallas no se recorrió a mano en modo local, y en un teléfono físico no se ejecutó en este modo.
 
 ```bash
 tool/local-stack.sh up      # emuladores y servidor (consola, API y aliados) en el puerto 3210
@@ -131,7 +131,7 @@ Qué significa cada opción de compilación:
 | `PARTNER_BASE_URL`, `PARTNER_DEV_ORIGIN=true` | Origen de las mini aplicaciones de aliados; `http` solo en desarrollo y hacia el propio equipo | Sin origen, la aplicación no ofrece ninguna |
 | `API_BASE_URL` | Dirección de la API de clientes; por defecto `http://localhost:3210/` en depuración y perfil | Una compilación de publicación exige `https` |
 
-**Qué se comprobó de este modo y qué no.** Partiendo de un directorio de usuario vacío (sin gcloud, sin sesión de Firebase y sin credenciales por defecto) se comprobó: emuladores y servidor en marcha, la carga de datos dos veces seguidas, inicio de sesión en el emulador de Auth, una transferencia, su repetición y un sobregiro por la API, el aviso de la transferencia en la bandeja, la sesión de la consola y la consola cargada, un envío de notificación validado y las páginas de los aliados; y `flutter build apk --debug` con las opciones. **No se ejecutó la aplicación en un dispositivo en este modo**: en un teléfono solo se probó contra el proyecto real. En particular, queda sin ver que Firestore vuelva a apuntar al emulador después de cerrar sesión, y publicar desde la consola local se comprobó solo hasta cargarla con sesión.
+**Qué se comprobó de este modo y qué no.** Partiendo de un directorio de usuario vacío (sin gcloud, sin sesión de Firebase y sin credenciales por defecto) se comprobó: emuladores y servidor en marcha, la carga de datos dos veces seguidas, inicio de sesión en el emulador de Auth, una transferencia, su repetición y un sobregiro por la API, el aviso de la transferencia en la bandeja, la sesión de la consola y la consola cargada, un envío de notificación validado y las páginas de los aliados; y `flutter build apk --debug` con las opciones. **La aplicación se ejecutó en este modo en un emulador de Android, con la prueba de extremo a extremo; no se recorrió a mano allí ni se ejecutó en un teléfono físico**: en un teléfono solo se probó contra el proyecto real. En particular, queda sin ver que Firestore vuelva a apuntar al emulador después de cerrar sesión, y publicar desde la consola local se comprobó solo hasta cargarla con sesión.
 
 Diferencias con el proyecto real: las notificaciones no salen del equipo (quedan «Validado») y el servidor corre en modo de desarrollo.
 
@@ -205,7 +205,7 @@ En iOS hace falta macOS con Xcode y CocoaPods, un iPhone con iOS 15 o superior y
 tool/verify.sh
 ```
 
-Comprueba el formato, el análisis estático, que no quede ninguna prueba enfocada o saltada sin motivo, las pruebas de los nueve paquetes de Dart y la consola (lint, compilación, tipos y pruebas). Necesita `npm ci` en `apps/backoffice`; si falta, falla en lugar de omitir la consola. La integración continua ejecuta lo mismo en cada push, en dos flujos (`.github/workflows/ci.yml` y `backoffice.yml`).
+Comprueba el formato, el análisis estático, que no quede ninguna prueba enfocada o saltada sin motivo, las pruebas de los nueve paquetes de Dart y la consola (lint, compilación, tipos y pruebas). Necesita `npm ci` en `apps/backoffice`; si falta, falla en lugar de omitir la consola. La integración continua ejecuta lo mismo en dos flujos: `.github/workflows/ci.yml` corre en cada push (formato, análisis, pruebas de Dart, el sitio de entrega, las reglas de Firestore y las herramientas de carga) y `backoffice.yml` corre cuando el push toca la consola, los contratos o los tokens de diseño.
 
 | Suite | Pruebas | Qué cubre | Cómo se ejecuta sola |
 | --- | --- | --- | --- |
@@ -219,7 +219,7 @@ Comprueba el formato, el análisis estático, que no quede ninguna prueba enfoca
 | `packages/feature_services` | 189 | Regla de origen, contrato de mensajes, contenedor (cargas reemplazadas, tiempo límite, caídas), borrado de datos, «Para ti» | ídem |
 | `apps/mobile` | 169 | Navegación por sesión, composición real con dependencias simuladas, orden del cierre de sesión, destinos, entorno y direcciones permitidas | ídem |
 | Servidor y consola | 615 | Edición y publicación con control de versión, sesión de administradores, API de clientes y liquidación, notificaciones, aliados | `npm run verify` en `apps/backoffice` |
-| Sitio de entrega | 9 | Enlaces, anclas e imágenes que resuelven, texto alternativo, avisos y `noindex` en cada página, y que no haya direcciones de correo ni contraseñas | `node --test apps/showroom/test/site.test.mjs` |
+| Sitio de entrega | 10 | Enlaces, anclas e imágenes que resuelven, texto alternativo, avisos y `noindex` en cada página, y que no haya direcciones de correo ni contraseñas | `node --test apps/showroom/test/site.test.mjs` |
 | Reglas de Firestore | 110 | Qué puede leer y escribir cada quien, caso permitido y casos denegados, contra el emulador | `npm ci` y `npm test` en `firebase` (Node, y Java 21 o superior el primero del `PATH`) |
 | Herramientas de carga | 31 | Saldos que cuadran con sus movimientos, documento publicado, identidades locales | `npm run test:seed` en `firebase` |
 
@@ -257,7 +257,7 @@ El repositorio sigue Trunk Based Development ([ADR 0006](docs/adr/0006-trunk-bas
 - El hook `pre-commit` ejecuta `tool/verify.sh --affected`: formato y análisis de todo, y las pruebas de lo que el commit toca y de lo que depende de ello. Imprime qué eligió y por qué.
   - Un cambio en la configuración común (`pubspec` de la raíz, `analysis_options.yaml`, `tool/`, `.githooks/`) lo ejecuta todo; uno en `contracts/`, la plataforma y la consola; uno en `apps/backoffice/`, la consola; uno en `firebase/`, las reglas y las herramientas; uno solo de documentación, nada.
   - Rechaza el commit si hay cambios sin preparar o archivos sin seguimiento en `apps/`, `packages/`, `contracts/`, `firebase/` o `tool/`: lo que se verifica tiene que ser lo que se confirma. Lo que no entra se guarda antes con `git stash`.
-- La puerta completa es la integración continua, que lo ejecuta todo en cada push. Si `main` se rompe, repararlo o revertir es la prioridad.
+- La puerta completa es la integración continua, que ejecuta en cada push lo que el cambio afecta (la consola, solo cuando el push la toca). Si `main` se rompe, repararlo o revertir es la prioridad.
 - En un equipo, el mismo flujo con ramas de menos de un día integradas por pull request con la verificación en verde. El trabajo en paralelo sobre partes que no se tocan se hace en copias de trabajo (`git worktree`) y se integra en orden.
 
 ## Mapa del repositorio

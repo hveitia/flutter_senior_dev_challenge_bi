@@ -1,6 +1,6 @@
 # Alcance, supuestos, riesgos y escalamiento
 
-Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se dejó fuera a propósito. Las cifras de pruebas son las de la última verificación completa (`tool/verify.sh`): 1921 pruebas de Dart en nueve paquetes, 615 del servidor y la consola, 110 de las reglas de Firestore y 31 de las herramientas de carga.
+Qué pedía el reto, qué se construyó, cómo se comprobó cada cosa y qué se dejó fuera a propósito. Las cifras de pruebas son las de la última verificación completa (`tool/verify.sh`): 1922 pruebas de Dart en nueve paquetes, 615 del servidor y la consola, 110 de las reglas de Firestore y 31 de las herramientas de carga.
 
 «Dispositivo» significa un teléfono Android físico contra el proyecto real de Firebase. En casi todas las comprobaciones el servidor se ejecutaba en local; las que se hicieron contra el servidor desplegado lo dicen. En iOS la aplicación compila, se instala y funciona en un iPhone físico, y el autor la recorrió allí sin encontrar fallos; las comprobaciones de esta tabla, caso por caso, se hicieron en Android y no se repitieron en iOS.
 

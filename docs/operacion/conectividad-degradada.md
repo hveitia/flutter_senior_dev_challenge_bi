@@ -94,7 +94,7 @@ La regla que ordena todo: una orden solo se deja en cola cuando es seguro que no
 
 | Situación | Qué ve el cliente | Estado |
 | --- | --- | --- |
-| Transferencia con conexión | «Transferencia realizada» con su referencia, y el movimiento en las dos cuentas | Visto en un teléfono, con la prueba de extremo a extremo |
+| Transferencia con conexión | «Transferencia realizada» con su referencia, y el movimiento en las dos cuentas | Visto en un teléfono, con la primera versión de la prueba de extremo a extremo, solo de ida; la versión actual, de ida y vuelta, pasó en un emulador |
 | Monto por encima del máximo por transferencia | El error bajo el monto y no se puede continuar | Visto en un teléfono |
 | Monto por encima del saldo disponible | «Saldo insuficiente. Disponible: …» bajo el monto | Visto en un teléfono |
 | Sin conexión al confirmar | «Transferencia pendiente», etiqueta «En cola», sin «Ver movimiento». La orden queda en el teléfono | Visto en un teléfono, en modo avión |

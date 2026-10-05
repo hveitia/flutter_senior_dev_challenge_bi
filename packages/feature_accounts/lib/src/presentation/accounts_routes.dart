@@ -129,15 +129,24 @@ GoRoute accountDetailRoute({
         now: now,
       )..add(const MovementsStarted()),
       child: Builder(
-        builder: (context) => AccountDetailScreen(
-          accountId: accountId,
-          now: now,
-          onTransfer: canTransfer?.call(context) ?? false
-              ? () => context.push(AccountsPaths.transferFrom(accountId))
-              : null,
-          onBack: () => context.canPop()
-              ? context.pop()
-              : context.go(AccountsPaths.accounts),
+        // The result of a transfer opens the account with nothing behind
+        // it. The back gesture of the device then leads to the list, as
+        // the arrow of the screen does, instead of closing the app.
+        builder: (context) => PopScope(
+          canPop: context.canPop(),
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) context.go(AccountsPaths.accounts);
+          },
+          child: AccountDetailScreen(
+            accountId: accountId,
+            now: now,
+            onTransfer: canTransfer?.call(context) ?? false
+                ? () => context.push(AccountsPaths.transferFrom(accountId))
+                : null,
+            onBack: () => context.canPop()
+                ? context.pop()
+                : context.go(AccountsPaths.accounts),
+          ),
         ),
       ),
     );

@@ -70,7 +70,12 @@ void main() {
     );
     const concept = 'Prueba de extremo a extremo';
 
+    // The app installs its own error handlers when it starts. The test
+    // binding needs its handler back, or a failed step is reported as a
+    // confusing assertion of the binding and the run never ends.
+    final reportTestError = FlutterError.onError;
     await app.main();
+    FlutterError.onError = reportTestError;
     await waitFor(
       tester,
       find.textContaining(RegExp('Ya soy cliente|Hola,')),
@@ -86,6 +91,19 @@ void main() {
       await tap(tester, find.widgetWithText(AppButton, 'Ingresar'));
     }
     await waitFor(tester, find.textContaining('Hola,'));
+
+    // On a device where nobody has answered yet, the home invites the
+    // customer to turn notifications on, over the sections. The flow under
+    // test does not need them: decline, as a customer may.
+    final invitation = DateTime.now().add(const Duration(seconds: 5));
+    while (DateTime.now().isBefore(invitation) &&
+        find.text('Ahora no').evaluate().isEmpty) {
+      await tester.pump(step);
+    }
+    if (find.text('Ahora no').evaluate().isNotEmpty) {
+      await tap(tester, find.text('Ahora no'));
+      await tester.pump(keyboardTime);
+    }
 
     /// Moves $1.00 out of the account named [from] to the customer's other
     /// spendable account, and checks that the movement the account then
@@ -105,10 +123,9 @@ void main() {
       await tap(tester, find.widgetWithText(AppButton, 'Transferir'));
 
       await waitFor(tester, find.byType(NumericKeypad));
-      await tester.enterText(field('Concepto (opcional)'), concept);
-      // One dollar is the key 1, on the keys of the screen. Pressing it
-      // takes the focus from the concept, so the keyboard of the device
-      // closes; the layout is given time to settle before going on.
+      // One dollar is the key 1, on the keys of the screen. The amount goes
+      // first: once the concept has the focus, the keyboard of the device
+      // covers part of those keys.
       await tap(
         tester,
         find.descendant(
@@ -116,8 +133,13 @@ void main() {
           matching: find.text('1'),
         ),
       );
-      await tester.pump(keyboardTime);
       expect(find.text(r'$1.00', findRichText: true), findsOneWidget);
+      await tester.ensureVisible(field('Concepto (opcional)'));
+      await tester.enterText(field('Concepto (opcional)'), concept);
+      // "Done" on the keyboard of the device, so it slides away before the
+      // next step.
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(keyboardTime);
       await tap(tester, find.widgetWithText(AppButton, 'Continuar'));
       await tap(
         tester,

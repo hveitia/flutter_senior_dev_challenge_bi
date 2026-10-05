@@ -109,6 +109,24 @@ void main() {
     expect(find.text('SALDO TOTAL'), findsOneWidget);
   });
 
+  testWidgets('the back gesture of the device, on an account opened with '
+      'nothing behind it, leads to the list instead of leaving the app', (
+    tester,
+  ) async {
+    // How the result of a transfer opens the account: as the only screen.
+    await pumpRoutes(
+      tester,
+      initialLocation: AccountsPaths.account('savings'),
+    );
+    expect(find.text('DISPONIBLE'), findsOneWidget);
+
+    final left = await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(left, isTrue, reason: 'the app handles it; it is not closed');
+    expect(find.text('SALDO TOTAL'), findsOneWidget);
+  });
+
   test('an account id is escaped when it becomes part of a location', () {
     expect(AccountsPaths.account('a/b c'), '/cuentas/a%2Fb%20c');
   });
